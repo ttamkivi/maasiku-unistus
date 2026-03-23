@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { analyzeExercise, reviewFeedback } from '@/lib/exerciseAnalysis';
 import { CreateExerciseSchema, parseBody } from '@/lib/validation';
+import { uploadPhotoToBlob } from '@/lib/blob';
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -42,6 +43,26 @@ export async function POST(req: NextRequest) {
     subjectName = subject?.name ?? null;
   }
 
+  // Upload photos to Vercel Blob (if token is set), else fall back to base64
+  const photoCreateData = await Promise.all(
+    photos.map(async (p: { base64Data: string; caption?: string }, i: number) => {
+      const result = await uploadPhotoToBlob(p.base64Data, `exercise-${Date.now()}-${i}.jpg`);
+      if (result) {
+        return {
+          storageMode: 'blob',
+          storageKey: result.url,
+          base64Data: null as string | null,
+          caption: p.caption || null,
+        };
+      }
+      return {
+        storageMode: 'local_only',
+        base64Data: p.base64Data,
+        caption: p.caption || null,
+      };
+    })
+  );
+
   const exercise = await db.exercise.create({
     data: {
       studentId,
@@ -52,10 +73,7 @@ export async function POST(req: NextRequest) {
       studentNote: studentNote || null,
       status: 'ANALYZING',
       photos: {
-        create: photos.map((p: { base64Data: string; caption?: string }) => ({
-          base64Data: p.base64Data,
-          caption: p.caption || null,
-        })),
+        create: photoCreateData,
       },
     },
   });

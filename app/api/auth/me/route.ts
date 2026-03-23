@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       name: user.name,
       email: user.email,
       role: user.role,
+      onboardingCompleted: user.onboardingCompleted,
       features,
     });
   } catch (error) {

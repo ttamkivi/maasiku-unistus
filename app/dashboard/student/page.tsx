@@ -39,7 +39,11 @@ export default async function StudentDashboardPage() {
 
   if (!user.studentProfile && !isPreview) redirect('/dashboard');
 
-  const dashboardStudentEnabled = await isFeatureEnabled('DASHBOARD_STUDENT');
+  const [dashboardStudentEnabled, exercisesEnabled, assignmentsEnabled] = await Promise.all([
+    isFeatureEnabled('DASHBOARD_STUDENT'),
+    isFeatureEnabled('STUDENT_EXERCISES'),
+    isFeatureEnabled('ASSIGNMENTS_ENABLED'),
+  ]);
   if (!dashboardStudentEnabled && !isPreview) {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center', padding: '60px 24px' }}>
@@ -135,45 +139,51 @@ export default async function StudentDashboardPage() {
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Minu tagasiside</p>
       </div>
 
-      {/* Quick actions — two prominent CTAs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-        <Link href="/dashboard/exercises/new" style={{ textDecoration: 'none' }}>
-          <div style={{
-            background: '#1C2832',
-            color: '#F8F3DA',
-            borderRadius: 8,
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            minHeight: 72,
-          }}>
-            <div style={{ fontSize: 22 }}>📓</div>
-            <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>Pildista harjutused</div>
-            <div style={{ fontSize: 11, opacity: 0.7 }}>Saa kohene tagasiside</div>
-          </div>
-        </Link>
-        <Link href="/dashboard/assignments" style={{ textDecoration: 'none' }}>
-          <div style={{
-            background: '#F8F3DA',
-            border: '2px solid #DAD0A1',
-            color: '#1C2832',
-            borderRadius: 8,
-            padding: '14px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            minHeight: 72,
-          }}>
-            <div style={{ fontSize: 22 }}>📚</div>
-            <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>Kodutööd</div>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>Õpetaja ülesanded</div>
-          </div>
-        </Link>
-      </div>
+      {/* Quick actions — only shown when features are enabled */}
+      {(exercisesEnabled || assignmentsEnabled) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {exercisesEnabled && (
+            <Link href="/dashboard/exercises/new" style={{ textDecoration: 'none' }}>
+              <div style={{
+                background: '#1C2832',
+                color: '#F8F3DA',
+                borderRadius: 8,
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                minHeight: 72,
+              }}>
+                <div style={{ fontSize: 22 }}>📓</div>
+                <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>Pildista harjutused</div>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>Saa kohene tagasiside</div>
+              </div>
+            </Link>
+          )}
+          {assignmentsEnabled && (
+            <Link href="/dashboard/assignments" style={{ textDecoration: 'none' }}>
+              <div style={{
+                background: '#F8F3DA',
+                border: '2px solid #DAD0A1',
+                color: '#1C2832',
+                borderRadius: 8,
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                minHeight: 72,
+              }}>
+                <div style={{ fontSize: 22 }}>📚</div>
+                <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>Kodutööd</div>
+                <div style={{ fontSize: 11, opacity: 0.6 }}>Õpetaja ülesanded</div>
+              </div>
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Recent exercises */}
-      {recentExercises.length > 0 && (
+      {exercisesEnabled && recentExercises.length > 0 && (
         <div style={{ ...card, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832' }}>Minu harjutused</h2>

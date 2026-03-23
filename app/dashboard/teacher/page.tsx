@@ -345,30 +345,17 @@ export default async function TeacherDashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
+      <div className="grid grid-cols-2 gap-3 mb-7">
         <Link href="/dashboard/tests/new" style={{ textDecoration: 'none' }}>
           <div style={{ background: '#1C2832', color: '#F8F3DA', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>➕</div>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Uus kontrolltöö</div>
           </div>
         </Link>
-        <Link href="/dashboard/assignments/new" style={{ textDecoration: 'none' }}>
-          <div style={{ background: '#F8F3DA', border: '2px solid #DAD0A1', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>📚</div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Uus kodutöö</div>
-          </div>
-        </Link>
         <Link href="/dashboard/tests" style={{ textDecoration: 'none' }}>
           <div style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>📋</div>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Kontrolltööd</div>
-          </div>
-        </Link>
-        <Link href="/dashboard/exercises" style={{ textDecoration: 'none' }}>
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>📓</div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Harjutused</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Jagatud õpilastelt</div>
           </div>
         </Link>
       </div>

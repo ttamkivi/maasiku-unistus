@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
+import { uploadPhotoToBlob } from '@/lib/blob';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, readFile, mkdir, rm } from 'fs/promises';
@@ -223,26 +224,26 @@ Return ONLY valid JSON in this exact format, no other text:
       }
 
       const created = await Promise.all(
-        assignments.map((a) =>
-          db.testResult.create({
+        assignments.map(async (a, i) => {
+          const blobResult = await uploadPhotoToBlob(a.photo, `batch-${Date.now()}-${i}.jpg`);
+          const photoData = blobResult
+            ? { storageMode: 'blob', storageKey: blobResult.url, base64Data: null as string | null }
+            : { storageMode: 'local_only', base64Data: a.photo };
+
+          return db.testResult.create({
             data: {
               testId: id,
               studentName: a.studentName.trim(),
               status: 'UPLOADED',
-              storageMode: a.storageMode || 'local_only',
+              storageMode: blobResult ? 'blob' : (a.storageMode || 'local_only'),
               uploadedAt: new Date(),
               photos: {
-                create: [
-                  {
-                    base64Data: a.photo,
-                    storageMode: a.storageMode || 'local_only',
-                  },
-                ],
+                create: [photoData],
               },
             },
             select: { id: true, studentName: true },
-          })
-        )
+          });
+        })
       );
 
       return NextResponse.json({ created }, { status: 201 });

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import { resolvePhotoUrl } from '@/lib/blob';
 import SubmissionShareButton from './SubmissionShareButton';
 
 interface FeedbackSection {
@@ -276,7 +277,7 @@ export default async function SubmissionPage({
             {submission.photos.map((photo, i) => (
               <div key={photo.id}>
                 <img
-                  src={`data:image/jpeg;base64,${photo.base64Data}`}
+                  src={resolvePhotoUrl(photo)}
                   alt={`Foto ${i + 1}`}
                   style={{
                     width: '100%',

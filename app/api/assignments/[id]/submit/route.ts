@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
+import { uploadPhotoToBlob } from '@/lib/blob';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -135,6 +136,26 @@ export async function POST(
     }
   }
 
+  // Upload photos to Vercel Blob (if token is set), else fall back to base64
+  const photoCreateData = await Promise.all(
+    photos.map(async (p: { base64Data: string; caption?: string }, i: number) => {
+      const result = await uploadPhotoToBlob(p.base64Data, `submission-${Date.now()}-${i}.jpg`);
+      if (result) {
+        return {
+          storageMode: 'blob',
+          storageKey: result.url,
+          base64Data: null as string | null,
+          caption: p.caption || null,
+        };
+      }
+      return {
+        storageMode: 'local_only',
+        base64Data: p.base64Data,
+        caption: p.caption || null,
+      };
+    })
+  );
+
   // Create submission record
   const submission = await db.assignmentSubmission.create({
     data: {
@@ -144,10 +165,7 @@ export async function POST(
       studentNote: studentNote || null,
       status: 'ANALYZING',
       photos: {
-        create: photos.map((p: { base64Data: string; caption?: string }) => ({
-          base64Data: p.base64Data,
-          caption: p.caption || null,
-        })),
+        create: photoCreateData,
       },
     },
   });

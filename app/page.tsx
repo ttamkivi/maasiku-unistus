@@ -188,82 +188,43 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* ── TWO USE CASES ─────────────────────────────────────────────────── */}
+      {/* ── HOW IT WORKS ──────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 48 }}>
         <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: '#9ca3af', textTransform: 'uppercase', marginBottom: 12 }}>
-          Kaks kasutusviisi
+          Kuidas see toimib?
         </p>
         <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', marginBottom: 28 }}>
-          Sama AI, kaks erinevat olukorda
+          AI-tagasiside kogu klassile minutitega
         </h2>
 
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: 20,
+            background: '#fff',
+            border: '2px solid #1C2832',
+            borderRadius: 10,
+            padding: '28px 24px',
+            maxWidth: 560,
           }}
         >
-          {/* Use case 1: Kontrolltöö */}
-          <div
-            style={{
-              background: '#fff',
-              border: '2px solid #1C2832',
-              borderRadius: 10,
-              padding: '28px 24px',
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-            <Badge color="#1C2832">Kontrolltöö</Badge>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', marginTop: 10, marginBottom: 8 }}>
-              Klass kirjutab kontrolltöö
-            </h3>
-            <p style={{ fontSize: 14, color: '#4b5563', lineHeight: 1.65, marginBottom: 20 }}>
-              Õpetaja pildistab kõikide õpilaste töid. AI analüüsib iga töö eraldi ja koostab isikliku tagasiside.
-              Õpetaja vaatab üle, kinnitab ja jagab õpilastele.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              <Step n="1" text="Õpetaja loob kontrolltöö ja pildistab paberid" />
-              <Step n="2" text="AI analüüsib iga tööd riikliku ainekava järgi" />
-              <Step n="3" text="Õpetaja vaatab tagasiside üle ja kinnitab" />
-              <Step n="4" text="Kõik õpilased saavad personaalse tagasiside" />
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>Sobib:</span>
-              <Badge color="#1C2832">Õpetaja</Badge>
-              <Badge color="#0369a1">Klassijuhataja</Badge>
-            </div>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
+          <Badge color="#1C2832">Kontrolltöö</Badge>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', marginTop: 10, marginBottom: 8 }}>
+            Klass kirjutab kontrolltöö
+          </h3>
+          <p style={{ fontSize: 14, color: '#4b5563', lineHeight: 1.65, marginBottom: 20 }}>
+            Õpetaja pildistab kõikide õpilaste töid. AI analüüsib iga töö eraldi ja koostab isikliku tagasiside.
+            Õpetaja vaatab üle, kinnitab ja jagab õpilastele.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            <Step n="1" text="Õpetaja loob kontrolltöö ja pildistab paberid" />
+            <Step n="2" text="AI analüüsib iga tööd riikliku ainekava järgi" />
+            <Step n="3" text="Õpetaja vaatab tagasiside üle ja kinnitab" />
+            <Step n="4" text="Kõik õpilased saavad personaalse tagasiside" />
           </div>
-
-          {/* Use case 2: Harjutused */}
-          <div
-            style={{
-              background: '#fff',
-              border: '2px solid #1C2832',
-              borderRadius: 10,
-              padding: '28px 24px',
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 10 }}>📓</div>
-            <Badge color="#16a34a">Harjutused & kodutöö</Badge>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', marginTop: 10, marginBottom: 8 }}>
-              Õpilane lahendab harjutusi
-            </h3>
-            <p style={{ fontSize: 14, color: '#4b5563', lineHeight: 1.65, marginBottom: 20 }}>
-              Õpilane pildistab oma vihiku. AI annab kohese tagasiside — mis läks hästi, mida harjutada.
-              Soovi korral jagatakse tulemus ka õpetajaga.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              <Step n="1" text="Õpetaja annab harjutuse või õpilane teeb ise" />
-              <Step n="2" text="Õpilane pildistab oma vihiku mobiiltelefoniga" />
-              <Step n="3" text="AI analüüsib ja annab isikliku tagasiside" />
-              <Step n="4" text="Õpilane jagab soovi korral õpetajaga" />
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: '#6b7280' }}>Sobib:</span>
-              <Badge color="#2563eb">Õpilane</Badge>
-              <Badge color="#1C2832">Õpetaja</Badge>
-            </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#6b7280' }}>Sobib:</span>
+            <Badge color="#1C2832">Õpetaja</Badge>
+            <Badge color="#0369a1">Klassijuhataja</Badge>
           </div>
         </div>
       </div>
@@ -305,7 +266,6 @@ export default async function Home() {
             >
               {[
                 'Analüüsi terve klass minutitega',
-                'Loo kodutöö ülesandeid klassile',
                 'Vaata iga õpilase tagasisidet',
                 'Kinnita ja jaga tulemusi kontrollitult',
                 'Näed kogu klassi edusamme ühes vaates',
@@ -344,12 +304,10 @@ export default async function Home() {
               }}
             >
               {[
-                'Pildista kodutöö mobiiltelefoniga',
-                'Saa kohene AI tagasiside',
-                'Tea täpselt mis läks hästi ja mis mitte',
                 'Vaata oma kontrolltöö tagasisidet',
+                'Tea täpselt mis läks hästi ja mis mitte',
                 'Jälgi edusamme aja jooksul',
-                'Jaga tulemust soovi korral õpetajaga',
+                'Saa soovitused, mida edasi harjutada',
               ].map((item) => (
                 <div key={item} style={{ fontSize: 13, color: '#4b5563', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                   <span style={{ color: '#2563eb', fontWeight: 700, flexShrink: 0 }}>✓</span>

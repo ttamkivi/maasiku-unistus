@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { uploadPhotoToBlob } from '@/lib/blob';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -47,6 +48,27 @@ export async function POST(
       return NextResponse.json({ error: 'Õpilase nimi on kohustuslik' }, { status: 400 });
     }
 
+    // Upload photos to Vercel Blob (if token is set), else fall back to base64
+    let photoCreateData: Array<{ storageMode: string; storageKey?: string; base64Data: string | null }> | undefined;
+    if (photos && photos.length > 0) {
+      photoCreateData = await Promise.all(
+        photos.map(async (base64Data: string, i: number) => {
+          const result = await uploadPhotoToBlob(base64Data, `result-${Date.now()}-${i}.jpg`);
+          if (result) {
+            return {
+              storageMode: 'blob',
+              storageKey: result.url,
+              base64Data: null as string | null,
+            };
+          }
+          return {
+            storageMode: 'local_only',
+            base64Data,
+          };
+        })
+      );
+    }
+
     const result = await db.testResult.create({
       data: {
         testId: id,
@@ -56,13 +78,8 @@ export async function POST(
         storageMode: storageMode || 'local_only',
         status: 'PENDING',
         uploadedAt: photos && photos.length > 0 ? new Date() : null,
-        photos: photos && photos.length > 0
-          ? {
-              create: photos.map((base64Data: string) => ({
-                base64Data,
-                storageMode: storageMode || 'local_only',
-              })),
-            }
+        photos: photoCreateData
+          ? { create: photoCreateData }
           : undefined,
       },
     });

@@ -6,6 +6,7 @@ export type FeatureKey =
   | 'LOGIN_ID_CARD'
   | 'LOGIN_MOBILE_ID'
   | 'STUDENT_EXERCISES'
+  | 'ASSIGNMENTS_ENABLED'
   | 'EKOOL_API'
   | 'DASHBOARD_STUDENT'
   | 'DASHBOARD_TEACHER'
@@ -16,7 +17,8 @@ export const FEATURE_DEFAULTS: Record<FeatureKey, { description: string; enabled
   LOGIN_SMART_ID:           { description: 'Smart-ID sisselogimine',                 enabled: false },
   LOGIN_ID_CARD:            { description: 'ID-kaardi sisselogimine',                enabled: false },
   LOGIN_MOBILE_ID:          { description: 'Mobiil-ID sisselogimine',                enabled: false },
-  STUDENT_EXERCISES:        { description: 'Õpilased saavad lahendada harjutusi',    enabled: true  },
+  STUDENT_EXERCISES:        { description: 'Õpilased saavad lahendada harjutusi',    enabled: false },
+  ASSIGNMENTS_ENABLED:      { description: 'Kodutöö funktsioon',                     enabled: false },
   EKOOL_API:                { description: 'eKool API integratsioon',                enabled: false },
   DASHBOARD_STUDENT:        { description: 'Õpilase töölaud',                        enabled: true  },
   DASHBOARD_TEACHER:        { description: 'Õpetaja töölaud',                        enabled: true  },

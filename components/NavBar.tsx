@@ -9,6 +9,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  onboardingCompleted?: boolean;
   features?: Record<string, boolean>;
 }
 
@@ -33,13 +34,11 @@ const ALL_ROLES = [
 ];
 
 const TEACHER_TABS = [
-  { href: '/dashboard/teacher',     icon: '📊', label: 'Ülevaade' },
-  { href: '/dashboard/tests',       icon: '📝', label: 'Kontrolltööd' },
-  { href: '/dashboard/students',    icon: '👥', label: 'Õpilased' },
-  { href: '/dashboard/consents',    icon: '✅', label: 'Nõusolekud' },
-  { href: '/dashboard/exercises',   icon: '📓', label: 'Harjutused' },
-  { href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' },
-  { href: '/dashboard',             icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/teacher',  icon: '📊', label: 'Ülevaade' },
+  { href: '/dashboard/tests',    icon: '📝', label: 'Kontrolltööd' },
+  { href: '/dashboard/students', icon: '👥', label: 'Õpilased' },
+  { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
+  { href: '/dashboard',          icon: '👤', label: 'Profiil' },
 ];
 
 const STUDENT_TABS = [
@@ -66,14 +65,22 @@ const KLASSIJUHATAJA_TABS = [
 
 function getTabsForRole(role: string, features?: Record<string, boolean>) {
   const exercisesEnabled = features?.STUDENT_EXERCISES ?? false;
+  const assignmentsEnabled = features?.ASSIGNMENTS_ENABLED ?? false;
 
   switch (role) {
-    case 'TEACHER': return TEACHER_TABS;
+    case 'TEACHER': {
+      const tabs = [
+        ...TEACHER_TABS,
+        ...(exercisesEnabled ? [{ href: '/dashboard/exercises', icon: '📓', label: 'Harjutused' }] : []),
+        ...(assignmentsEnabled ? [{ href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' }] : []),
+      ];
+      return tabs;
+    }
     case 'STUDENT': {
       const tabs = [
         ...(features?.DASHBOARD_STUDENT !== false ? [{ href: '/dashboard/student', icon: '📊', label: 'Tulemused' }] : []),
         ...(exercisesEnabled ? [{ href: '/dashboard/exercises', icon: '📓', label: 'Harjutused' }] : []),
-        { href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' },
+        ...(assignmentsEnabled ? [{ href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' }] : []),
         { href: '/dashboard', icon: '👤', label: 'Profiil' },
       ];
       return tabs;
@@ -208,6 +215,25 @@ export default function NavBar() {
                     {tab.label}
                   </Link>
                 ))}
+
+                {/* Onboarding link for teachers/admins who haven't completed setup */}
+                {!user.onboardingCompleted && (user.role === 'TEACHER' || user.role === 'SCHOOL_ADMIN') && (
+                  <Link
+                    href="/dashboard/onboarding"
+                    style={{
+                      background: '#f97316',
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '5px 12px',
+                      textDecoration: 'none',
+                      borderRadius: 4,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ✦ Lõpeta seadistus
+                  </Link>
+                )}
 
                 {/* SUPERADMIN role preview selector */}
                 {isSuperAdmin && (
@@ -348,6 +374,25 @@ export default function NavBar() {
                       {tab.icon} {tab.label}
                     </Link>
                   ))}
+
+                  {/* Onboarding link for teachers/admins who haven't completed setup */}
+                  {!user.onboardingCompleted && (user.role === 'TEACHER' || user.role === 'SCHOOL_ADMIN') && (
+                    <Link
+                      href="/dashboard/onboarding"
+                      style={{
+                        padding: '10px 8px',
+                        color: '#fff',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        fontSize: 15,
+                        background: '#f97316',
+                        borderRadius: 6,
+                      }}
+                    >
+                      ✦ Lõpeta seadistus
+                    </Link>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleLogout}
