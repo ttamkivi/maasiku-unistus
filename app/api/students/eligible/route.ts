@@ -25,35 +25,27 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
-    // Find students with eligibility
-    const eligibleStudents = await db.studentEligibility.findMany({
+    // Find eligible students with active consent grants
+    const eligibleStudents = await db.studentProfile.findMany({
       where: { isEligible: true },
       include: {
-        studentKlassijuhataj: {
-          include: {
-            student: {
-              include: {
-                user: { select: { id: true, name: true } },
-                school: { select: { id: true, name: true } },
-                subjectConsents: {
-                  where: {
-                    status: 'ACTIVE',
-                    OR: [
-                      { duration: 'INFINITE' },
-                      { duration: 'DATED', endDate: { gt: now } },
-                    ],
-                  },
-                },
-              },
-            },
+        user: { select: { id: true, name: true } },
+        school: { select: { id: true, name: true } },
+        class: { select: { name: true } },
+        consentGrants: {
+          where: {
+            status: 'ACTIVE',
+            OR: [
+              { duration: 'INFINITE' },
+              { duration: 'DATED', endDate: { gt: now } },
+            ],
           },
         },
       },
     });
 
     const results = eligibleStudents
-      .map((elig) => {
-        const student = elig.studentKlassijuhataj.student;
+      .map((student) => {
         const user = student.user;
 
         // Filter by name search
@@ -62,7 +54,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Check active consents with subject filter
-        const activeConsents = student.subjectConsents.filter((c) => {
+        const activeConsents = student.consentGrants.filter((c) => {
           if (c.scope === 'ALL_SUBJECTS') return true;
           if (subjectId && c.subjectId === subjectId) return true;
           if (!subjectId && c.scope === 'SPECIFIC_SUBJECT') return true;
@@ -79,7 +71,7 @@ export async function GET(request: NextRequest) {
           id: student.id,
           userId: user.id,
           name: user.name,
-          class: student.class,
+          class: student.class?.name ?? null,
           school: student.school?.name ?? null,
           consentScope,
         };

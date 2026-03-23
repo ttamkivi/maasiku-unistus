@@ -3,11 +3,14 @@ import { jsonrepair } from 'jsonrepair';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Privacy: student's real name is never forwarded to Anthropic.
+const AI_STUDENT_PLACEHOLDER = 'Õpilane';
+
 export async function analyzeExercise(
   topic: string,
   subjectName: string | null,
   grade: string | null,
-  studentName: string,
+  _studentName: string, // kept for API compatibility — NOT sent to Anthropic
   studentNote: string | null,
   photos: { base64Data: string; caption?: string | null }[]
 ): Promise<object> {
@@ -20,7 +23,7 @@ You receive photos of the student's work from their exercise book or workbook.
 Context:
 - Subject: ${subjectCtx}${gradeCtx}
 - Topic/what they were working on: ${topic}
-- Student: ${studentName}
+- Student: ${AI_STUDENT_PLACEHOLDER}
 ${studentNote ? `- Student's note: ${studentNote}` : ''}
 
 Your task:
@@ -71,6 +74,7 @@ OUTPUT FORMAT — valid JSON only, no markdown wrapping:
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
+    metadata: { user_id: 'pseudonymised' },
     system: systemPrompt,
     messages: [
       {

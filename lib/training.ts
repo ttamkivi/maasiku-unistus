@@ -68,7 +68,7 @@ export async function createTrainingRecord(resultId: string, consentedBy: string
   await db.$transaction(async (tx) => {
     const consent = await tx.trainingConsent.create({
       data: {
-        resultId,
+        testResultId: resultId,
         consentedBy,
         consentType,
         anonymizedAt: now,

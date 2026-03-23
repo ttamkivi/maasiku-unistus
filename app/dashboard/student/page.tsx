@@ -56,7 +56,7 @@ export default async function StudentDashboardPage() {
           include: { test: { include: { subject: true } } },
           orderBy: { sharedAt: 'desc' },
         })
-      : Promise.resolve([]),
+      : Promise.resolve([] as Awaited<ReturnType<typeof db.testResult.findMany<{ include: { test: { include: { subject: true } } } }>>>),
     user.studentProfile
       ? db.exercise.findMany({
           where: { studentId: user.studentProfile.id, status: { not: 'ARCHIVED' } },
@@ -64,7 +64,7 @@ export default async function StudentDashboardPage() {
           orderBy: { createdAt: 'desc' },
           take: 5,
         })
-      : Promise.resolve([]),
+      : Promise.resolve([] as Awaited<ReturnType<typeof db.exercise.findMany<{ include: { subject: true } }>>>),
   ]);
 
   // Top stats

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 
-const ADMIN_ROLES = ['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'];
+const ADMIN_ROLES = ['SUPERADMIN', 'SCHOOL_ADMIN'];
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -44,8 +44,6 @@ export async function GET() {
         studentProfile: {
           select: {
             id: true,
-            class: true,
-            grade: true,
             school: { select: { name: true } },
           },
         },
@@ -86,7 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validRoles = ['SUPERADMIN', 'SCHOOL_ADMIN', 'ADMIN', 'TEACHER', 'KLASSIJUHATAJA', 'STUDENT', 'PARENT'];
+    const validRoles = ['SUPERADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'];
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: 'Vigane roll' }, { status: 400 });
     }
@@ -116,20 +114,18 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        role: role as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'ADMIN' | 'TEACHER' | 'KLASSIJUHATAJA' | 'STUDENT' | 'PARENT',
+        role: role as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT',
       },
     });
 
     // Create role-specific profile
     if (role === 'TEACHER') {
       await db.teacherProfile.create({ data: { userId: user.id } });
-    } else if (role === 'KLASSIJUHATAJA') {
-      await db.klassijuhatajProfile.create({ data: { userId: user.id, schoolId: schoolId ?? null } });
     } else if (role === 'STUDENT') {
-      await db.studentProfile.create({ data: { userId: user.id, schoolId: schoolId ?? null, class: className ?? null, grade: grade ? parseInt(grade, 10) : null } });
+      await db.studentProfile.create({ data: { userId: user.id, schoolId: schoolId ?? null } });
     } else if (role === 'PARENT') {
       await db.parentProfile.create({ data: { userId: user.id } });
-    } else if (['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'].includes(role)) {
+    } else if (['SUPERADMIN', 'SCHOOL_ADMIN'].includes(role)) {
       await db.adminProfile.create({ data: { userId: user.id } });
     }
 

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'See e-posti aadress on juba kasutusel' }, { status: 409 });
     }
 
-    const validRoles: Role[] = ['TEACHER', 'STUDENT', 'PARENT', 'ADMIN'];
+    const validRoles: Role[] = ['TEACHER', 'STUDENT', 'PARENT', 'SCHOOL_ADMIN'];
     const userRole: Role = validRoles.includes(role) ? role : 'TEACHER';
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       await db.studentProfile.create({ data: { userId: user.id } });
     } else if (userRole === 'PARENT') {
       await db.parentProfile.create({ data: { userId: user.id } });
-    } else if (userRole === 'ADMIN') {
+    } else if (userRole === 'SCHOOL_ADMIN') {
       await db.adminProfile.create({ data: { userId: user.id } });
     }
 

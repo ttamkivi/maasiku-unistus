@@ -64,7 +64,7 @@ export async function PATCH(
 
     await db.user.update({
       where: { id },
-      data: { role: newRole as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'ADMIN' | 'TEACHER' | 'KLASSIJUHATAJA' | 'STUDENT' | 'PARENT' },
+      data: { role: newRole as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' },
     });
 
     await db.auditLog.create({

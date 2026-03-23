@@ -3,10 +3,11 @@
  *
  * Creates:
  *   - "Demo Kool" school
- *   - Links all existing TEACHERs + KLASSIJUHATAJAs to it
- *   - 38 student users (StudentProfile, class="9.A", grade=9)
+ *   - Links all existing TEACHERs to it
+ *   - A SchoolClass "9.A" for the current academic year
+ *   - 38 student users (StudentProfile, classId → SchoolClass)
  *   - 38 parent users (ParentProfile), each linked to their child
- *   - Klassijuhataja record linking the existing KJ to all 38 students
+ *   - ConsentRequest + ConsentGrant for 75% of students
  *
  * Run: npx tsx scripts/seed-demo.ts
  */
@@ -68,7 +69,7 @@ const STUDENTS: { name: string; email: string; parentName: string; parentEmail: 
 const DEFAULT_PASSWORD = 'DemoKool2026!';
 
 async function main() {
-  console.log('🏫  Seeding Demo Kool...\n');
+  console.log('Seeding Demo Kool...\n');
 
   const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
@@ -78,9 +79,9 @@ async function main() {
     school = await prisma.school.create({
       data: { name: 'Demo Kool', type: 'põhikool', city: 'Tallinn' },
     });
-    console.log(`✓ School created: ${school.name} (${school.id})`);
+    console.log(`School created: ${school.name} (${school.id})`);
   } else {
-    console.log(`• School already exists: ${school.name}`);
+    console.log(`School already exists: ${school.name}`);
   }
 
   // ── 2. Link all existing TEACHERs to the school ───────────────────────────
@@ -95,45 +96,49 @@ async function main() {
       teacherLinked++;
     }
   }
-  console.log(`✓ Linked ${teacherLinked} teacher(s) to Demo Kool (${teachers.length - teacherLinked} already linked)`);
+  console.log(`Linked ${teacherLinked} teacher(s) to Demo Kool (${teachers.length - teacherLinked} already linked)`);
 
-  // ── 3. Ensure a KlassijuhatajProfile exists and link to school ─────────────
-  let kjProfile = await prisma.klassijuhatajProfile.findFirst({ include: { user: true } });
-  if (!kjProfile) {
-    // Create a KJ user
-    const kjUser = await prisma.user.upsert({
-      where: { email: 'kj.demo@demo.ee' },
-      update: {},
-      create: {
-        name: 'Kaia Kivisild',
-        email: 'kj.demo@demo.ee',
-        password: hashedPassword,
-        role: 'KLASSIJUHATAJA',
+  // ── 3. Ensure an AcademicYear and SchoolClass "9.A" exist ─────────────────
+  let academicYear = await prisma.academicYear.findFirst({
+    where: { schoolId: school.id, label: '2025/2026' },
+  });
+  if (!academicYear) {
+    academicYear = await prisma.academicYear.create({
+      data: {
+        schoolId: school.id,
+        label: '2025/2026',
+        startDate: new Date('2025-09-01'),
+        endDate: new Date('2026-06-15'),
+        isActive: true,
       },
     });
-    kjProfile = await prisma.klassijuhatajProfile.upsert({
-      where: { userId: kjUser.id },
-      update: { schoolId: school.id },
-      create: { userId: kjUser.id, schoolId: school.id },
-      include: { user: true },
-    });
-    console.log(`✓ KJ created: ${kjProfile.user.name}`);
-  } else {
-    // Update school if needed
-    if (kjProfile.schoolId !== school.id) {
-      await prisma.klassijuhatajProfile.update({
-        where: { id: kjProfile.id },
-        data: { schoolId: school.id },
-      });
-    }
-    console.log(`• KJ exists: ${kjProfile.user.name}`);
+    console.log(`AcademicYear created: ${academicYear.label}`);
   }
 
-  // ── 4. Create 38 students + parents ───────────────────────────────────────
-  console.log(`\n👨‍🎓 Creating ${STUDENTS.length} students + parents...`);
+  let schoolClass = await prisma.schoolClass.findFirst({
+    where: { schoolId: school.id, academicYearId: academicYear.id, name: '9.A' },
+  });
+  if (!schoolClass) {
+    schoolClass = await prisma.schoolClass.create({
+      data: {
+        schoolId: school.id,
+        academicYearId: academicYear.id,
+        name: '9.A',
+        gradeLevel: 9,
+      },
+    });
+    console.log(`SchoolClass created: ${schoolClass.name}`);
+  } else {
+    console.log(`SchoolClass already exists: ${schoolClass.name}`);
+  }
+
+  // ── 4. Ensure a teacher profile exists to use as consentRequest.requestedById ─
+  const firstTeacher = teachers[0] ?? null;
+
+  // ── 5. Create 38 students + parents ───────────────────────────────────────
+  console.log(`\nCreating ${STUDENTS.length} students + parents...`);
   let studentsCreated = 0;
   let parentsCreated = 0;
-  let kjLinked = 0;
 
   for (const s of STUDENTS) {
     // Student user
@@ -153,8 +158,7 @@ async function main() {
         data: {
           userId: studentUser.id,
           schoolId: school.id,
-          class: '9.A',
-          grade: 9,
+          classId: schoolClass.id,
         },
       });
       studentsCreated++;
@@ -163,7 +167,7 @@ async function main() {
       if (studentProfile && !studentProfile.schoolId) {
         await prisma.studentProfile.update({
           where: { id: studentProfile.id },
-          data: { schoolId: school.id, class: '9.A', grade: 9 },
+          data: { schoolId: school.id, classId: schoolClass.id },
         });
       }
     }
@@ -202,31 +206,17 @@ async function main() {
         });
       }
     }
-
-    // Link KJ ↔ student
-    const kjLinkExists = await prisma.studentKlassijuhataj.findUnique({
-      where: { studentId: studentProfile.id },
-    });
-    if (!kjLinkExists) {
-      await prisma.studentKlassijuhataj.create({
-        data: { studentId: studentProfile.id, klassijuhatajId: kjProfile.id },
-      });
-      kjLinked++;
-    }
   }
 
-  console.log(`✓ Students created: ${studentsCreated} (${STUDENTS.length - studentsCreated} already existed)`);
-  console.log(`✓ Parents created:  ${parentsCreated}`);
-  console.log(`✓ KJ links created: ${kjLinked}`);
+  console.log(`Students created: ${studentsCreated} (${STUDENTS.length - studentsCreated} already existed)`);
+  console.log(`Parents created:  ${parentsCreated}`);
 
-  // ── 5. AI analysis consent for 75% of students ────────────────────────────
-  // Deterministic selection: first 29 students (Math.round(38 * 0.75) = 29)
-  console.log(`\n🤖 Seeding AI analysis consent for 75% of students...`);
+  // ── 6. AI analysis consent for 75% of students ────────────────────────────
+  console.log(`\nSeeding AI analysis consent for 75% of students...`);
 
   const CONSENT_COUNT = Math.round(STUDENTS.length * 0.75); // 29
   const consentStudentEmails = new Set(STUDENTS.slice(0, CONSENT_COUNT).map((s) => s.email));
 
-  // Spread consent dates across the last ~4 months for realism
   const now = new Date();
   const FOUR_MONTHS_MS = 4 * 30 * 24 * 60 * 60 * 1000;
 
@@ -245,17 +235,38 @@ async function main() {
     const parentProfile = await prisma.parentProfile.findUnique({ where: { userId: parentUser.id } });
     if (!studentProfile || !parentProfile) continue;
 
-    // Spread consent dates: student index maps to a date within the last 4 months
     const fraction = i / STUDENTS.length;
     const consentDate = new Date(now.getTime() - FOUR_MONTHS_MS + fraction * FOUR_MONTHS_MS);
 
-    // Parent consent (idempotent — skip if ACTIVE consent already exists)
-    const existingConsent = await prisma.subjectConsent.findFirst({
+    // Check if active consent grant already exists
+    const existingGrant = await prisma.consentGrant.findFirst({
       where: { parentId: parentProfile.id, studentId: studentProfile.id, status: 'ACTIVE' },
     });
-    if (!existingConsent) {
-      await prisma.subjectConsent.create({
+
+    if (!existingGrant && firstTeacher) {
+      // Create or find a ConsentRequest first
+      let consentRequest = await prisma.consentRequest.findFirst({
+        where: { studentId: studentProfile.id, requestedById: firstTeacher.id },
+      });
+      if (!consentRequest) {
+        consentRequest = await prisma.consentRequest.create({
+          data: {
+            requestedById: firstTeacher.id,
+            studentId: studentProfile.id,
+            parentProfileId: parentProfile.id,
+            parentEmail: parentUser.email,
+            parentName: parentUser.name,
+            inviteToken: `demo-${studentProfile.id}-${parentProfile.id}`,
+            status: 'APPROVED',
+            expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+            respondedAt: consentDate,
+          },
+        });
+      }
+
+      await prisma.consentGrant.create({
         data: {
+          requestId: consentRequest.id,
           parentId: parentProfile.id,
           studentId: studentProfile.id,
           subjectId: null,
@@ -269,55 +280,26 @@ async function main() {
       consentsCreated++;
     }
 
-    // KJ eligibility — linked via StudentKlassijuhataj.studentId = studentProfile.id
-    const kjLink = await prisma.studentKlassijuhataj.findUnique({
-      where: { studentId: studentProfile.id },
-    });
-    if (kjLink) {
-      const existingEligibility = await prisma.studentEligibility.findUnique({
-        where: { studentKlassijuhatajId: studentProfile.id },
+    // Set isEligible = true on StudentProfile
+    if (!studentProfile.isEligible) {
+      await prisma.studentProfile.update({
+        where: { id: studentProfile.id },
+        data: { isEligible: true },
       });
-      if (!existingEligibility) {
-        await prisma.studentEligibility.create({
-          data: {
-            studentKlassijuhatajId: studentProfile.id,
-            isEligible: true,
-            note: `Kinnitanud ${kjProfile.user.name} demo seedi käigus`,
-          },
-        });
-        eligibilitiesCreated++;
-      } else if (!existingEligibility.isEligible) {
-        await prisma.studentEligibility.update({
-          where: { studentKlassijuhatajId: studentProfile.id },
-          data: { isEligible: true },
-        });
-        eligibilitiesCreated++;
-      }
+      eligibilitiesCreated++;
     }
   }
 
-  console.log(`✓ Parent consents created:  ${consentsCreated} (${CONSENT_COUNT - consentsCreated} already existed)`);
-  console.log(`✓ KJ eligibilities created: ${eligibilitiesCreated} (${CONSENT_COUNT - eligibilitiesCreated} already existed)`);
+  console.log(`Parent consents created:  ${consentsCreated} (${CONSENT_COUNT - consentsCreated} already existed)`);
+  console.log(`Eligibilities set:        ${eligibilitiesCreated}`);
 
-  // ── Summary ───────────────────────────────────────────────────────────────
   console.log(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅  Demo Kool seeded!
+Demo Kool seeded!
 
-School:    Demo Kool (9.A, 38 õpilast)
-Password:  ${DEFAULT_PASSWORD}  (kõigile demo kasutajatele)
+School:    Demo Kool (9.A, 38 students)
+Password:  ${DEFAULT_PASSWORD}  (all demo users)
 
-Roles created / linked:
-  ${teachers.length} teacher(s) → Demo Kool
-  KJ: ${kjProfile.user.name}
-  38 õpilased  (liisa.tamm@demo.ee … rasmus.luik@demo.ee)
-  38 lapsevanemad (tiina.tamm@demo.ee … ylo.luik@demo.ee)
-
-AI analysis consent: ${CONSENT_COUNT}/38 õpilast (75%)
-  • Lapsevanema nõusolek (SubjectConsent ACTIVE, scope=ALL_SUBJECTS)
-  • KJ kinnitanud (StudentEligibility isEligible=true)
-  Nõusolekuta: ${STUDENTS.length - CONSENT_COUNT} õpilast (viimased 9 nimekirjas)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI analysis consent: ${CONSENT_COUNT}/38 students (75%)
 `);
 }
 

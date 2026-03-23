@@ -53,9 +53,9 @@ export async function POST(
       return NextResponse.json({ error: 'Tulemust ei leitud' }, { status: 404 });
     }
 
-    // Check if consent already exists
+    // Check if consent already exists (new schema: testResultId)
     const existing = await db.trainingConsent.findUnique({
-      where: { resultId },
+      where: { testResultId: resultId },
     });
     if (existing) {
       return NextResponse.json({ error: 'Nõusolek on juba antud' }, { status: 409 });
@@ -75,7 +75,7 @@ export async function POST(
     await db.$transaction(async (tx) => {
       const consent = await tx.trainingConsent.create({
         data: {
-          resultId,
+          testResultId: resultId,
           consentedBy: user.id,
           consentType,
           anonymizedAt: now,
@@ -135,7 +135,7 @@ export async function DELETE(
     const { resultId } = await params;
 
     const consent = await db.trainingConsent.findUnique({
-      where: { resultId },
+      where: { testResultId: resultId },
       include: { anonymizedData: true },
     });
 

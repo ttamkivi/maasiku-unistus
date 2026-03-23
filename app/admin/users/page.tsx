@@ -5,13 +5,11 @@ import { db } from '@/lib/db';
 import UsersClient from './UsersClient';
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPERADMIN:     'Superadmin',
-  SCHOOL_ADMIN:   'Kooli admin',
-  ADMIN:          'Admin',
-  TEACHER:        'Õpetaja',
-  KLASSIJUHATAJA: 'Klassijuhataja',
-  STUDENT:        'Õpilane',
-  PARENT:         'Lapsevanem',
+  SUPERADMIN:   'Superadmin',
+  SCHOOL_ADMIN: 'Kooli admin',
+  TEACHER:      'Õpetaja',
+  STUDENT:      'Õpilane',
+  PARENT:       'Lapsevanem',
 };
 
 function formatDate(date: Date): string {
@@ -33,14 +31,16 @@ export default async function AdminUsersPage({
     include: { user: true },
   });
 
-  if (!session || session.expiresAt < new Date() || !['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role)) {
+  if (!session || session.expiresAt < new Date() || !['SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role)) {
     redirect('/auth/login');
   }
 
   const { role: roleFilter } = await searchParams;
 
+  const now = new Date();
+
   const usersRaw = await db.user.findMany({
-    where: roleFilter ? { role: roleFilter as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'ADMIN' | 'TEACHER' | 'KLASSIJUHATAJA' | 'STUDENT' | 'PARENT' } : undefined,
+    where: roleFilter ? { role: roleFilter as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' } : undefined,
     orderBy: { createdAt: 'desc' },
     select: {
       id: true,
@@ -51,10 +51,15 @@ export default async function AdminUsersPage({
       studentProfile: {
         select: {
           id: true,
-          class: true,
-          grade: true,
-          subjectConsents: {
-            where: { status: 'ACTIVE' },
+          isEligible: true,
+          consentGrants: {
+            where: {
+              status: 'ACTIVE',
+              OR: [
+                { duration: 'INFINITE' },
+                { duration: 'DATED', endDate: { gt: now } },
+              ],
+            },
             orderBy: { startDate: 'desc' },
             take: 1,
             select: {
@@ -64,11 +69,6 @@ export default async function AdminUsersPage({
               },
             },
           },
-          klassijuhatajRecord: {
-            select: {
-              eligibility: { select: { isEligible: true, updatedAt: true } },
-            },
-          },
         },
       },
     },
@@ -76,8 +76,7 @@ export default async function AdminUsersPage({
 
   const users = usersRaw.map((u) => {
     const sp = u.studentProfile;
-    const activeConsent = sp?.subjectConsents[0] ?? null;
-    const eligibility = sp?.klassijuhatajRecord?.eligibility ?? null;
+    const activeConsent = sp?.consentGrants[0] ?? null;
 
     return {
       id: u.id,
@@ -90,10 +89,10 @@ export default async function AdminUsersPage({
       // AI consent info (students only)
       aiConsent: sp ? {
         hasConsent: !!activeConsent,
-        consentBy: activeConsent?.parent.user.name ?? null,
+        consentBy: activeConsent?.parent?.user?.name ?? null,
         consentAt: activeConsent ? formatDate(activeConsent.startDate) : null,
-        isEligible: eligibility?.isEligible ?? false,
-        eligibleAt: eligibility ? formatDate(eligibility.updatedAt) : null,
+        isEligible: sp.isEligible,
+        eligibleAt: null,
       } : null,
       studentProfileId: sp?.id ?? null,
     };

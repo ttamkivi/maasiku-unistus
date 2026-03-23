@@ -167,14 +167,14 @@ export async function main() {
     where: { email: 'admin@maasikuunistus.ee' },
     update: {
       name: 'Admin',
-      role: Role.ADMIN,
+      role: Role.SCHOOL_ADMIN,
       password: hashedPassword,
     },
     create: {
       email: 'admin@maasikuunistus.ee',
       password: hashedPassword,
       name: 'Admin',
-      role: Role.ADMIN,
+      role: Role.SCHOOL_ADMIN,
     },
   });
 
@@ -193,13 +193,12 @@ export async function main() {
   const superPassword = await hashPassword('Superadmin2024!');
   const superAdmin = await db.user.upsert({
     where: { email: 'taavi.tamkivi@gmail.com' },
-    update: { isSuperAdmin: true, role: Role.SUPERADMIN },
+    update: { role: Role.SUPERADMIN },
     create: {
       email: 'taavi.tamkivi@gmail.com',
       password: superPassword,
       name: 'Taavi Tamkivi',
       role: Role.SUPERADMIN,
-      isSuperAdmin: true,
     },
   });
   await db.adminProfile.upsert({

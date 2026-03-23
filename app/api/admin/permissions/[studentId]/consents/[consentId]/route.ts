@@ -15,11 +15,10 @@ async function getAuthorizedUser() {
   if (!session || session.expiresAt < new Date()) return null;
 
   const { user } = session;
-  const isSuperAdmin = user.isSuperAdmin && user.role === 'SUPERADMIN';
+  const isSuperAdmin = user.role === 'SUPERADMIN';
   const isSchoolAdmin = user.role === 'SCHOOL_ADMIN';
-  const isKlassijuhataja = user.role === 'KLASSIJUHATAJA';
 
-  if (!isSuperAdmin && !isSchoolAdmin && !isKlassijuhataja) return null;
+  if (!isSuperAdmin && !isSchoolAdmin) return null;
   return user;
 }
 
@@ -35,7 +34,7 @@ export async function GET(
 
     const { consentId } = await params;
 
-    const consent = await db.subjectConsent.findUnique({
+    const consent = await db.consentGrant.findUnique({
       where: { id: consentId },
       include: {
         subject: { select: { id: true, name: true } },
@@ -66,7 +65,7 @@ export async function PATCH(
 
     const { consentId } = await params;
 
-    const consent = await db.subjectConsent.findUnique({ where: { id: consentId } });
+    const consent = await db.consentGrant.findUnique({ where: { id: consentId } });
     if (!consent) {
       return NextResponse.json({ error: 'Nõusolekut ei leitud' }, { status: 404 });
     }
@@ -76,7 +75,7 @@ export async function PATCH(
 
     if (action === 'revoke' || !action) {
       // Revoke the consent
-      await db.subjectConsent.update({
+      await db.consentGrant.update({
         where: { id: consentId },
         data: {
           status: 'REVOKED',

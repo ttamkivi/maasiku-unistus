@@ -17,16 +17,14 @@ interface Props {
 }
 
 const ALL_ROLES = [
-  { value: 'SUPERADMIN',     label: 'Superadmin',       tier: 1, desc: 'Täielik juurdepääs, haldab kõiki' },
-  { value: 'SCHOOL_ADMIN',   label: 'Kooli admin',      tier: 2, desc: 'Haldab konkreetset kooli' },
-  { value: 'ADMIN',          label: 'Admin',            tier: 2, desc: 'Üldine administraator' },
-  { value: 'TEACHER',        label: 'Õpetaja',          tier: 3, desc: 'Laeb üles ja analüüsib töid' },
-  { value: 'KLASSIJUHATAJA', label: 'Klassijuhataja',   tier: 3, desc: 'Haldab klassi, näeb nõusolekuid' },
-  { value: 'STUDENT',        label: 'Õpilane',          tier: 3, desc: 'Teeb koduseid töid, näeb tulemusi' },
-  { value: 'PARENT',         label: 'Lapsevanem',       tier: 3, desc: 'Annab nõusoleku, valib ained' },
+  { value: 'SUPERADMIN',   label: 'Superadmin',  tier: 1, desc: 'Täielik juurdepääs, haldab kõiki' },
+  { value: 'SCHOOL_ADMIN', label: 'Kooli admin', tier: 2, desc: 'Haldab konkreetset kooli' },
+  { value: 'TEACHER',      label: 'Õpetaja',     tier: 3, desc: 'Laeb üles ja analüüsib töid' },
+  { value: 'STUDENT',      label: 'Õpilane',     tier: 3, desc: 'Teeb koduseid töid, näeb tulemusi' },
+  { value: 'PARENT',       label: 'Lapsevanem',  tier: 3, desc: 'Annab nõusoleku, valib ained' },
 ];
 
-const NEEDS_SCHOOL = ['SCHOOL_ADMIN', 'TEACHER', 'KLASSIJUHATAJA', 'STUDENT'];
+const NEEDS_SCHOOL = ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'];
 
 const inputStyle: React.CSSProperties = {
   width: '100%',

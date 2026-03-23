@@ -58,17 +58,17 @@ export default async function ConsentsPage() {
   }
 
   // Mark expired requests
-  await db.parentConsentRequest.updateMany({
+  await db.consentRequest.updateMany({
     where: {
-      teacherId: teacherProfile.id,
+      requestedById: teacherProfile.id,
       status: 'PENDING',
       expiresAt: { lt: new Date() },
     },
     data: { status: 'EXPIRED' },
   });
 
-  const requestsRaw = await db.parentConsentRequest.findMany({
-    where: { teacherId: teacherProfile.id },
+  const requestsRaw = await db.consentRequest.findMany({
+    where: { requestedById: teacherProfile.id },
     orderBy: { sentAt: 'desc' },
     include: {
       student: {

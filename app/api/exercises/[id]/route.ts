@@ -23,7 +23,10 @@ export async function POST(
 
   const exercise = await db.exercise.findUnique({
     where: { id },
-    include: { photos: true, subject: true },
+    include: {
+      photos: { select: { base64Data: true, caption: true } },
+      subject: true,
+    },
   });
 
   if (!exercise) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -34,7 +37,11 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (exercise.photos.length === 0) {
+  const photos = exercise.photos.filter(
+    (p): p is { base64Data: string; caption: string | null } => p.base64Data !== null
+  );
+
+  if (photos.length === 0) {
     return NextResponse.json({ error: 'No photos to analyze' }, { status: 400 });
   }
 
@@ -50,9 +57,9 @@ export async function POST(
       exercise.grade,
       exercise.studentName ?? 'Õpilane',
       exercise.studentNote,
-      exercise.photos
+      photos
     );
-    const feedback = await reviewFeedback(draft, exercise.photos);
+    const feedback = await reviewFeedback(draft, photos);
 
     await db.exercise.update({
       where: { id },

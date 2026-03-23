@@ -41,7 +41,7 @@ export async function POST(
 
     const allResults = await db.testResult.findMany({
       where: { testId: id },
-      include: { photos: { select: { id: true, base64Data: true, storageMode: true } } },
+      include: { photos: { select: { id: true, base64Data: true } } },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -61,9 +61,9 @@ export async function POST(
         // Move all photos from extras to the kept result
         for (const extra of extras) {
           for (const photo of extra.photos) {
-            await db.resultPhoto.update({
+            await db.workPhoto.update({
               where: { id: photo.id },
-              data: { resultId: keep.id },
+              data: { testResultId: keep.id },
             });
           }
           await db.testResult.delete({ where: { id: extra.id } });

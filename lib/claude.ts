@@ -7,13 +7,19 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export function buildSystemPrompt(klass: string, teema: string, opilane: string, rubric?: string | null, answerKey?: string | null): string {
+// Privacy: the student's real name is never sent to the Anthropic API.
+// We use a neutral placeholder so the AI generates feedback with "Sa" (you)
+// rather than the student's real name. The actual name is stored only in our DB.
+const AI_STUDENT_PLACEHOLDER = 'Õpilane';
+
+export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null): string {
+  // _opilane param kept for API compatibility but NOT forwarded to Anthropic
   return `You are an expert Estonian physics teacher and tutor. You receive photos of a completed student test paper from an Estonian school.
 
 Student info provided by the teacher:
 - Class: ${klass}
 - Test topic: ${teema}
-- Student name/initials: ${opilane}${rubric ? `\n\nGRADING RUBRIC (provided by teacher):\n${rubric}` : ''}${answerKey ? `\n\nCORRECT ANSWERS (provided by teacher):\n${answerKey}` : ''}
+- Student: ${AI_STUDENT_PLACEHOLDER}${rubric ? `\n\nGRADING RUBRIC (provided by teacher):\n${rubric}` : ''}${answerKey ? `\n\nCORRECT ANSWERS (provided by teacher):\n${answerKey}` : ''}
 
 Your task:
 1. Read every answer on the test paper carefully
@@ -130,6 +136,9 @@ export async function analyzeTest(
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8000,
+    // Anthropic API does not use API data for model training by default.
+    // We additionally pass metadata with no PII for our own audit purposes.
+    metadata: { user_id: 'pseudonymised' },
     system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey),
     messages: [
       {

@@ -57,6 +57,7 @@ export default async function ParentChildResultsPage({
     include: {
       user: { select: { name: true } },
       school: { select: { name: true } },
+      class: { select: { name: true } },
       testResults: {
         where: { status: 'SHARED' },
         include: { test: { include: { subject: true } } },
@@ -126,7 +127,7 @@ export default async function ParentChildResultsPage({
         </h1>
         <p style={{ fontSize: 13, color: '#1C2832', opacity: 0.6 }}>
           {student.school?.name ?? 'Kool pole määratud'}
-          {student.class && ` · ${student.class}`}
+          {student.class?.name && ` · ${student.class.name}`}
         </p>
       </div>
 

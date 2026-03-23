@@ -163,9 +163,9 @@ export async function POST(request: NextRequest) {
     const inviteToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    const consentRequest = await db.parentConsentRequest.create({
+    const consentRequest = await db.consentRequest.create({
       data: {
-        teacherId: teacherProfile.id,
+        requestedById: teacherProfile.id,
         studentId,
         parentEmail,
         parentName: parentName ?? null,

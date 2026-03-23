@@ -9,21 +9,16 @@ async function getAuthorizedUser() {
 
   const session = await db.session.findUnique({
     where: { token },
-    include: {
-      user: {
-        include: { klassijuhatajProfile: true },
-      },
-    },
+    include: { user: true },
   });
 
   if (!session || session.expiresAt < new Date()) return null;
 
   const { user } = session;
-  const isSuperAdmin = user.isSuperAdmin && user.role === 'SUPERADMIN';
+  const isSuperAdmin = user.role === 'SUPERADMIN';
   const isSchoolAdmin = user.role === 'SCHOOL_ADMIN';
-  const isKlassijuhataja = user.role === 'KLASSIJUHATAJA';
 
-  if (!isSuperAdmin && !isSchoolAdmin && !isKlassijuhataja) return null;
+  if (!isSuperAdmin && !isSchoolAdmin) return null;
   return user;
 }
 
@@ -39,17 +34,17 @@ export async function GET(
 
     const { studentId } = await params;
 
-    const kjRecord = await db.studentKlassijuhataj.findUnique({
-      where: { studentId },
-      include: { eligibility: true },
+    const student = await db.studentProfile.findUnique({
+      where: { id: studentId },
+      select: { isEligible: true },
     });
 
-    if (!kjRecord) {
+    if (!student) {
       return NextResponse.json({ eligibility: null, hasKlassijuhataja: false });
     }
 
     return NextResponse.json({
-      eligibility: kjRecord.eligibility,
+      eligibility: { isEligible: student.isEligible },
       hasKlassijuhataja: true,
     });
   } catch (error) {
@@ -70,40 +65,16 @@ export async function PATCH(
 
     const { studentId } = await params;
 
-    // For KLASSIJUHATAJA: verify they are assigned to this student
-    if (user.role === 'KLASSIJUHATAJA') {
-      const kjProfile = await db.klassijuhatajProfile.findUnique({ where: { userId: user.id } });
-      if (!kjProfile) {
-        return NextResponse.json({ error: 'Klassijuhataja profiil puudub' }, { status: 403 });
-      }
-      const kjRecord = await db.studentKlassijuhataj.findUnique({ where: { studentId } });
-      if (!kjRecord || kjRecord.klassijuhatajId !== kjProfile.id) {
-        return NextResponse.json({ error: 'See õpilane ei kuulu teie klassi' }, { status: 403 });
-      }
-    }
-
     const body = await request.json();
-    const { isEligible, note } = body as { isEligible: boolean; note?: string };
+    const { isEligible } = body as { isEligible: boolean; note?: string };
 
     if (typeof isEligible !== 'boolean') {
       return NextResponse.json({ error: 'isEligible on kohustuslik boolean' }, { status: 400 });
     }
 
-    // Find the StudentKlassijuhataj record
-    const kjRecord = await db.studentKlassijuhataj.findUnique({ where: { studentId } });
-    if (!kjRecord) {
-      return NextResponse.json({ error: 'Õpilasele pole klassijuhatajat määratud' }, { status: 400 });
-    }
-
-    // Upsert eligibility using the unique field studentKlassijuhatajId
-    await db.studentEligibility.upsert({
-      where: { studentKlassijuhatajId: studentId },
-      update: { isEligible, note: note || null },
-      create: {
-        studentKlassijuhatajId: studentId,
-        isEligible,
-        note: note || null,
-      },
+    await db.studentProfile.update({
+      where: { id: studentId },
+      data: { isEligible },
     });
 
     // Audit log
@@ -113,7 +84,7 @@ export async function PATCH(
         action: 'ELIGIBILITY_UPDATED',
         targetType: 'StudentProfile',
         targetId: studentId,
-        details: JSON.stringify({ isEligible, note }),
+        details: JSON.stringify({ isEligible }),
         ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
         userAgent: request.headers.get('user-agent') ?? undefined,
       },

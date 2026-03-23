@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { audit } from '@/lib/audit';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -13,7 +14,7 @@ async function getTeacherSession(token: string) {
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; resultId: string }> }
 ) {
   try {
@@ -41,6 +42,8 @@ export async function POST(
       return NextResponse.json({ error: 'Tagasiside on juba kinnitatud' }, { status: 400 });
     }
 
+    const wasEdited = result.editedFeedback !== null;
+
     const updated = await db.testResult.update({
       where: { id: resultId },
       data: {
@@ -49,6 +52,20 @@ export async function POST(
         // Lock the feedback version: if no editedFeedback, copy rawFeedback so the version is frozen
         editedFeedback: result.editedFeedback ?? result.rawFeedback,
       },
+    });
+
+    // GDPR Art 22: audit trail — who approved, when, and whether they modified the AI output
+    await audit('RESULT_APPROVED', {
+      userId: session.user.id,
+      targetType: 'TestResult',
+      targetId: resultId,
+      details: {
+        testId: id,
+        teacherModifiedAI: wasEdited,
+        studentName: result.studentName ?? null,
+      },
+      ip: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
     });
 
     return NextResponse.json(updated);

@@ -120,7 +120,7 @@ export default async function ParentDashboardPage() {
                     </h2>
                     <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, marginTop: 4 }}>
                       {student.school?.name ?? 'Kool pole määratud'}
-                      {student.class && ` · ${student.class}`}
+                      {student.classId && ` · ${student.classId}`}
                     </div>
                   </div>
 

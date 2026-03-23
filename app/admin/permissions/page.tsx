@@ -10,50 +10,14 @@ async function getSession() {
 
   const session = await db.session.findUnique({
     where: { token },
-    include: {
-      user: {
-        include: { klassijuhatajProfile: true },
-      },
-    },
+    include: { user: true },
   });
 
   if (!session || session.expiresAt < new Date()) return null;
   return session;
 }
 
-function statusBadge(isEligible: boolean | null, hasKJ: boolean) {
-  if (!hasKJ) {
-    return (
-      <span
-        style={{
-          background: '#f3f4f6',
-          color: '#6b7280',
-          fontSize: 12,
-          fontWeight: 600,
-          padding: '3px 10px',
-          borderRadius: 12,
-        }}
-      >
-        — Klassijuhataja puudub
-      </span>
-    );
-  }
-  if (isEligible === null || isEligible === undefined) {
-    return (
-      <span
-        style={{
-          background: '#fef9c3',
-          color: '#854d0e',
-          fontSize: 12,
-          fontWeight: 600,
-          padding: '3px 10px',
-          borderRadius: 12,
-        }}
-      >
-        Kinnitamata
-      </span>
-    );
-  }
+function statusBadge(isEligible: boolean) {
   if (isEligible) {
     return (
       <span
@@ -95,11 +59,10 @@ export default async function PermissionsPage({
   if (!session) redirect('/auth/login');
 
   const user = session.user;
-  const isSuperAdmin = user.isSuperAdmin && user.role === 'SUPERADMIN';
+  const isSuperAdmin = user.role === 'SUPERADMIN';
   const isSchoolAdmin = user.role === 'SCHOOL_ADMIN';
-  const isKlassijuhataja = user.role === 'KLASSIJUHATAJA';
 
-  if (!isSuperAdmin && !isSchoolAdmin && !isKlassijuhataja) {
+  if (!isSuperAdmin && !isSchoolAdmin) {
     redirect('/dashboard');
   }
 
@@ -107,43 +70,25 @@ export default async function PermissionsPage({
 
   // Build student query based on role
   let schoolIdFilter: string | undefined;
-  let kjProfileId: string | undefined;
 
-  if (isKlassijuhataja && !isSuperAdmin) {
-    const kjProfile = await db.klassijuhatajProfile.findUnique({
+  if (isSchoolAdmin && !isSuperAdmin) {
+    const adminProfile = await db.adminProfile.findUnique({
       where: { userId: user.id },
     });
-    if (!kjProfile) redirect('/dashboard');
-    kjProfileId = kjProfile.id;
-  } else if (isSchoolAdmin && !isSuperAdmin) {
-    // Find school admin's school via their klassijuhataj profile (reuse same pattern as existing code)
-    const kjProfile = user.klassijuhatajProfile;
-    if (kjProfile?.schoolId) {
-      schoolIdFilter = kjProfile.schoolId;
+    if (adminProfile?.schoolId) {
+      schoolIdFilter = adminProfile.schoolId;
     }
   }
 
   const now = new Date();
 
   const students = await db.studentProfile.findMany({
-    where: {
-      ...(schoolIdFilter ? { schoolId: schoolIdFilter } : {}),
-      ...(kjProfileId
-        ? { klassijuhatajRecord: { klassijuhatajId: kjProfileId } }
-        : {}),
-    },
+    where: schoolIdFilter ? { schoolId: schoolIdFilter } : {},
     include: {
       user: { select: { id: true, name: true } },
       school: { select: { id: true, name: true } },
-      klassijuhatajRecord: {
-        include: {
-          klassijuhataj: {
-            include: { user: { select: { name: true } } },
-          },
-          eligibility: true,
-        },
-      },
-      subjectConsents: {
+      class: { select: { name: true } },
+      consentGrants: {
         where: {
           status: 'ACTIVE',
           OR: [
@@ -158,22 +103,21 @@ export default async function PermissionsPage({
 
   // Apply UI filter
   const filteredStudents = students.filter((s) => {
-    const hasKJ = !!s.klassijuhatajRecord;
-    const isEligible = s.klassijuhatajRecord?.eligibility?.isEligible ?? null;
-    const activeConsentsCount = s.subjectConsents.length;
+    const isEligible = s.isEligible;
+    const activeConsentsCount = s.consentGrants.length;
 
     if (!filter || filter === 'all') return true;
     if (filter === 'no-consent') return activeConsentsCount === 0;
-    if (filter === 'unconfirmed') return hasKJ && isEligible === null;
     if (filter === 'eligible') return isEligible === true;
+    if (filter === 'not-eligible') return isEligible === false;
     return true;
   });
 
   const tabs = [
     { key: 'all', label: 'Kõik' },
     { key: 'no-consent', label: 'Nõusolek puudub' },
-    { key: 'unconfirmed', label: 'Sobivus kinnitamata' },
     { key: 'eligible', label: 'Sobiv' },
+    { key: 'not-eligible', label: 'Ei sobi' },
   ];
 
   const activeFilter = filter || 'all';
@@ -199,7 +143,7 @@ export default async function PermissionsPage({
             Õiguste haldus
           </h1>
           <p style={{ fontSize: 13, color: '#1C2832', opacity: 0.6 }}>
-            Nõusolekud, sobivus ja klassijuhatajate määramine
+            Nõusolekud ja sobivus
           </p>
         </div>
 
@@ -235,7 +179,7 @@ export default async function PermissionsPage({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #DAD0A1' }}>
-                  {['Nimi', 'Kool / klass', 'Klassijuhataja', 'Aktiivsed nõusolekud', 'Sobivus', ''].map((h) => (
+                  {['Nimi', 'Kool / klass', 'Aktiivsed nõusolekud', 'Sobivus', ''].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -253,11 +197,8 @@ export default async function PermissionsPage({
               </thead>
               <tbody>
                 {filteredStudents.map((student, i) => {
-                  const kjRecord = student.klassijuhatajRecord;
-                  const hasKJ = !!kjRecord;
-                  const isEligible = kjRecord?.eligibility?.isEligible ?? null;
-                  const kjName = kjRecord?.klassijuhataj?.user?.name ?? 'Määramata';
-                  const activeCount = student.subjectConsents.length;
+                  const isEligible = student.isEligible;
+                  const activeCount = student.consentGrants.length;
 
                   return (
                     <tr
@@ -272,12 +213,7 @@ export default async function PermissionsPage({
                       </td>
                       <td style={{ padding: '12px 12px', color: '#1C2832', opacity: 0.8, fontSize: 13 }}>
                         {student.school?.name ?? '—'}
-                        {student.class ? ` · ${student.class}` : ''}
-                      </td>
-                      <td style={{ padding: '12px 12px', color: '#1C2832', opacity: 0.8 }}>
-                        {hasKJ ? kjName : (
-                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Määramata</span>
-                        )}
+                        {student.class?.name ? ` · ${student.class.name}` : ''}
                       </td>
                       <td style={{ padding: '12px 12px' }}>
                         <span
@@ -294,7 +230,7 @@ export default async function PermissionsPage({
                         </span>
                       </td>
                       <td style={{ padding: '12px 12px' }}>
-                        {statusBadge(isEligible, hasKJ)}
+                        {statusBadge(isEligible)}
                       </td>
                       <td style={{ padding: '12px 12px' }}>
                         <Link

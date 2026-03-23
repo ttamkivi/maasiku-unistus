@@ -39,25 +39,35 @@ export async function GET(req: NextRequest) {
 
     // If schoolId provided, return classes in that school
     if (schoolId) {
+      // Get distinct classes in this school
+      const allClassesInSchool = await db.schoolClass.findMany({
+        where: { schoolId },
+        select: { name: true },
+        orderBy: { name: 'asc' },
+      });
+      const classes = allClassesInSchool.map((c) => c.name);
+
+      // Find the classId if filtering by class name
+      let classIdFilter: string | undefined;
+      if (className) {
+        const sc = await db.schoolClass.findFirst({
+          where: { schoolId, name: className },
+          select: { id: true },
+        });
+        classIdFilter = sc?.id;
+      }
+
       const students = await db.studentProfile.findMany({
         where: {
           schoolId,
-          ...(className ? { class: className } : {}),
+          ...(classIdFilter ? { classId: classIdFilter } : {}),
         },
-        include: { user: { select: { name: true, email: true } } },
+        include: {
+          user: { select: { name: true, email: true } },
+          class: { select: { name: true, gradeLevel: true } },
+        },
         orderBy: { user: { name: 'asc' } },
       });
-
-      // Get distinct classes in this school
-      const allStudentsInSchool = await db.studentProfile.findMany({
-        where: { schoolId },
-        select: { class: true },
-      });
-      const classes = [...new Set(
-        allStudentsInSchool
-          .map((s) => s.class)
-          .filter(Boolean)
-      )].sort() as string[];
 
       return NextResponse.json({
         schools,
@@ -67,8 +77,8 @@ export async function GET(req: NextRequest) {
           userId: s.userId,
           name: s.user.name,
           email: s.user.email,
-          class: s.class,
-          grade: s.grade,
+          class: s.class?.name ?? null,
+          grade: s.class?.gradeLevel?.toString() ?? null,
         })),
       });
     }

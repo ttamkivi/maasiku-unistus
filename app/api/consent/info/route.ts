@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Token puudub' }, { status: 400 });
     }
 
-    const consentRequest = await db.parentConsentRequest.findUnique({
+    const consentRequest = await db.consentRequest.findUnique({
       where: { inviteToken: token },
       include: {
         student: {
           include: { user: { select: { name: true } } },
         },
-        teacher: {
+        requestedBy: {
           include: { user: { select: { name: true } } },
         },
       },
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     // Check expiry
     if (consentRequest.expiresAt < new Date()) {
       if (consentRequest.status === 'PENDING') {
-        await db.parentConsentRequest.update({
+        await db.consentRequest.update({
           where: { id: consentRequest.id },
           data: { status: 'EXPIRED' },
         });
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       parentEmail: consentRequest.parentEmail,
       parentName: consentRequest.parentName,
       studentName: consentRequest.student.user.name,
-      teacherName: consentRequest.teacher.user.name,
+      teacherName: consentRequest.requestedBy.user.name,
       expiresAt: consentRequest.expiresAt.toISOString(),
     });
   } catch (error) {

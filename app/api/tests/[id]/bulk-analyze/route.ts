@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { analyzeTest } from '@/lib/claude';
+import { hasAIConsentByName } from '@/lib/consent';
+import { audit } from '@/lib/audit';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -52,7 +54,7 @@ export async function GET(
       results: results.map((r) => ({
         id: r.id,
         studentName: r.studentName,
-        photos: r.photos.map((p) => p.base64Data),
+        photos: r.photos.map((p) => p.base64Data).filter((d): d is string => d !== null),
       })),
     });
   } catch (error) {
@@ -97,11 +99,39 @@ export async function POST(
       return NextResponse.json({ error: 'Tulemusel pole fotosid' }, { status: 400 });
     }
 
+    // GDPR: verify AI consent before sending to Anthropic.
+    // If the student is matched by ID, use that; otherwise fall back to name lookup.
+    if (result.studentId) {
+      const { hasAIConsent } = await import('@/lib/consent');
+      const allowed = await hasAIConsent(result.studentId, test.subjectId ?? null);
+      if (!allowed) {
+        await audit('AI_ANALYSIS_BLOCKED_NO_CONSENT', {
+          userId: session.user.id,
+          targetType: 'TestResult',
+          targetId: resultId,
+          details: { studentId: result.studentId, testId: id },
+        });
+        return NextResponse.json({ error: 'AI analüüs pole lubatud — nõusolek puudub' }, { status: 403 });
+      }
+    } else if (result.studentName) {
+      const allowed = await hasAIConsentByName(result.studentName, test.subjectId ?? null, teacherProfile.id);
+      if (allowed === false) {
+        await audit('AI_ANALYSIS_BLOCKED_NO_CONSENT', {
+          userId: session.user.id,
+          targetType: 'TestResult',
+          targetId: resultId,
+          details: { studentName: result.studentName, testId: id },
+        });
+        return NextResponse.json({ error: 'AI analüüs pole lubatud — nõusolek puudub' }, { status: 403 });
+      }
+      // allowed === null means student not found in system — proceed (teacher has verified)
+    }
+
     const feedback = await analyzeTest(
       test.grade || '9',
       test.topic || test.title,
       result.studentName || 'Õpilane',
-      result.photos.map((p) => p.base64Data),
+      result.photos.map((p) => p.base64Data).filter((d): d is string => d !== null),
       test.rubric,
       test.answerKey,
     );

@@ -22,12 +22,7 @@ export default async function AdminPage() {
   }
 
   const isSuperAdmin = session.user.role === 'SUPERADMIN';
-  const isAdminLike = ['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role);
-
-  // Count students without a klassijuhataj record
-  const studentsWithoutKJ = await db.studentProfile.count({
-    where: { klassijuhatajRecord: null },
-  });
+  const isAdminLike = ['SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role);
 
   const cards = [
     { href: '/admin/users', label: 'Kasutajad', desc: 'Halda kasutajakontosid ja rolle', badge: null },
@@ -38,8 +33,8 @@ export default async function AdminPage() {
       ? [{
           href: '/admin/permissions',
           label: 'Õiguste haldus',
-          desc: 'Klassijuhatajad, lapsevanemad ja nõusolekud',
-          badge: studentsWithoutKJ > 0 ? `${studentsWithoutKJ} õpilasel klassijuhataja puudub` : null,
+          desc: 'Lapsevanemad, nõusolekud ja sobivus',
+          badge: null,
         }]
       : []),
     ...(isSuperAdmin

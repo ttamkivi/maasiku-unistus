@@ -96,7 +96,7 @@ export default async function ResultReviewPage({
     where: { schoolId: { in: schoolIds } },
     include: {
       user: { select: { name: true } },
-      subjectConsents: {
+      consentGrants: {
         where: {
           status: 'ACTIVE',
           OR: [
@@ -111,7 +111,7 @@ export default async function ResultReviewPage({
 
   const consentedNames = new Set(
     schoolStudents
-      .filter((s) => s.subjectConsents.length > 0)
+      .filter((s) => s.consentGrants.length > 0)
       .map((s) => s.user.name.trim().toLowerCase())
   );
 

@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
-    // Check SubjectConsent: active consent (all subjects or any subject)
-    const activeConsent = await db.subjectConsent.findFirst({
+    // Check ConsentGrant: active consent (all subjects or any subject)
+    const activeConsent = await db.consentGrant.findFirst({
       where: {
         studentId,
         status: 'ACTIVE',
@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Check ParentConsentRequest: approved
-    const approvedRequest = await db.parentConsentRequest.findFirst({
+    // Check ConsentRequest: approved
+    const approvedRequest = await db.consentRequest.findFirst({
       where: {
         studentId,
         status: 'APPROVED',

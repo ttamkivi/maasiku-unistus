@@ -190,7 +190,7 @@ export default async function ExercisePrintPage({
         `}</style>
       </head>
       <body>
-        <button className="print-btn no-print" onclick="window.print()">
+        <button className="print-btn no-print" onClick={() => window.print()}>
           ⬇ Laadi alla PDF
         </button>
 

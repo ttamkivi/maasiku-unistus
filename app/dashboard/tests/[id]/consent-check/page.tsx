@@ -65,7 +65,7 @@ export default async function ConsentCheckPage({
     where: { schoolId: { in: schoolIds } },
     include: {
       user: { select: { name: true } },
-      subjectConsents: {
+      consentGrants: {
         where: {
           status: 'ACTIVE',
           OR: [
@@ -81,7 +81,7 @@ export default async function ConsentCheckPage({
   const consentByName = new Map<string, boolean>();
   for (const s of schoolStudents) {
     const key = s.user.name.trim().toLowerCase();
-    const hasConsent = s.subjectConsents.length > 0;
+    const hasConsent = s.consentGrants.length > 0;
     // If student appears with multiple names, ACTIVE consent wins
     if (!consentByName.has(key) || hasConsent) {
       consentByName.set(key, hasConsent);

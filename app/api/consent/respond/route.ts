@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Vigane status' }, { status: 400 });
     }
 
-    const consentRequest = await db.parentConsentRequest.findUnique({
+    const consentRequest = await db.consentRequest.findUnique({
       where: { inviteToken: token },
       include: {
         student: {
           include: { user: { select: { id: true, name: true } } },
         },
-        teacher: {
+        requestedBy: {
           include: { user: { select: { name: true } } },
         },
       },
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (consentRequest.expiresAt < new Date()) {
-      await db.parentConsentRequest.update({
+      await db.consentRequest.update({
         where: { id: consentRequest.id },
         data: { status: 'EXPIRED' },
       });
@@ -62,13 +62,15 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     // Update the consent request
-    await db.parentConsentRequest.update({
+    await db.consentRequest.update({
       where: { id: consentRequest.id },
       data: {
         status,
         respondedAt: now,
         declineReason: status === 'DECLINED' ? (reason ?? null) : null,
         parentName: resolvedParentName ?? consentRequest.parentName,
+        ipAddress: ipAddress ?? null,
+        userAgent: userAgent ?? null,
       },
     });
 
@@ -96,56 +98,32 @@ export async function POST(request: NextRequest) {
       where: { userId: parentUser.id },
     });
 
-    // Create consent record if approved
+    // Link parent to student if approved and not already linked
     let consentId: string | undefined;
     if (status === 'APPROVED' && parentProfile) {
-      const consent = await db.parentConsent.create({
-        data: {
-          parentId: parentProfile.id,
-          requestId: consentRequest.id,
-          status: 'APPROVED',
-          consentedAt: now,
-          ipAddress: ipAddress ?? null,
-          userAgent: userAgent ?? null,
+      // Link parent profile to consent request
+      await db.consentRequest.update({
+        where: { id: consentRequest.id },
+        data: { parentProfileId: parentProfile.id },
+      });
+
+      const existingLink = await db.parentStudentLink.findUnique({
+        where: {
+          parentId_studentId: {
+            parentId: parentProfile.id,
+            studentId: consentRequest.studentId,
+          },
         },
       });
-      consentId = consent.id;
 
-      // Link parent to student if not already linked
-      const studentProfile = await db.studentProfile.findUnique({
-        where: { id: consentRequest.studentId },
-      });
-
-      if (studentProfile && parentProfile) {
-        const existingLink = await db.parentStudentLink.findUnique({
-          where: {
-            parentId_studentId: {
-              parentId: parentProfile.id,
-              studentId: studentProfile.id,
-            },
+      if (!existingLink) {
+        await db.parentStudentLink.create({
+          data: {
+            parentId: parentProfile.id,
+            studentId: consentRequest.studentId,
           },
         });
-
-        if (!existingLink) {
-          await db.parentStudentLink.create({
-            data: {
-              parentId: parentProfile.id,
-              studentId: studentProfile.id,
-            },
-          });
-        }
       }
-    } else if (status === 'DECLINED' && parentProfile) {
-      await db.parentConsent.create({
-        data: {
-          parentId: parentProfile.id,
-          requestId: consentRequest.id,
-          status: 'DECLINED',
-          consentedAt: now,
-          ipAddress: ipAddress ?? null,
-          userAgent: userAgent ?? null,
-        },
-      });
     }
 
     // Audit log

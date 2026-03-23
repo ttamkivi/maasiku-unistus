@@ -23,53 +23,64 @@ export default async function StudentsPage() {
 
   const teacher = user.teacherProfile;
 
-  // Fetch all schools this teacher belongs to, with their students
-  const teacherSchools = await db.teacherSchool.findMany({
-    where: { teacherId: teacher.id },
+  // Fetch school IDs this teacher belongs to
+  const schoolIds = teacher.schools.map((ts) => ts.schoolId);
+
+  const now = new Date();
+
+  // Fetch students belonging to those schools
+  const allStudents = await db.studentProfile.findMany({
+    where: schoolIds.length > 0 ? { schoolId: { in: schoolIds } } : { schoolId: null },
     include: {
-      school: {
-        include: {
-          students: {
-            include: {
-              user: { select: { name: true, email: true } },
-              subjectConsents: {
-                where: { status: 'ACTIVE' },
-                select: { scope: true, startDate: true },
-              },
-              klassijuhatajRecord: {
-                include: { eligibility: true },
-              },
-            },
-            orderBy: [{ grade: 'asc' }, { class: 'asc' }],
-          },
+      user: { select: { name: true, email: true } },
+      school: { select: { id: true, name: true } },
+      class: { select: { id: true, name: true, gradeLevel: true } },
+      consentGrants: {
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { duration: 'INFINITE' },
+            { duration: 'DATED', endDate: { gt: now } },
+          ],
         },
+        select: { scope: true, startDate: true },
       },
     },
+    orderBy: { user: { name: 'asc' } },
   });
 
   // Group students by school → class
-  type StudentRow = (typeof teacherSchools)[number]['school']['students'][number];
-  type ClassGroup = { className: string; grade: number | null; students: StudentRow[] };
+  type StudentRow = (typeof allStudents)[number];
+  type ClassGroup = { className: string; gradeLevel: number | null; students: StudentRow[] };
   type SchoolGroup = { schoolName: string; schoolId: string; classes: ClassGroup[] };
 
-  const schoolGroups: SchoolGroup[] = teacherSchools.map(({ school }) => {
-    const classMap = new Map<string, ClassGroup>();
-    for (const student of school.students) {
-      const key = student.class ?? '—';
-      if (!classMap.has(key)) {
-        classMap.set(key, { className: key, grade: student.grade, students: [] });
-      }
-      classMap.get(key)!.students.push(student);
+  const schoolMap = new Map<string, SchoolGroup>();
+  for (const student of allStudents) {
+    const schoolId = student.schoolId ?? '__no_school__';
+    const schoolName = student.school?.name ?? 'Kool määramata';
+    if (!schoolMap.has(schoolId)) {
+      schoolMap.set(schoolId, { schoolName, schoolId, classes: [] });
     }
-    // Sort classes: by grade asc, then alphabetically
-    const classes = Array.from(classMap.values()).sort((a, b) => {
-      const ga = a.grade ?? 999;
-      const gb = b.grade ?? 999;
+    const sg = schoolMap.get(schoolId)!;
+    const className = student.class?.name ?? '—';
+    let cg = sg.classes.find((c) => c.className === className);
+    if (!cg) {
+      cg = { className, gradeLevel: student.class?.gradeLevel ?? null, students: [] };
+      sg.classes.push(cg);
+    }
+    cg.students.push(student);
+  }
+
+  // Sort classes by gradeLevel then name
+  const schoolGroups = Array.from(schoolMap.values());
+  for (const sg of schoolGroups) {
+    sg.classes.sort((a, b) => {
+      const ga = a.gradeLevel ?? 999;
+      const gb = b.gradeLevel ?? 999;
       if (ga !== gb) return ga - gb;
       return a.className.localeCompare(b.className, 'et');
     });
-    return { schoolName: school.name, schoolId: school.id, classes };
-  });
+  }
 
   const card = {
     background: '#fff',
@@ -79,19 +90,8 @@ export default async function StudentsPage() {
     marginBottom: 24,
   };
 
-  const totalStudents = schoolGroups.reduce(
-    (n, sg) => n + sg.classes.reduce((m, cg) => m + cg.students.length, 0),
-    0
-  );
-  const withConsent = schoolGroups.reduce(
-    (n, sg) =>
-      n +
-      sg.classes.reduce(
-        (m, cg) => m + cg.students.filter((s) => s.subjectConsents.length > 0).length,
-        0
-      ),
-    0
-  );
+  const totalStudents = allStudents.length;
+  const withConsent = allStudents.filter((s) => s.consentGrants.length > 0).length;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
@@ -141,8 +141,8 @@ export default async function StudentsPage() {
               {/* Student rows */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {cg.students.map((student) => {
-                  const hasConsent = student.subjectConsents.length > 0;
-                  const isEligible = student.klassijuhatajRecord?.eligibility?.isEligible ?? false;
+                  const hasConsent = student.consentGrants.length > 0;
+                  const isEligible = student.isEligible;
                   const aiReady = hasConsent && isEligible;
 
                   return (
@@ -160,7 +160,7 @@ export default async function StudentsPage() {
                     >
                       {/* AI consent indicator */}
                       <div
-                        title={aiReady ? 'AI analüüs lubatud' : hasConsent ? 'Nõusolek on, KJ kinnitus puudub' : 'AI nõusolek puudub'}
+                        title={aiReady ? 'AI analüüs lubatud' : hasConsent ? 'Nõusolek on, sobivus kinnitamata' : 'AI nõusolek puudub'}
                         style={{
                           width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
                           background: aiReady ? '#16a34a' : hasConsent ? '#f97316' : '#d1d5db',
@@ -183,13 +183,13 @@ export default async function StudentsPage() {
                         background: aiReady ? '#dcfce7' : hasConsent ? '#ffedd5' : '#f3f4f6',
                         color: aiReady ? '#15803d' : hasConsent ? '#c2410c' : '#6b7280',
                       }}>
-                        {aiReady ? 'AI ✓' : hasConsent ? 'Ootab KJ' : 'Pole nõus'}
+                        {aiReady ? 'AI ✓' : hasConsent ? 'Ootab kinnitust' : 'Pole nõus'}
                       </span>
 
                       {/* Consent date */}
                       {hasConsent && (
                         <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0 }}>
-                          {formatDate(student.subjectConsents[0].startDate)}
+                          {formatDate(student.consentGrants[0].startDate)}
                         </span>
                       )}
                     </div>
@@ -214,7 +214,7 @@ export default async function StudentsPage() {
       {totalStudents > 0 && (
         <div style={{ display: 'flex', gap: 20, fontSize: 12, color: '#6b7280', flexWrap: 'wrap' }}>
           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#16a34a', marginRight: 5 }} />AI analüüs lubatud</span>
-          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f97316', marginRight: 5 }} />Nõusolek on, KJ kinnitus puudub</span>
+          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#f97316', marginRight: 5 }} />Nõusolek on, sobivus kinnitamata</span>
           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#d1d5db', marginRight: 5 }} />Nõusolek puudub</span>
         </div>
       )}

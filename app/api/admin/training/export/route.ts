@@ -13,7 +13,7 @@ async function getAdminUser() {
   });
 
   if (!session || session.expiresAt < new Date()) return null;
-  if (session.user.role !== 'ADMIN') return null;
+  if (!['SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role)) return null;
   return session.user;
 }
 

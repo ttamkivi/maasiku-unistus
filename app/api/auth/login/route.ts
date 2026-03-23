@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { audit } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,11 @@ export async function POST(request: NextRequest) {
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
+      await audit('LOGIN_FAILED', {
+        details: { email },
+        ip: request.headers.get('x-forwarded-for'),
+        userAgent: request.headers.get('user-agent'),
+      });
       return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
     }
 
@@ -27,6 +33,13 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     await db.session.create({ data: { userId: user.id, token, expiresAt } });
+
+    await audit('LOGIN', {
+      userId: user.id,
+      details: { role: user.role },
+      ip: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
+    });
 
     const response = NextResponse.json({
       ok: true,

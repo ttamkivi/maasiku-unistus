@@ -2,7 +2,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
-import { KlassijuhatajAssignForm } from './KlassijuhatajAssignForm';
 import { ConsentsSection } from './ConsentsSection';
 import { EligibilitySection } from './EligibilitySection';
 import { ParentLinkSection } from './ParentLinkSection';
@@ -14,11 +13,7 @@ async function getSession() {
 
   const session = await db.session.findUnique({
     where: { token },
-    include: {
-      user: {
-        include: { klassijuhatajProfile: true },
-      },
-    },
+    include: { user: true },
   });
 
   if (!session || session.expiresAt < new Date()) return null;
@@ -34,33 +29,27 @@ export default async function StudentPermissionsPage({
   if (!session) redirect('/auth/login');
 
   const user = session.user;
-  const isSuperAdmin = user.isSuperAdmin && user.role === 'SUPERADMIN';
+  const isSuperAdmin = user.role === 'SUPERADMIN';
   const isSchoolAdmin = user.role === 'SCHOOL_ADMIN';
-  const isKlassijuhataja = user.role === 'KLASSIJUHATAJA';
 
-  if (!isSuperAdmin && !isSchoolAdmin && !isKlassijuhataja) {
+  if (!isSuperAdmin && !isSchoolAdmin) {
     redirect('/dashboard');
   }
 
   const { studentId } = await params;
+
+  const now = new Date();
 
   const student = await db.studentProfile.findUnique({
     where: { id: studentId },
     include: {
       user: { select: { id: true, name: true, email: true } },
       school: { select: { id: true, name: true } },
-      klassijuhatajRecord: {
-        include: {
-          klassijuhataj: {
-            include: { user: { select: { id: true, name: true } } },
-          },
-          eligibility: true,
-        },
-      },
+      class: { select: { name: true } },
       parents: {
         include: { parent: { include: { user: { select: { id: true, name: true, email: true } } } } },
       },
-      subjectConsents: {
+      consentGrants: {
         include: {
           subject: { select: { id: true, name: true } },
           parent: { include: { user: { select: { id: true, name: true } } } },
@@ -72,29 +61,11 @@ export default async function StudentPermissionsPage({
 
   if (!student) redirect('/admin/permissions');
 
-  // For KLASSIJUHATAJA: verify they are assigned to this student
-  if (isKlassijuhataja && !isSuperAdmin) {
-    const kjProfile = user.klassijuhatajProfile;
-    const assignedKjId = student.klassijuhatajRecord?.klassijuhatajId;
-    if (!kjProfile || assignedKjId !== kjProfile.id) {
-      redirect('/admin/permissions');
-    }
-  }
-
-  // Fetch klassijuhatajad at the same school for the assign dropdown
-  const schoolId = student.schoolId;
-  const klassijuhatajad = await db.klassijuhatajProfile.findMany({
-    where: schoolId ? { schoolId } : undefined,
-    include: { user: { select: { id: true, name: true } } },
-  });
-
   const subjects = await db.subject.findMany({ orderBy: { name: 'asc' } });
 
-  const canAssignKJ = isSuperAdmin || isSchoolAdmin;
-  const canManageEligibility = isSuperAdmin || isSchoolAdmin || isKlassijuhataja;
+  const canManageEligibility = isSuperAdmin || isSchoolAdmin;
 
-  const now = new Date();
-  const activeConsentsCount = student.subjectConsents.filter((c) => {
+  const activeConsentsCount = student.consentGrants.filter((c) => {
     if (c.status !== 'ACTIVE') return false;
     if (c.duration === 'DATED' && c.endDate && c.endDate < now) return false;
     return true;
@@ -126,8 +97,23 @@ export default async function StudentPermissionsPage({
         </h1>
         <p style={{ fontSize: 13, color: '#1C2832', opacity: 0.6 }}>
           {student.school?.name ?? 'Kool määramata'}
-          {student.class ? ` · Klass ${student.class}` : ''}
+          {student.class?.name ? ` · Klass ${student.class.name}` : ''}
         </p>
+      </div>
+
+      {/* Section A: Klassijuhataja määramine */}
+      <div
+        style={{
+          background: '#fff',
+          boxShadow: '0 2px 16px rgba(28,40,50,0.08)',
+          padding: '28px 32px',
+          marginBottom: 20,
+        }}
+      >
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
+          A. Klassijuhataja määramine
+        </h2>
+        <p>Funktsionaalsus uueneb peagi.</p>
       </div>
 
       {/* Section D: Lapsevanema sidumine */}
@@ -146,47 +132,11 @@ export default async function StudentPermissionsPage({
           studentId={studentId}
           linkedParents={student.parents.map((p) => ({
             id: p.parent.id,
-            userId: p.parent.user.id,
-            name: p.parent.user.name,
-            email: p.parent.user.email,
+            userId: p.parent.user?.id ?? '',
+            name: p.parent.user?.name ?? p.parent.name ?? '—',
+            email: p.parent.user?.email ?? p.parent.email ?? '—',
           }))}
         />
-      </div>
-
-      {/* Section A: Klassijuhataja määramine */}
-      <div
-        style={{
-          background: '#fff',
-          boxShadow: '0 2px 16px rgba(28,40,50,0.08)',
-          padding: '28px 32px',
-          marginBottom: 20,
-        }}
-      >
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
-          A. Klassijuhataja määramine
-        </h2>
-
-        <div style={{ marginBottom: 16 }}>
-          <span style={{ fontSize: 13, color: '#1C2832', opacity: 0.6 }}>Praegune klassijuhataja: </span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>
-            {student.klassijuhatajRecord?.klassijuhataj?.user?.name ?? 'Määramata'}
-          </span>
-        </div>
-
-        {canAssignKJ ? (
-          <KlassijuhatajAssignForm
-            studentId={studentId}
-            currentKjId={student.klassijuhatajRecord?.klassijuhatajId ?? null}
-            klassijuhatajad={klassijuhatajad.map((kj) => ({
-              id: kj.id,
-              name: kj.user.name,
-            }))}
-          />
-        ) : (
-          <p style={{ fontSize: 13, color: '#1C2832', opacity: 0.5, fontStyle: 'italic' }}>
-            Teil puudub õigus klassijuhatajat muuta.
-          </p>
-        )}
       </div>
 
       {/* Section B: Lapsevanema nõusolekud */}
@@ -204,7 +154,7 @@ export default async function StudentPermissionsPage({
 
         <ConsentsSection
           studentId={studentId}
-          consents={student.subjectConsents.map((c) => ({
+          consents={student.consentGrants.map((c) => ({
             id: c.id,
             subjectName: c.subject?.name ?? null,
             scope: c.scope,
@@ -233,26 +183,12 @@ export default async function StudentPermissionsPage({
             C. Sobivuse kinnitamine
           </h2>
 
-          {!student.klassijuhatajRecord ? (
-            <div
-              style={{
-                background: '#fef9c3',
-                border: '1px solid #fde047',
-                padding: '12px 16px',
-                fontSize: 13,
-                color: '#854d0e',
-              }}
-            >
-              Õpilasele pole klassijuhatajat määratud. Sobivust saab kinnitada alles pärast klassijuhataja määramist.
-            </div>
-          ) : (
-            <EligibilitySection
-              studentId={studentId}
-              isEligible={student.klassijuhatajRecord.eligibility?.isEligible ?? null}
-              note={student.klassijuhatajRecord.eligibility?.note ?? null}
-              activeConsentsCount={activeConsentsCount}
-            />
-          )}
+          <EligibilitySection
+            studentId={studentId}
+            isEligible={student.isEligible}
+            note={null}
+            activeConsentsCount={activeConsentsCount}
+          />
         </div>
       )}
     </div>

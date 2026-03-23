@@ -25,13 +25,9 @@ export default async function DashboardPage() {
       redirect('/dashboard/student');
     case 'PARENT':
       redirect('/dashboard/parent');
-    case 'KLASSIJUHATAJA':
-      redirect('/dashboard/klassijuhataja');
     case 'SCHOOL_ADMIN':
       redirect('/admin');
     case 'SUPERADMIN':
-      redirect('/admin');
-    case 'ADMIN':
       redirect('/admin');
     default:
       redirect('/auth/login');
