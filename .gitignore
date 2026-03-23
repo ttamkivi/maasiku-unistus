@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/lib/generated/prisma
+
+# local dev database — never commit (contains real student data)
+dev.db
+dev.db-shm
+dev.db-wal
+*.sqlite
+
+# uploaded PDF batches / tmp files
+/tmp/
+/public/uploads/

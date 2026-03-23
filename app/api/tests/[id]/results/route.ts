@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { db } from '@/lib/db';
+
+async function getTeacherSession(token: string) {
+  const session = await db.session.findUnique({
+    where: { token },
+    include: { user: { include: { teacherProfile: true } } },
+  });
+  if (!session || session.expiresAt < new Date()) return null;
+  if (!session.user.teacherProfile) return null;
+  return session;
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('mu_session')?.value;
+    if (!token) return NextResponse.json({ error: 'Autentimine nõutav' }, { status: 401 });
+
+    const session = await getTeacherSession(token);
+    if (!session) return NextResponse.json({ error: 'Kehtetu sessioon' }, { status: 401 });
+
+    const teacherProfile = session.user.teacherProfile!;
+    const { id } = await params;
+
+    // Verify test belongs to this teacher
+    const test = await db.test.findFirst({
+      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+    });
+
+    if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });
+
+    const body = await request.json();
+    const { studentName, score, maxScore, storageMode, photos } = body as {
+      studentName: string;
+      score?: number;
+      maxScore?: number;
+      storageMode?: string;
+      photos?: string[];
+    };
+
+    if (!studentName || !studentName.trim()) {
+      return NextResponse.json({ error: 'Õpilase nimi on kohustuslik' }, { status: 400 });
+    }
+
+    const result = await db.testResult.create({
+      data: {
+        testId: id,
+        studentName: studentName.trim(),
+        score: score ?? null,
+        maxScore: maxScore ?? null,
+        storageMode: storageMode || 'local_only',
+        status: 'PENDING',
+        uploadedAt: photos && photos.length > 0 ? new Date() : null,
+        photos: photos && photos.length > 0
+          ? {
+              create: photos.map((base64Data: string) => ({
+                base64Data,
+                storageMode: storageMode || 'local_only',
+              })),
+            }
+          : undefined,
+      },
+    });
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    console.error('POST /api/tests/[id]/results error:', error);
+    return NextResponse.json({ error: 'Serveriviga' }, { status: 500 });
+  }
+}

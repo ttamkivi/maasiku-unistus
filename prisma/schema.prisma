@@ -1,0 +1,676 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TestStatus {
+  PREPARING
+  READY
+  DISTRIBUTED
+  COLLECTING
+  PROCESSING
+  COMPLETE
+  ARCHIVED
+}
+
+// Who can discover a test in the library
+enum OwnershipVisibility {
+  PRIVATE    // only current owner
+  SCHOOL     // any teacher in owner's school(s)
+  PUBLIC     // any teacher in the system
+}
+
+// Granted permission level for a specific teacher
+enum AccessLevel {
+  VIEW         // browse rubric/answerKey, clone
+  COLLABORATE  // add curriculum links, leave comments
+  CO_EDIT      // edit title / rubric / answerKey
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+  ANALYZING
+  FEEDBACK_READY
+  SHARED_WITH_TEACHER
+  ARCHIVED
+}
+
+enum ResultStatus {
+  PENDING
+  UPLOADED
+  ANALYZING
+  DRAFT
+  REVIEWED
+  EDITED
+  APPROVED
+  SHARED
+  ARCHIVED
+}
+
+enum Role {
+  SUPERADMIN
+  SCHOOL_ADMIN
+  KLASSIJUHATAJA
+  TEACHER
+  STUDENT
+  PARENT
+  ADMIN
+}
+
+enum ConsentScope {
+  ALL_SUBJECTS
+  SPECIFIC_SUBJECT
+}
+
+enum ConsentDuration {
+  INFINITE
+  DATED
+}
+
+enum SubjectConsentStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum ConsentStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String?
+  name         String
+  role         Role     @default(TEACHER)
+  isSuperAdmin Boolean  @default(false)
+  personalCode String?  @unique  // Estonian isikukood (e.g. 30303039914)
+  phoneNumber  String?           // for Mobile-ID
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teacherProfile        TeacherProfile?
+  studentProfile        StudentProfile?
+  parentProfile         ParentProfile?
+  adminProfile          AdminProfile?
+  klassijuhatajProfile  KlassijuhatajProfile?
+
+  sessions  Session[]
+  auditLogs AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model School {
+  id       String  @id @default(cuid())
+  name     String
+  type     String  // gümnaasium, põhikool, keskkool
+  district String?
+  city     String  @default("Tallinn")
+
+  teacherSchools        TeacherSchool[]
+  studentProfiles       StudentProfile[]
+  tests                 Test[]
+  assignments           Assignment[]
+  klassijuhatajProfiles KlassijuhatajProfile[]
+}
+
+model Subject {
+  id          String @id @default(cuid())
+  name        String
+  category    String // loodusained, matemaatika, sotsiaalained, etc.
+  gradeLevels String // "7-9, 10-12"
+
+  teacherSubjects TeacherSubject[]
+  analyses        Analysis[]
+  tests           Test[]
+  assignments     Assignment[]
+  exercises       Exercise[]
+  subjectConsents SubjectConsent[]
+}
+
+model TeacherProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schools TeacherSchool[]
+  subjects TeacherSubject[]
+  analyses Analysis[]
+  tests    Test[]         // tests created by this teacher
+  ownedTests Test[]       @relation("TestOwner")         // tests currently owned (may differ after transfer)
+  accessGrantsReceived TestAccessGrant[] @relation("GrantReceived")
+  accessGrantsGiven    TestAccessGrant[] @relation("GrantGiven")
+  scanBatches          ScanBatch[]
+  assignments Assignment[]
+  consentRequests ParentConsentRequest[]
+}
+
+model TeacherSchool {
+  teacherId String
+  schoolId  String
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School         @relation(fields: [schoolId], references: [id])
+
+  @@id([teacherId, schoolId])
+}
+
+model TeacherSubject {
+  teacherId String
+  subjectId String
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId], references: [id])
+
+  @@id([teacherId, subjectId])
+}
+
+model StudentProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  schoolId String?
+  class    String? // "9.B"
+  grade    Int?    // 1-12
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school  School? @relation(fields: [schoolId], references: [id])
+
+  parents              ParentStudentLink[]
+  analyses             Analysis[]
+  testResults          TestResult[]
+  assignmentSubmissions AssignmentSubmission[]
+  exercises            Exercise[]
+  consentRequests      ParentConsentRequest[]
+  subjectConsents      SubjectConsent[]
+  klassijuhatajRecord  StudentKlassijuhataj?
+}
+
+model ParentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  children        ParentStudentLink[]
+  consents        ParentConsent[]
+  subjectConsents SubjectConsent[]
+}
+
+model ParentStudentLink {
+  parentId  String
+  studentId String
+
+  parent  ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([parentId, studentId])
+}
+
+model ParentConsentRequest {
+  id            String        @id @default(cuid())
+  teacherId     String
+  studentId     String
+  parentEmail   String
+  parentName    String?
+  inviteToken   String        @unique
+  status        ConsentStatus @default(PENDING)
+  sentAt        DateTime      @default(now())
+  respondedAt   DateTime?
+  declineReason String?
+  expiresAt     DateTime
+
+  teacher   TeacherProfile  @relation(fields: [teacherId], references: [id])
+  student   StudentProfile  @relation(fields: [studentId], references: [id])
+  consents  ParentConsent[]
+  auditLogs AuditLog[]
+}
+
+model ParentConsent {
+  id          String        @id @default(cuid())
+  parentId    String
+  requestId   String
+  status      ConsentStatus
+  consentedAt DateTime      @default(now())
+  ipAddress   String?
+  userAgent   String?
+
+  parent  ParentProfile        @relation(fields: [parentId], references: [id])
+  request ParentConsentRequest @relation(fields: [requestId], references: [id])
+}
+
+model Analysis {
+  id          String    @id @default(cuid())
+  teacherId   String
+  studentId   String?
+  subjectId   String?
+  testName    String
+  grade       String?
+  score       Float?
+  maxScore    Float?
+  feedback    String    // JSON string of FeedbackData
+  storageMode String    @default("local_only")
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime? // soft delete
+
+  teacher TeacherProfile  @relation(fields: [teacherId], references: [id])
+  student StudentProfile? @relation(fields: [studentId], references: [id])
+  subject Subject?        @relation(fields: [subjectId], references: [id])
+}
+
+// ─── TEST ────────────────────────────────────────────────────────────────────
+// Central domain object. One test = one assessment event (kontrolltöö, üritus
+// etc.) created by a teacher. Key design principles:
+//
+//  • teacherId = original creator (immutable, for audit)
+//  • ownerId   = current IP owner (can be transferred; defaults to creator)
+//  • visibility controls discovery in the shared library
+//  • sourceTestId chains clones/forks — walk up to find the original
+//  • ScanBatch links every uploaded PDF batch back to the test(s) it covers
+// ─────────────────────────────────────────────────────────────────────────────
+model Test {
+  id              String               @id @default(cuid())
+  teacherId       String               // creator — never changes
+  ownerId         String?              // current IP owner (null = defaults to teacherId)
+  subjectId       String?
+  schoolId        String?
+  targetClass     String?              // "9.B" — specific class if not whole grade
+
+  // Content
+  title           String
+  topic           String?              // chapter / curriculum area
+  grade           String?              // "9"
+  rubric          String?              // grading criteria for AI
+  answerKey       String?              // correct answers for AI
+  blankTestNotes  String?
+  notes           String?
+
+  // Lifecycle
+  status          TestStatus           @default(PREPARING)
+  plannedDate     DateTime?
+  distributedDate DateTime?
+  collectedDate   DateTime?
+  completedDate   DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  deletedAt       DateTime?
+
+  // Library / IP
+  visibility      OwnershipVisibility  @default(PRIVATE)
+
+  // Versioning — clone chain (null = original)
+  sourceTestId    String?
+  versionNumber   Int                  @default(1)
+  versionNote     String?              // short changelog when cloning
+
+  teacher          TeacherProfile       @relation(fields: [teacherId], references: [id])
+  owner            TeacherProfile?      @relation("TestOwner", fields: [ownerId], references: [id])
+  subject          Subject?             @relation(fields: [subjectId], references: [id])
+  school           School?              @relation(fields: [schoolId], references: [id])
+  sourceTest       Test?                @relation("TestVersions", fields: [sourceTestId], references: [id])
+  derivedTests     Test[]               @relation("TestVersions")
+  results          TestResult[]
+  accessGrants     TestAccessGrant[]
+  curriculumLinks  TestCurriculumLink[]
+  scanBatches      ScanBatch[]
+}
+
+// Fine-grained sharing: owner grants a specific teacher explicit access
+model TestAccessGrant {
+  id         String      @id @default(cuid())
+  testId     String
+  granteeId  String      // the teacher receiving access
+  level      AccessLevel
+  grantedBy  String      // teacherId of owner who granted
+  grantedAt  DateTime    @default(now())
+  expiresAt  DateTime?
+
+  test    Test           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  grantee TeacherProfile @relation("GrantReceived", fields: [granteeId], references: [id])
+  grantor TeacherProfile @relation("GrantGiven", fields: [grantedBy], references: [id])
+
+  @@unique([testId, granteeId])
+}
+
+// Links a test to Estonian national curriculum codes (e.g. "F9.2.1")
+model TestCurriculumLink {
+  id             String @id @default(cuid())
+  testId         String
+  curriculumCode String  // riiklik õppekava code
+  topicLabel     String? // human-readable, cached at link time
+  gradeRange     String? // "7-9"
+  weightPercent  Float?  // optional: share of this test covering this outcome
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, curriculumCode])
+}
+
+// Canonical curriculum node catalogue (populated from national curriculum)
+model CurriculumNode {
+  code        String  @id    // "F9.2.1"
+  subjectCode String         // "physics", "math", etc.
+  gradeRange  String         // "7-9"
+  topicLabel  String
+  description String?
+}
+
+// ─── SCAN BATCH ──────────────────────────────────────────────────────────────
+// One batch = one PDF upload event. A batch belongs to ONE primary test but
+// can contain pages for additional tests (e.g., teacher accidentally scanned
+// two classes together). detectedTests (JSON) records AI-detected test matches
+// with confidence scores. Every TestResult produced from a batch carries a
+// scanBatchId so you can always trace result → upload event → source file.
+// ─────────────────────────────────────────────────────────────────────────────
+model ScanBatch {
+  id             String   @id @default(cuid())
+  testId         String               // primary test for this upload
+  uploadedBy     String               // teacherId
+  filename       String?
+  pageCount      Int?
+  detectedTests  String?              // JSON: [{testId, confidence, pageRange}]
+  status         String   @default("PENDING") // PENDING | PROCESSING | COMPLETE | ERROR
+  errorMsg       String?
+  uploadedAt     DateTime @default(now())
+
+  test     Test           @relation(fields: [testId], references: [id])
+  uploader TeacherProfile @relation(fields: [uploadedBy], references: [id])
+  pages    ScanBatchPage[]
+  results  TestResult[]
+}
+
+// Per-page record linking a scanned page to the result it produced
+model ScanBatchPage {
+  id         String  @id @default(cuid())
+  batchId    String
+  resultId   String?              // null until a TestResult is assigned
+  pageIndex  Int                  // 0-based position in source PDF
+  storageKey String?              // path to stored image if applicable
+
+  batch  ScanBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  result TestResult? @relation(fields: [resultId], references: [id])
+}
+
+model TestResult {
+  id              String        @id @default(cuid())
+  testId          String
+  scanBatchId     String?       // which upload batch produced this result
+  studentId       String?
+  studentName     String?
+  status          ResultStatus  @default(PENDING)
+  rawFeedback     String?       // original AI JSON
+  editedFeedback  String?       // teacher-modified JSON
+  teacherNotes    String?       // private, never shown to student
+  teacherComment  String?       // brief note for training records
+  score           Float?
+  maxScore        Float?
+  storageMode     String        @default("local_only")
+  uploadedAt      DateTime?
+  analyzedAt      DateTime?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  sharedAt        DateTime?
+  archivedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  test            Test              @relation(fields: [testId], references: [id])
+  scanBatch       ScanBatch?        @relation(fields: [scanBatchId], references: [id])
+  student         StudentProfile?   @relation(fields: [studentId], references: [id])
+  trainingConsent TrainingConsent?
+  photos          TestPhoto[]
+  scanPages       ScanBatchPage[]
+}
+
+model TestPhoto {
+  id          String    @id @default(cuid())
+  resultId    String
+  base64Data  String
+  storageMode String    @default("local_only")
+  uploadedAt  DateTime  @default(now())
+  deletedAt   DateTime?
+
+  result TestResult @relation(fields: [resultId], references: [id])
+}
+
+model TrainingConsent {
+  id           String    @id @default(cuid())
+  resultId     String    @unique
+  consentedBy  String
+  consentType  String    // "teacher" | "parent" | "student"
+  consentedAt  DateTime  @default(now())
+  anonymizedAt DateTime?
+
+  result         TestResult              @relation(fields: [resultId], references: [id])
+  anonymizedData AnonymizedTrainingData?
+}
+
+model KlassijuhatajProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  schoolId  String?
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school   School? @relation(fields: [schoolId], references: [id])
+  students StudentKlassijuhataj[]
+}
+
+model StudentKlassijuhataj {
+  studentId          String @unique
+  klassijuhatajId    String
+  assignedAt         DateTime @default(now())
+
+  student        StudentProfile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  klassijuhataj  KlassijuhatajProfile @relation(fields: [klassijuhatajId], references: [id])
+  eligibility    StudentEligibility?
+}
+
+model StudentEligibility {
+  id                   String   @id @default(cuid())
+  studentKlassijuhatajId String @unique
+  isEligible           Boolean  @default(false)
+  note                 String?
+  updatedAt            DateTime @updatedAt
+
+  studentKlassijuhataj StudentKlassijuhataj @relation(fields: [studentKlassijuhatajId], references: [studentId])
+}
+
+// Parental consent per subject (or all subjects)
+model SubjectConsent {
+  id         String               @id @default(cuid())
+  parentId   String
+  studentId  String
+  subjectId  String?              // null = all subjects
+  scope      ConsentScope         @default(SPECIFIC_SUBJECT)
+  status     SubjectConsentStatus @default(PENDING)
+  duration   ConsentDuration      @default(INFINITE)
+  startDate  DateTime             @default(now())
+  endDate    DateTime?
+  revokedAt  DateTime?
+  revokedBy  String?
+  note       String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  parent  ParentProfile  @relation(fields: [parentId], references: [id])
+  student StudentProfile @relation(fields: [studentId], references: [id])
+  subject Subject?       @relation(fields: [subjectId], references: [id])
+}
+
+model AnonymizedTrainingData {
+  id             String   @id @default(cuid())
+  consentId      String   @unique
+  grade          String?
+  subject        String?
+  score          Float?
+  maxScore       Float?
+  feedback       String
+  teacherNotes   String?
+  teacherComment String?
+  createdAt      DateTime @default(now())
+
+  consent TrainingConsent @relation(fields: [consentId], references: [id])
+}
+
+// Homework assignment created by teacher
+model Assignment {
+  id          String           @id @default(cuid())
+  teacherId   String
+  subjectId   String?
+  schoolId    String?
+  title       String
+  description String           // assignment instructions / task text
+  grade       String?          // target grade level
+  dueDate     DateTime?
+  status      AssignmentStatus @default(DRAFT)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  teacher     TeacherProfile    @relation(fields: [teacherId], references: [id])
+  subject     Subject?          @relation(fields: [subjectId], references: [id])
+  school      School?           @relation(fields: [schoolId], references: [id])
+  submissions AssignmentSubmission[]
+}
+
+// Student's submission for a homework assignment
+model AssignmentSubmission {
+  id               String          @id @default(cuid())
+  assignmentId     String
+  studentId        String?
+  studentName      String?
+  status           SubmissionStatus @default(PENDING)
+  rawFeedback      String?         // AI-generated JSON feedback
+  studentNote      String?         // student's own comment on the work
+  teacherNote      String?         // private teacher note
+  sharedAt         DateTime?       // when student shared with teacher
+  analyzedAt       DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  assignment  Assignment       @relation(fields: [assignmentId], references: [id])
+  student     StudentProfile?  @relation(fields: [studentId], references: [id])
+  photos      SubmissionPhoto[]
+}
+
+model SubmissionPhoto {
+  id           String    @id @default(cuid())
+  submissionId String
+  base64Data   String
+  caption      String?
+  uploadedAt   DateTime  @default(now())
+
+  submission AssignmentSubmission @relation(fields: [submissionId], references: [id])
+}
+
+// Free-form exercise: student submits any homework photos without a teacher assignment
+enum ExerciseStatus {
+  ANALYZING
+  FEEDBACK_READY
+  SHARED_WITH_TEACHER
+  ARCHIVED
+}
+
+model Exercise {
+  id          String         @id @default(cuid())
+  studentId   String?
+  studentName String?
+  subjectId   String?
+  topic       String         // what they were working on (textbook chapter, exercises 5.1-5.5, etc.)
+  grade       String?
+  rawFeedback String?        // AI-generated JSON
+  studentNote String?        // student's own comment
+  teacherNote String?
+  status      ExerciseStatus @default(ANALYZING)
+  sharedAt    DateTime?
+  analyzedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  student StudentProfile? @relation(fields: [studentId], references: [id])
+  subject Subject?        @relation(fields: [subjectId], references: [id])
+  photos  ExercisePhoto[]
+}
+
+model ExercisePhoto {
+  id         String   @id @default(cuid())
+  exerciseId String
+  base64Data String
+  caption    String?
+  uploadedAt DateTime @default(now())
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+}
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  userId          String?
+  action          String    // CONSENT_REQUESTED, CONSENT_APPROVED, DATA_ACCESSED, LOGIN, etc.
+  targetType      String?   // User, Analysis, ConsentRequest
+  targetId        String?
+  details         String?   // JSON string
+  ipAddress       String?
+  userAgent       String?
+  timestamp       DateTime  @default(now())
+  consentRequestId String?
+
+  user           User?                 @relation(fields: [userId], references: [id])
+  consentRequest ParentConsentRequest? @relation(fields: [consentRequestId], references: [id])
+}
+
+model AdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CookieConsent {
+  id          String   @id @default(cuid())
+  userId      String?
+  sessionId   String?
+  consentedAt DateTime @default(now())
+  ipAddress   String?
+}
+
+model InviteToken {
+  id        String    @id @default(cuid())
+  email     String
+  role      Role
+  token     String    @unique
+  createdBy String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model FeatureFlag {
+  key         String   @id
+  enabled     Boolean  @default(false)
+  description String
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  // userId who last changed it
+}

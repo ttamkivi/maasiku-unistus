@@ -1,0 +1,179 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { token, status, reason, parentName, parentEmail: bodyParentEmail } = body as {
+      token: string;
+      status: 'APPROVED' | 'DECLINED';
+      reason?: string;
+      parentName?: string;
+      parentEmail?: string;
+    };
+
+    if (!token || !status) {
+      return NextResponse.json({ error: 'Token ja status on kohustuslikud' }, { status: 400 });
+    }
+
+    if (status !== 'APPROVED' && status !== 'DECLINED') {
+      return NextResponse.json({ error: 'Vigane status' }, { status: 400 });
+    }
+
+    const consentRequest = await db.parentConsentRequest.findUnique({
+      where: { inviteToken: token },
+      include: {
+        student: {
+          include: { user: { select: { id: true, name: true } } },
+        },
+        teacher: {
+          include: { user: { select: { name: true } } },
+        },
+      },
+    });
+
+    if (!consentRequest) {
+      return NextResponse.json({ error: 'Nõusolekutaotlust ei leitud' }, { status: 404 });
+    }
+
+    if (consentRequest.expiresAt < new Date()) {
+      await db.parentConsentRequest.update({
+        where: { id: consentRequest.id },
+        data: { status: 'EXPIRED' },
+      });
+      return NextResponse.json({ error: 'Link on aegunud' }, { status: 410 });
+    }
+
+    if (consentRequest.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: 'Taotlusele on juba vastatud' },
+        { status: 409 }
+      );
+    }
+
+    const ipAddress =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      request.headers.get('x-real-ip') ??
+      undefined;
+    const userAgent = request.headers.get('user-agent') ?? undefined;
+
+    const resolvedParentEmail = bodyParentEmail ?? consentRequest.parentEmail;
+    const resolvedParentName = parentName ?? consentRequest.parentName ?? undefined;
+    const now = new Date();
+
+    // Update the consent request
+    await db.parentConsentRequest.update({
+      where: { id: consentRequest.id },
+      data: {
+        status,
+        respondedAt: now,
+        declineReason: status === 'DECLINED' ? (reason ?? null) : null,
+        parentName: resolvedParentName ?? consentRequest.parentName,
+      },
+    });
+
+    // Find or create parent user
+    let parentUser = await db.user.findUnique({ where: { email: resolvedParentEmail } });
+
+    if (!parentUser) {
+      parentUser = await db.user.create({
+        data: {
+          email: resolvedParentEmail,
+          name: resolvedParentName ?? resolvedParentEmail,
+          role: 'PARENT',
+          password: null,
+        },
+      });
+
+      await db.parentProfile.create({
+        data: { userId: parentUser.id },
+      });
+    } else if (parentUser.role !== 'PARENT') {
+      // User exists but is not a parent — don't alter their role
+    }
+
+    const parentProfile = await db.parentProfile.findUnique({
+      where: { userId: parentUser.id },
+    });
+
+    // Create consent record if approved
+    let consentId: string | undefined;
+    if (status === 'APPROVED' && parentProfile) {
+      const consent = await db.parentConsent.create({
+        data: {
+          parentId: parentProfile.id,
+          requestId: consentRequest.id,
+          status: 'APPROVED',
+          consentedAt: now,
+          ipAddress: ipAddress ?? null,
+          userAgent: userAgent ?? null,
+        },
+      });
+      consentId = consent.id;
+
+      // Link parent to student if not already linked
+      const studentProfile = await db.studentProfile.findUnique({
+        where: { id: consentRequest.studentId },
+      });
+
+      if (studentProfile && parentProfile) {
+        const existingLink = await db.parentStudentLink.findUnique({
+          where: {
+            parentId_studentId: {
+              parentId: parentProfile.id,
+              studentId: studentProfile.id,
+            },
+          },
+        });
+
+        if (!existingLink) {
+          await db.parentStudentLink.create({
+            data: {
+              parentId: parentProfile.id,
+              studentId: studentProfile.id,
+            },
+          });
+        }
+      }
+    } else if (status === 'DECLINED' && parentProfile) {
+      await db.parentConsent.create({
+        data: {
+          parentId: parentProfile.id,
+          requestId: consentRequest.id,
+          status: 'DECLINED',
+          consentedAt: now,
+          ipAddress: ipAddress ?? null,
+          userAgent: userAgent ?? null,
+        },
+      });
+    }
+
+    // Audit log
+    const action = status === 'APPROVED' ? 'CONSENT_APPROVED' : 'CONSENT_DECLINED';
+    await db.auditLog.create({
+      data: {
+        userId: parentUser.id,
+        action,
+        targetType: 'ParentConsentRequest',
+        targetId: consentRequest.id,
+        details: JSON.stringify({
+          parentEmail: resolvedParentEmail,
+          studentId: consentRequest.studentId,
+          consentId,
+          ipAddress,
+          userAgent,
+          timestamp: now.toISOString(),
+          ...(status === 'DECLINED' && reason ? { reason } : {}),
+        }),
+        consentRequestId: consentRequest.id,
+        ipAddress: ipAddress ?? null,
+        userAgent: userAgent ?? null,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('POST /api/consent/respond error:', error);
+    return NextResponse.json({ error: 'Serveriviga' }, { status: 500 });
+  }
+}

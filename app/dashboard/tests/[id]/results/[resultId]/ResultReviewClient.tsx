@@ -1,0 +1,739 @@
+'use client';
+
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ResultStatus } from '@/lib/generated/prisma/client';
+import { FeedbackData, FeedbackItem } from '@/lib/types';
+
+type Tab = 'ai' | 'edits' | 'notes';
+
+interface Props {
+  testId: string;
+  resultId: string;
+  status: ResultStatus;
+  rawFeedback: FeedbackData | null;
+  editedFeedback: FeedbackData | null;
+  teacherNotes: string;
+  teacherComment: string;
+  hasTrainingConsent: boolean;
+  isApprovedOrBeyond: boolean;
+  nextResultId: string | null;
+  prefetchResultId: string | null;
+  queuePosition: number | null;
+  queueTotal: number;
+}
+
+// ─── Read-only AI feedback renderer ───────────────────────────────────────────
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ borderLeft: '4px solid #1C2832', paddingLeft: 12, marginBottom: 10 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C2832', margin: 0 }}>{children}</h3>
+    </div>
+  );
+}
+
+function Card({ children, accent }: { children: React.ReactNode; accent?: string }) {
+  return (
+    <div style={{
+      background: '#fff',
+      borderBottom: '2px solid #DAD0A1',
+      borderLeft: accent ? `3px solid ${accent}` : undefined,
+      padding: '12px 14px',
+      marginBottom: 10,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+type View = 'short' | 'long' | 'tasks';
+
+function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
+  const [view, setView] = useState<View>('short');
+
+  const tabs: { key: View; label: string }[] = [
+    { key: 'short', label: 'Lühike' },
+    { key: 'long', label: 'Põhjalik' },
+    { key: 'tasks', label: 'Ülesannete kaupa' },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', borderBottom: '2px solid #DAD0A1', marginBottom: 16 }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setView(tab.key)}
+            style={{
+              padding: '9px 18px', fontSize: 13, fontWeight: 700,
+              border: 'none', cursor: 'pointer',
+              background: view === tab.key ? '#1C2832' : '#F8F3DA',
+              color: view === tab.key ? '#fff' : '#1C2832',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'short' && (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Mis läks hästi</SectionHeading>
+            {feedback.mis_laks_hasti.slice(0, 2).map((item, i) => (
+              <Card key={i} accent="#22c55e">
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Mida parandada</SectionHeading>
+            {feedback.mida_parandada.slice(0, 2).map((item, i) => (
+              <Card key={i} accent="#f97316">
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Üldine muster</SectionHeading>
+            <Card><p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.uldine_muster}</p></Card>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Soovitused</SectionHeading>
+            {feedback.soovitused.slice(0, 2).map((item, i) => (
+              <Card key={i}>
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>→ {item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'long' && (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Mis läks hästi</SectionHeading>
+            {feedback.mis_laks_hasti.map((item, i) => (
+              <Card key={i} accent="#22c55e">
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Mida parandada</SectionHeading>
+            {feedback.mida_parandada.map((item, i) => (
+              <Card key={i} accent="#f97316">
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{i + 1}. {item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Üldine muster</SectionHeading>
+            <Card><p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.uldine_muster}</p></Card>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Soovitused edaspidiseks</SectionHeading>
+            {feedback.soovitused.map((item, i) => (
+              <Card key={i}>
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>→ {item.title}</p>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
+              </Card>
+            ))}
+          </div>
+          {feedback.pilk_ettepoole && (
+            <div style={{ marginBottom: 16 }}>
+              <SectionHeading>Pilk ettepoole</SectionHeading>
+              <Card accent="#8b5cf6">
+                <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.pilk_ettepoole}</p>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'tasks' && (
+        <div>
+          {!feedback.tasks || feedback.tasks.length === 0 ? (
+            <div style={{ background: '#F8F3DA', padding: 20, fontSize: 14, color: '#1C2832' }}>
+              Ülesannete kaupa vaade pole saadaval.
+            </div>
+          ) : (
+            feedback.tasks.map((task, i) => {
+              const isCorrect = task.is_correct === true;
+              const isWrong = task.is_correct === false;
+              const badgeBg = isCorrect ? '#22c55e' : isWrong ? '#ef4444' : '#f97316';
+              const badgeLabel = isCorrect ? 'Õige' : isWrong ? 'Vale' : 'Osaline';
+              return (
+                <div key={i} style={{ marginBottom: 14, borderBottom: '2px solid #DAD0A1' }}>
+                  <div style={{ background: '#1C2832', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>Ülesanne {task.number}</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {task.points_earned != null && task.points_possible != null && (
+                        <span style={{ color: '#DAD0A1', fontSize: 12 }}>{task.points_earned}/{task.points_possible} p</span>
+                      )}
+                      <span style={{ background: badgeBg, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>{badgeLabel}</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: '10px 14px', background: '#fff' }}>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>{task.question_summary}</p>
+                    <p style={{ fontSize: 13, color: '#1C2832', marginBottom: 8 }}><strong>Õpilase vastus:</strong> {task.student_answer}</p>
+                    {task.what_went_right && (
+                      <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '6px 10px', marginBottom: 6 }}>
+                        <p style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}><strong>✓</strong> {task.what_went_right}</p>
+                      </div>
+                    )}
+                    {task.what_went_wrong && (
+                      <div style={{ background: '#fff7ed', borderLeft: '3px solid #f97316', padding: '6px 10px', marginBottom: 6 }}>
+                        <p style={{ fontSize: 13, color: '#9a3412', lineHeight: 1.6 }}><strong>⚡</strong> {task.what_went_wrong}</p>
+                      </div>
+                    )}
+                    {task.advice && (
+                      <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '6px 10px' }}>
+                        <p style={{ fontSize: 13, color: '#1e3a8a', lineHeight: 1.6 }}><strong>Soovitus:</strong> {task.advice}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Editable feedback items list ─────────────────────────────────────────────
+
+function EditableItemList({
+  label,
+  items,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  items: FeedbackItem[];
+  onChange: (items: FeedbackItem[]) => void;
+  disabled: boolean;
+}) {
+  const updateItem = (index: number, field: 'title' | 'text', value: string) => {
+    const updated = items.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+    onChange(updated);
+  };
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>{label}</p>
+      {items.map((item, i) => (
+        <div key={i} style={{ background: '#F8F3DA', padding: 10, marginBottom: 8 }}>
+          <input
+            type="text"
+            value={item.title}
+            onChange={(e) => updateItem(i, 'title', e.target.value)}
+            disabled={disabled}
+            placeholder="Pealkiri"
+            style={{
+              width: '100%', padding: '7px 10px', border: '1px solid #DAD0A1',
+              fontSize: 13, fontWeight: 700, color: '#1C2832', background: disabled ? '#f9f9f7' : '#fff',
+              marginBottom: 6, boxSizing: 'border-box', outline: 'none',
+            }}
+          />
+          <textarea
+            value={item.text}
+            onChange={(e) => updateItem(i, 'text', e.target.value)}
+            disabled={disabled}
+            rows={3}
+            placeholder="Selgitus"
+            style={{
+              width: '100%', padding: '7px 10px', border: '1px solid #DAD0A1',
+              fontSize: 13, color: '#1C2832', background: disabled ? '#f9f9f7' : '#fff',
+              resize: 'vertical', boxSizing: 'border-box', outline: 'none',
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
+export default function ResultReviewClient({
+  testId,
+  resultId,
+  status: initialStatus,
+  rawFeedback,
+  editedFeedback,
+  teacherNotes: initialTeacherNotes,
+  teacherComment: initialTeacherComment,
+  hasTrainingConsent: initialHasTrainingConsent,
+  isApprovedOrBeyond: initialIsApprovedOrBeyond,
+  nextResultId,
+  prefetchResultId,
+  queuePosition,
+  queueTotal,
+}: Props) {
+  const router = useRouter();
+  const [analyzing, setAnalyzing] = useState(initialStatus === 'UPLOADED');
+
+  // Auto-trigger analysis if this result is still UPLOADED when we land here
+  useEffect(() => {
+    if (initialStatus !== 'UPLOADED') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/tests/${testId}/bulk-analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resultId }),
+        });
+        if (!cancelled && res.ok) {
+          router.refresh(); // reload page to show fresh DRAFT feedback
+        }
+      } catch {
+        // ignore — user can retry manually
+      } finally {
+        if (!cancelled) setAnalyzing(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
+  // Background-prefetch analysis for the student two ahead in the queue
+  useEffect(() => {
+    if (!prefetchResultId) return;
+    // Fire-and-forget — we don't need the result
+    fetch(`/api/tests/${testId}/bulk-analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resultId: prefetchResultId }),
+    }).catch(() => {/* silent — not critical */});
+  }, [testId, prefetchResultId]);
+  const [activeTab, setActiveTab] = useState<Tab>('ai');
+  const [status, setStatus] = useState<ResultStatus>(initialStatus);
+  const [isApprovedOrBeyond, setIsApprovedOrBeyond] = useState(initialIsApprovedOrBeyond);
+  const [hasTrainingConsent, setHasTrainingConsent] = useState(initialHasTrainingConsent);
+
+  // Editable feedback state — start from editedFeedback if available, else rawFeedback
+  const baseFeedback = editedFeedback ?? rawFeedback;
+  const [editedWentWell, setEditedWentWell] = useState<FeedbackItem[]>(
+    baseFeedback?.mis_laks_hasti ?? []
+  );
+  const [editedImprove, setEditedImprove] = useState<FeedbackItem[]>(
+    baseFeedback?.mida_parandada ?? []
+  );
+  const [editedPattern, setEditedPattern] = useState(baseFeedback?.uldine_muster ?? '');
+  const [editedSuggestions, setEditedSuggestions] = useState<FeedbackItem[]>(
+    baseFeedback?.soovitused ?? []
+  );
+  const [editedOutlook, setEditedOutlook] = useState(baseFeedback?.pilk_ettepoole ?? '');
+
+  // Private notes
+  const [teacherNotes, setTeacherNotes] = useState(initialTeacherNotes);
+  const [teacherComment, setTeacherComment] = useState(initialTeacherComment);
+
+  const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const buildEditedFeedback = useCallback((): FeedbackData | null => {
+    if (!baseFeedback) return null;
+    return {
+      ...baseFeedback,
+      mis_laks_hasti: editedWentWell,
+      mida_parandada: editedImprove,
+      uldine_muster: editedPattern,
+      soovitused: editedSuggestions,
+      pilk_ettepoole: editedOutlook,
+    };
+  }, [baseFeedback, editedWentWell, editedImprove, editedPattern, editedSuggestions, editedOutlook]);
+
+  const autoSave = useCallback(
+    (payload: Record<string, unknown>) => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(async () => {
+        setSaving(true);
+        try {
+          await fetch(`/api/tests/${testId}/results/${resultId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } finally {
+          setSaving(false);
+        }
+      }, 800);
+    },
+    [testId, resultId]
+  );
+
+  const handleFeedbackBlur = useCallback(() => {
+    const ef = buildEditedFeedback();
+    if (!ef) return;
+    autoSave({ editedFeedback: JSON.stringify(ef) });
+  }, [buildEditedFeedback, autoSave]);
+
+  const handleNotesBlur = useCallback(() => {
+    autoSave({ teacherNotes, teacherComment });
+  }, [autoSave, teacherNotes, teacherComment]);
+
+  const handleApprove = async () => {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/tests/${testId}/results/${resultId}/approve`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Viga');
+      setStatus('APPROVED');
+      setIsApprovedOrBeyond(true);
+      router.refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Viga');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/tests/${testId}/results/${resultId}/share`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Viga');
+      setStatus('SHARED');
+      if (nextResultId) {
+        router.push(`/dashboard/tests/${testId}/results/${nextResultId}`);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Viga');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleTrainingConsent = async () => {
+    try {
+      const res = await fetch(`/api/tests/${testId}/results/${resultId}/training-consent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consentType: 'teacher' }),
+      });
+      if (res.ok) setHasTrainingConsent(true);
+    } catch {}
+  };
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'ai', label: 'AI tagasiside' },
+    { key: 'edits', label: 'Minu muudatused' },
+    { key: 'notes', label: 'Isiklikud märkmed' },
+  ];
+
+  return (
+    <div>
+      {/* Auto-save indicator */}
+      {saving && (
+        <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right', marginBottom: 8 }}>
+          Salvestamine...
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '2px solid #DAD0A1', marginBottom: 20 }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '10px 18px', fontSize: 14, fontWeight: 700,
+              border: 'none', cursor: 'pointer',
+              background: activeTab === tab.key ? '#1C2832' : '#F8F3DA',
+              color: activeTab === tab.key ? '#fff' : '#1C2832',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab 1: AI feedback (read-only) */}
+      {activeTab === 'ai' && (
+        <div>
+          {rawFeedback ? (
+            <ReadOnlyFeedback feedback={rawFeedback} />
+          ) : analyzing ? (
+            <div style={{ background: '#F8F3DA', border: '1.5px solid #DAD0A1', padding: '40px 24px', textAlign: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
+                AI analüüsib töid…
+              </p>
+              <p style={{ fontSize: 13, color: '#6b7280' }}>
+                Tavaliselt võtab 15–30 sekundit. Leht uueneb automaatselt.
+              </p>
+              <div style={{ marginTop: 16, height: 4, background: '#DAD0A1', borderRadius: 2, overflow: 'hidden', maxWidth: 240, margin: '16px auto 0' }}>
+                <div style={{
+                  height: '100%', background: '#1C2832', borderRadius: 2,
+                  animation: 'pulse-bar 1.5s ease-in-out infinite',
+                  width: '40%',
+                }} />
+              </div>
+              <style>{`@keyframes pulse-bar { 0%{margin-left:0} 50%{margin-left:60%} 100%{margin-left:0} }`}</style>
+            </div>
+          ) : (
+            <div style={{ background: '#F8F3DA', padding: '28px 20px', textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.7 }}>
+                AI tagasiside pole veel saadaval. Lisa fotod ja käivita analüüs.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Editable feedback */}
+      {activeTab === 'edits' && (
+        <div onBlur={handleFeedbackBlur}>
+          {!baseFeedback ? (
+            <div style={{ background: '#F8F3DA', padding: '28px 20px', textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.7 }}>
+                Tagasiside pole veel saadaval muutmiseks.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div style={{ background: '#fff8e6', border: '1px solid #DAD0A1', padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1C2832' }}>
+                Muudatused salvestatakse automaatselt. Kinnitatud tagasiside lukustatakse.
+              </div>
+
+              <EditableItemList
+                label="Mis läks hästi"
+                items={editedWentWell}
+                onChange={setEditedWentWell}
+                disabled={isApprovedOrBeyond}
+              />
+
+              <EditableItemList
+                label="Mida parandada"
+                items={editedImprove}
+                onChange={setEditedImprove}
+                disabled={isApprovedOrBeyond}
+              />
+
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>Üldine muster</p>
+                <textarea
+                  value={editedPattern}
+                  onChange={(e) => setEditedPattern(e.target.value)}
+                  disabled={isApprovedOrBeyond}
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
+                    fontSize: 14, color: '#1C2832', background: isApprovedOrBeyond ? '#f9f9f7' : '#fff',
+                    resize: 'vertical', boxSizing: 'border-box', outline: 'none',
+                  }}
+                />
+              </div>
+
+              <EditableItemList
+                label="Soovitused"
+                items={editedSuggestions}
+                onChange={setEditedSuggestions}
+                disabled={isApprovedOrBeyond}
+              />
+
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>Pilk ettepoole</p>
+                <textarea
+                  value={editedOutlook}
+                  onChange={(e) => setEditedOutlook(e.target.value)}
+                  disabled={isApprovedOrBeyond}
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
+                    fontSize: 14, color: '#1C2832', background: isApprovedOrBeyond ? '#f9f9f7' : '#fff',
+                    resize: 'vertical', boxSizing: 'border-box', outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Private notes */}
+      {activeTab === 'notes' && (
+        <div onBlur={handleNotesBlur}>
+          <div style={{ background: '#F8F3DA', padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1C2832', borderLeft: '3px solid #DAD0A1' }}>
+            Isiklikud märkmed ei jagata kunagi õpilasega.
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
+              Õpetaja isiklikud märkmed (ei jagata õpilasega)
+            </label>
+            <textarea
+              value={teacherNotes}
+              onChange={(e) => setTeacherNotes(e.target.value)}
+              rows={8}
+              placeholder="Kirjuta siia oma mõtted, tähelepanekud või meeldetuletused selle õpilase kohta..."
+              style={{
+                width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
+                fontSize: 14, color: '#1C2832', background: '#fff',
+                resize: 'vertical', boxSizing: 'border-box', outline: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
+              Lühike kommentaar treeningandmete jaoks
+            </label>
+            <textarea
+              value={teacherComment}
+              onChange={(e) => setTeacherComment(e.target.value)}
+              rows={3}
+              placeholder="Lühike kommentaar mudeli täiustamiseks (anonüümiseeritakse enne salvestamist)..."
+              style={{
+                width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
+                fontSize: 14, color: '#1C2832', background: '#fff',
+                resize: 'vertical', boxSizing: 'border-box', outline: 'none',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Bottom action bar */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: '#fff',
+          borderTop: '2px solid #DAD0A1',
+          padding: '14px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          zIndex: 100,
+        }}
+      >
+        <div style={{ maxWidth: 720, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {actionError && (
+            <p style={{ fontSize: 12, color: '#b91c1c', margin: 0 }}>{actionError}</p>
+          )}
+
+          {/* Queue progress */}
+          {queuePosition != null && queueTotal > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, height: 3, background: '#DAD0A1', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#1C2832', width: `${Math.round((queuePosition / queueTotal) * 100)}%`, transition: 'width 0.3s' }} />
+              </div>
+              <span style={{ fontSize: 11, color: '#6b7280', whiteSpace: 'nowrap' }}>
+                {queuePosition}/{queueTotal}
+              </span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Approve / Share / Shared */}
+            {status === 'SHARED' ? (
+              <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>
+                Jagatud ✓
+              </div>
+            ) : status === 'APPROVED' ? (
+              <button
+                onClick={handleShare}
+                disabled={actionLoading}
+                style={{
+                  background: actionLoading ? '#6b7280' : '#0f766e',
+                  color: '#fff', fontWeight: 700, fontSize: 14,
+                  padding: '10px 18px', border: 'none',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {actionLoading ? 'Palun oota...' : 'Jaga õpilasega'}
+              </button>
+            ) : (
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading || !rawFeedback}
+                style={{
+                  background: actionLoading || !rawFeedback ? '#6b7280' : '#1C2832',
+                  color: '#F8F3DA', fontWeight: 700, fontSize: 14,
+                  padding: '10px 18px', border: 'none',
+                  cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {actionLoading ? 'Palun oota...' : 'Kinnita tagasiside'}
+              </button>
+            )}
+
+            {/* Training consent toggle */}
+            {!hasTrainingConsent && rawFeedback && (
+              <button
+                onClick={handleTrainingConsent}
+                style={{
+                  background: '#F8F3DA',
+                  color: '#1C2832',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  padding: '10px 14px',
+                  border: '1.5px solid #DAD0A1',
+                  cursor: 'pointer',
+                }}
+              >
+                Luba anonüümseks treeningandmeks
+              </button>
+            )}
+            {hasTrainingConsent && (
+              <span style={{ fontSize: 12, color: '#6b7280' }}>
+                Treeningandmete nõusolek antud ✓
+              </span>
+            )}
+          </div>
+
+          {/* Next student button — shown whenever there's a next result */}
+          {nextResultId && (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
+              style={{
+                width: '100%',
+                background: '#F8F3DA',
+                border: '1.5px solid #DAD0A1',
+                color: '#1C2832',
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '11px',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              Järgmine õpilane →
+              {prefetchResultId && (
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280', marginLeft: 10 }}>
+                  (järgmine analüüsitakse taustal)
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

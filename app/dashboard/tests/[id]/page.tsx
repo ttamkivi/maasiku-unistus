@@ -1,0 +1,381 @@
+import { cookies } from 'next/headers';
+import { redirect, notFound } from 'next/navigation';
+import Link from 'next/link';
+import { db } from '@/lib/db';
+import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
+import TestAdvanceButton from './TestAdvanceButton';
+import BulkAnalyzeButton from './BulkAnalyzeButton';
+
+const TEST_STATUS_LABELS: Record<TestStatus, string> = {
+  PREPARING: 'Ettevalmistamine',
+  READY: 'Valmis',
+  DISTRIBUTED: 'Jagatud',
+  COLLECTING: 'Kogumine',
+  PROCESSING: 'Töötlemisel',
+  COMPLETE: 'Lõpetatud',
+  ARCHIVED: 'Arhiveeritud',
+};
+
+const TEST_STATUS_COLORS: Record<TestStatus, { bg: string; color: string }> = {
+  PREPARING: { bg: '#e5e7eb', color: '#374151' },
+  READY: { bg: '#dbeafe', color: '#1d4ed8' },
+  DISTRIBUTED: { bg: '#fed7aa', color: '#c2410c' },
+  COLLECTING: { bg: '#fef08a', color: '#854d0e' },
+  PROCESSING: { bg: '#e9d5ff', color: '#6d28d9' },
+  COMPLETE: { bg: '#bbf7d0', color: '#15803d' },
+  ARCHIVED: { bg: '#f3f4f6', color: '#9ca3af' },
+};
+
+const RESULT_STATUS_LABELS: Record<ResultStatus, string> = {
+  PENDING: 'Ootel',
+  UPLOADED: 'Laaditud',
+  ANALYZING: 'Analüüsimisel',
+  DRAFT: 'Mustand',
+  REVIEWED: 'Üle vaadatud',
+  EDITED: 'Muudetud',
+  APPROVED: 'Kinnitatud',
+  SHARED: 'Jagatud',
+  ARCHIVED: 'Arhiveeritud',
+};
+
+const RESULT_STATUS_COLORS: Record<ResultStatus, { bg: string; color: string }> = {
+  PENDING: { bg: '#e5e7eb', color: '#374151' },
+  UPLOADED: { bg: '#dbeafe', color: '#1d4ed8' },
+  ANALYZING: { bg: '#e9d5ff', color: '#6d28d9' },
+  DRAFT: { bg: '#fef08a', color: '#854d0e' },
+  REVIEWED: { bg: '#fed7aa', color: '#c2410c' },
+  EDITED: { bg: '#fed7aa', color: '#c2410c' },
+  APPROVED: { bg: '#bbf7d0', color: '#15803d' },
+  SHARED: { bg: '#99f6e4', color: '#0f766e' },
+  ARCHIVED: { bg: '#f3f4f6', color: '#9ca3af' },
+};
+
+const LIFECYCLE_STEPS: TestStatus[] = [
+  'PREPARING',
+  'READY',
+  'DISTRIBUTED',
+  'COLLECTING',
+  'PROCESSING',
+  'COMPLETE',
+];
+
+function formatDate(d: Date | string | null | undefined): string {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('et-EE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export default async function TestDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  const cookieStore = await cookies();
+  const token = cookieStore.get('mu_session')?.value;
+  if (!token) redirect('/auth/login');
+
+  const session = await db.session.findUnique({
+    where: { token },
+    include: { user: { include: { teacherProfile: true } } },
+  });
+
+  if (!session || session.expiresAt < new Date() || !session.user.teacherProfile) {
+    redirect('/auth/login');
+  }
+
+  const teacherProfile = session.user.teacherProfile;
+
+  const test = await db.test.findFirst({
+    where: { id, teacherId: teacherProfile.id, deletedAt: null },
+    include: {
+      subject: true,
+      results: {
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+  });
+
+  if (!test) notFound();
+
+  const currentStatusIndex = LIFECYCLE_STEPS.indexOf(test.status as TestStatus);
+  const canAdvance =
+    test.status !== 'COMPLETE' &&
+    test.status !== 'ARCHIVED' &&
+    LIFECYCLE_STEPS.includes(test.status as TestStatus);
+
+  const nextStatus =
+    currentStatusIndex >= 0 && currentStatusIndex < LIFECYCLE_STEPS.length - 1
+      ? LIFECYCLE_STEPS[currentStatusIndex + 1]
+      : null;
+
+  const statusColor = TEST_STATUS_COLORS[test.status as TestStatus];
+
+  const uploadedCount = test.results.filter(r => r.status === 'UPLOADED').length;
+
+  // Compute score stats for desktop table
+  const scoredResults = test.results.filter(r => r.score != null && r.maxScore != null && r.maxScore > 0);
+  const avgPct = scoredResults.length > 0
+    ? Math.round(scoredResults.reduce((s, r) => s + (r.score! / r.maxScore!) * 100, 0) / scoredResults.length)
+    : null;
+
+  return (
+    <div>
+      {/* Back link */}
+      <div style={{ marginBottom: 16 }}>
+        <Link href="/dashboard/tests" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
+          ← Kõik kontrolltööd
+        </Link>
+      </div>
+
+      {/* Header — full width */}
+      <div style={{ background: '#F8F3DA', padding: '20px 22px', marginBottom: 20, borderBottom: '3px solid #DAD0A1' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', margin: 0 }}>{test.title}</h1>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+              {test.subject && <span style={{ fontSize: 13, color: '#1C2832', opacity: 0.7 }}>{test.subject.name}</span>}
+              {test.grade && <span style={{ fontSize: 13, color: '#1C2832', opacity: 0.7 }}>{test.grade}. klass</span>}
+              {test.plannedDate && <span style={{ fontSize: 13, color: '#1C2832', opacity: 0.7 }}>Planeeritud: {formatDate(test.plannedDate)}</span>}
+            </div>
+          </div>
+          <span style={{ background: statusColor.bg, color: statusColor.color, fontSize: 12, fontWeight: 700, padding: '4px 12px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {TEST_STATUS_LABELS[test.status as TestStatus]}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Desktop two-pane: left sidebar + right main ── */}
+      <div className="lg:grid lg:gap-6 lg:items-start" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+        {/* This inner grid is overridden by the lg: class above */}
+        <style>{`@media (min-width: 1024px) { .test-detail-grid { grid-template-columns: 320px 1fr !important; } }`}</style>
+        <div className="test-detail-grid" style={{ display: 'contents' }}>
+
+        {/* LEFT COLUMN — lifecycle, stats, actions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Lifecycle */}
+          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Elutsükkel
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {LIFECYCLE_STEPS.map((step, i) => {
+                const stepIndex = LIFECYCLE_STEPS.indexOf(test.status as TestStatus);
+                const isDone = i < stepIndex;
+                const isCurrent = i === stepIndex;
+                const isFuture = i > stepIndex;
+                return (
+                  <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                    {i > 0 && (
+                      <div style={{ position: 'absolute', top: 10, left: '-50%', right: '50%', height: 3, background: isDone || isCurrent ? '#1C2832' : '#DAD0A1', zIndex: 0 }} />
+                    )}
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: isCurrent ? '#1C2832' : isDone ? '#DAD0A1' : '#F8F3DA', border: `3px solid ${isCurrent ? '#1C2832' : isDone ? '#1C2832' : '#DAD0A1'}`, zIndex: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {isDone && <span style={{ fontSize: 10, color: '#1C2832', fontWeight: 700 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 9, fontWeight: isCurrent ? 700 : 400, color: isFuture ? '#9ca3af' : '#1C2832', marginTop: 5, textAlign: 'center', lineHeight: 1.2 }}>
+                      {TEST_STATUS_LABELS[step]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Stage dates */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 14 }}>
+              {test.distributedDate && <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6 }}><strong>Jagatud:</strong> {formatDate(test.distributedDate)}</div>}
+              {test.collectedDate && <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6 }}><strong>Kogutud:</strong> {formatDate(test.collectedDate)}</div>}
+              {test.completedDate && <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6 }}><strong>Lõpetatud:</strong> {formatDate(test.completedDate)}</div>}
+            </div>
+
+            {canAdvance && nextStatus && (
+              <div style={{ marginTop: 14, borderTop: '1px solid #DAD0A1', paddingTop: 14 }}>
+                <TestAdvanceButton testId={test.id} nextStatusLabel={TEST_STATUS_LABELS[nextStatus]} />
+              </div>
+            )}
+          </div>
+
+          {/* Stats card — desktop only meaningful when results exist */}
+          {test.results.length > 0 && (
+            <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '16px 20px' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Statistika
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{test.results.length}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Õpilast</div>
+                </div>
+                {avgPct != null && (
+                  <div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: avgPct >= 70 ? '#16a34a' : avgPct >= 50 ? '#f97316' : '#dc2626' }}>{avgPct}%</div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>Keskmine</div>
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#1C2832' }}>
+                    {test.results.filter(r => r.status === 'SHARED').length}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Jagatud</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#f97316' }}>
+                    {test.results.filter(r => r.status === 'DRAFT' || r.status === 'APPROVED').length}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b7280' }}>Ootab</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {test.notes && (
+            <div style={{ background: '#F8F3DA', padding: '14px 16px', borderLeft: '3px solid #DAD0A1' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.6, marginBottom: 4 }}>MÄRKMED</p>
+              <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.6, margin: 0 }}>{test.notes}</p>
+            </div>
+          )}
+
+          {/* Rubric */}
+          {test.rubric && (
+            <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hindamisjuhend</p>
+              <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{test.rubric}</p>
+            </div>
+          )}
+
+          {/* Answer key */}
+          {test.answerKey && (
+            <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Õiged vastused</p>
+              <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{test.answerKey}</p>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN — student results */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', margin: 0 }}>
+              Õpilaste tulemused
+              <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.6, marginLeft: 8 }}>({test.results.length})</span>
+            </h2>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {uploadedCount > 0 && (
+                <BulkAnalyzeButton testId={test.id} uploadedCount={uploadedCount} />
+              )}
+              <Link
+                href={`/dashboard/tests/${test.id}/consent-check`}
+                style={{ background: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #fcd34d' }}
+              >
+                ✓ Nõusolekud
+              </Link>
+              <Link
+                href={`/dashboard/tests/${test.id}/batch-import`}
+                style={{ background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #DAD0A1' }}
+              >
+                PDF import
+              </Link>
+              <Link
+                href={`/dashboard/tests/${test.id}/results/new`}
+                style={{ background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap' }}
+              >
+                + Lisa tulemus
+              </Link>
+            </div>
+          </div>
+
+          {test.results.length === 0 ? (
+            <div style={{ background: '#F8F3DA', border: '2px dashed #DAD0A1', padding: '48px 24px', textAlign: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>Ühtegi tulemust pole veel lisatud</p>
+              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>Pildista õpilase kontrolltöö ja lisa tulemus</p>
+              <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', marginTop: 16, background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+                + Lisa esimene tulemus
+              </Link>
+            </div>
+          ) : (
+            // Desktop: proper table; mobile: card list
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block" style={{ border: '1.5px solid #DAD0A1', borderRadius: 6, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead>
+                    <tr style={{ background: '#F8F3DA', borderBottom: '2px solid #DAD0A1' }}>
+                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Õpilane</th>
+                      <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Punktid</th>
+                      <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>%</th>
+                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Staatus</th>
+                      <th style={{ padding: '10px 14px' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {test.results.map((result, i) => {
+                      const rStatusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
+                      const pct = result.score != null && result.maxScore != null && result.maxScore > 0
+                        ? Math.round((result.score / result.maxScore) * 100) : null;
+                      const pctColor = pct == null ? '#9ca3af' : pct >= 70 ? '#16a34a' : pct >= 50 ? '#f97316' : '#dc2626';
+                      return (
+                        <tr key={result.id} style={{ borderBottom: i < test.results.length - 1 ? '1px solid #F0EDD6' : 'none', background: i % 2 === 0 ? '#fff' : '#FDFAF0' }}>
+                          <td style={{ padding: '11px 14px', color: '#9ca3af', fontSize: 12 }}>{i + 1}</td>
+                          <td style={{ padding: '11px 14px', fontWeight: 600, color: '#1C2832' }}>
+                            {result.studentName || 'Nimetu õpilane'}
+                          </td>
+                          <td style={{ padding: '11px 14px', textAlign: 'center', color: '#1C2832', fontSize: 13 }}>
+                            {result.score != null ? `${result.score}${result.maxScore != null ? ` / ${result.maxScore}` : ''}` : '—'}
+                          </td>
+                          <td style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 700, color: pctColor }}>
+                            {pct != null ? `${pct}%` : '—'}
+                          </td>
+                          <td style={{ padding: '11px 14px' }}>
+                            <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 10, whiteSpace: 'nowrap' }}>
+                              {RESULT_STATUS_LABELS[result.status as ResultStatus]}
+                            </span>
+                          </td>
+                          <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                            <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ fontSize: 12, color: '#1C2832', fontWeight: 600, textDecoration: 'none', opacity: 0.7 }}>
+                              Ava →
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile card list */}
+              <div className="md:hidden" style={{ border: '1.5px solid #DAD0A1', background: '#fff', borderRadius: 6 }}>
+                {test.results.map((result, i) => {
+                  const rStatusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
+                  return (
+                    <Link
+                      key={result.id}
+                      href={`/dashboard/tests/${test.id}/results/${result.id}`}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', textDecoration: 'none', borderBottom: i < test.results.length - 1 ? '1px solid #DAD0A1' : 'none', gap: 12 }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', margin: 0 }}>{result.studentName || 'Nimetu õpilane'}</p>
+                        {(result.score != null || result.maxScore != null) && (
+                          <p style={{ fontSize: 12, color: '#1C2832', opacity: 0.6, marginTop: 2 }}>
+                            {result.score ?? '?'}{result.maxScore != null ? ` / ${result.maxScore} punkti` : ' punkti'}
+                          </p>
+                        )}
+                      </div>
+                      <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        {RESULT_STATUS_LABELS[result.status as ResultStatus]}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        </div>{/* end .test-detail-grid */}
+      </div>
+    </div>
+  );
+}

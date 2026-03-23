@@ -1,0 +1,450 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { db } from '@/lib/db';
+import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
+
+const TEST_STATUS_LABELS: Record<string, string> = {
+  PREPARING: 'Ettevalmistamine',
+  READY: 'Valmis',
+  DISTRIBUTED: 'Jagatud',
+  COLLECTING: 'Kogumine',
+  PROCESSING: 'Töötlemisel',
+  COMPLETE: 'Lõpetatud',
+};
+
+const TEST_STATUS_COLORS: Record<string, string> = {
+  PREPARING: '#6b7280',
+  READY: '#1d4ed8',
+  DISTRIBUTED: '#c2410c',
+  COLLECTING: '#854d0e',
+  PROCESSING: '#6d28d9',
+  COMPLETE: '#15803d',
+};
+
+const RESULT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Ootel',
+  UPLOADED: 'Laaditud',
+  ANALYZING: 'Analüüsimisel',
+  DRAFT: 'Mustand',
+  REVIEWED: 'Üle vaadatud',
+  EDITED: 'Muudetud',
+  APPROVED: 'Kinnitatud',
+  SHARED: 'Jagatud',
+  ARCHIVED: 'Arhiveeritud',
+};
+
+const RESULT_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  DRAFT: { bg: '#fef08a', color: '#854d0e' },
+  REVIEWED: { bg: '#fed7aa', color: '#c2410c' },
+  EDITED: { bg: '#fed7aa', color: '#c2410c' },
+  APPROVED: { bg: '#bbf7d0', color: '#15803d' },
+  SHARED: { bg: '#99f6e4', color: '#0f766e' },
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  CONSENT_REQUESTED: 'Nõusolek saadetud',
+  CONSENT_APPROVED: 'Nõusolek kinnitatud',
+  CONSENT_DECLINED: 'Nõusolek keeldutud',
+  CONSENT_REVOKED: 'Nõusolek tühistatud',
+  DATA_ACCESSED: 'Andmetele ligipääs',
+  LOGIN: 'Sisselogimine',
+  LOGOUT: 'Väljalogimine',
+  RESULT_SHARED: 'Tulemus jagatud',
+  RESULT_APPROVED: 'Tulemus kinnitatud',
+  RESULT_ANALYZED: 'Tulemus analüüsitud',
+  TEST_CREATED: 'Kontrolltöö loodud',
+  TEST_ADVANCED: 'Kontrolltöö edendatud',
+};
+
+function formatAuditAction(action: string): string {
+  return AUDIT_ACTION_LABELS[action] ?? action;
+}
+
+function formatTimestamp(d: Date | string): string {
+  const date = new Date(d);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}.${month}.${year} kell ${hours}:${minutes}`;
+}
+
+function timeAgo(d: Date | string | null | undefined): string {
+  if (!d) return '';
+  const diff = Date.now() - new Date(d).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes} minutit tagasi`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} tundi tagasi`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} päeva tagasi`;
+  const months = Math.floor(days / 30);
+  return `${months} kuud tagasi`;
+}
+
+const PIPELINE_STATUSES: TestStatus[] = [
+  'PREPARING',
+  'READY',
+  'DISTRIBUTED',
+  'COLLECTING',
+  'PROCESSING',
+  'COMPLETE',
+];
+
+export default async function TeacherDashboardPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('mu_session')?.value;
+  if (!token) redirect('/auth/login');
+
+  const session = await db.session.findUnique({
+    where: { token },
+    include: { user: { include: { teacherProfile: true } } },
+  });
+
+  if (!session || session.expiresAt < new Date()) redirect('/auth/login');
+
+  const user = session.user;
+  const isPreview = user.role === 'SUPERADMIN' && !!cookieStore.get('mu_preview_role')?.value;
+
+  if (!user.teacherProfile && !isPreview) redirect('/dashboard');
+
+  const allTests = user.teacherProfile
+    ? await db.test.findMany({
+        where: { teacherId: user.teacherProfile.id, deletedAt: null },
+        include: {
+          subject: true,
+          results: {
+            select: {
+              id: true,
+              status: true,
+              score: true,
+              maxScore: true,
+              analyzedAt: true,
+              approvedAt: true,
+              sharedAt: true,
+              studentName: true,
+              testId: true,
+              student: { select: { user: { select: { name: true } } } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    : [];
+
+  // Top stats
+  const totalTests = allTests.length;
+
+  const allResults = allTests.flatMap((t) => t.results.map((r) => ({ ...r, test: t })));
+  const analyzedStatuses: ResultStatus[] = ['DRAFT', 'REVIEWED', 'EDITED', 'APPROVED', 'SHARED', 'ARCHIVED'];
+  const totalAnalyzed = allResults.filter((r) => analyzedStatuses.includes(r.status as ResultStatus)).length;
+  const pendingReview = allResults.filter((r) =>
+    (r.status as ResultStatus) === 'DRAFT' || (r.status as ResultStatus) === 'REVIEWED'
+  ).length;
+  const sharedCount = allResults.filter((r) => (r.status as ResultStatus) === 'SHARED').length;
+
+  // Pipeline: group tests by status
+  const pipelineGroups: Record<string, typeof allTests> = {};
+  for (const status of PIPELINE_STATUSES) {
+    pipelineGroups[status] = allTests.filter((t) => t.status === status);
+  }
+
+  // Needs attention: DRAFT (AI done) or APPROVED (not yet shared), up to 10
+  const needsAttention = allResults
+    .filter((r) =>
+      (r.status as ResultStatus) === 'DRAFT' || (r.status as ResultStatus) === 'APPROVED'
+    )
+    .sort((a, b) => {
+      const aTime = new Date(a.approvedAt ?? a.analyzedAt ?? 0).getTime();
+      const bTime = new Date(b.approvedAt ?? b.analyzedAt ?? 0).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, 10);
+
+  // Audit logs
+  const auditLogs = await db.auditLog.findMany({
+    where: { userId: user.id },
+    orderBy: { timestamp: 'desc' },
+    take: 15,
+  });
+
+  // Results by subject
+  type SubjectStats = { name: string; count: number; totalScore: number; countWithScore: number };
+  const subjectMap = new Map<string, SubjectStats>();
+  for (const r of allResults) {
+    const subjectName = (r.test as typeof allTests[number]).subject?.name ?? 'Muu';
+    if (!subjectMap.has(subjectName)) {
+      subjectMap.set(subjectName, { name: subjectName, count: 0, totalScore: 0, countWithScore: 0 });
+    }
+    const stats = subjectMap.get(subjectName)!;
+    stats.count++;
+    if (r.score != null && r.maxScore != null && r.maxScore > 0) {
+      stats.totalScore += (r.score / r.maxScore) * 100;
+      stats.countWithScore++;
+    }
+  }
+  const subjectStats = Array.from(subjectMap.values()).sort((a, b) => b.count - a.count);
+
+  const card = {
+    background: '#fff',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.08)' as const,
+    borderRadius: 8,
+    padding: '20px 22px',
+  };
+
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
+      {isPreview && (
+        <div style={{ background: '#7c3aed', color: '#fff', fontSize: 13, fontWeight: 600, padding: '10px 16px', borderRadius: 6, marginBottom: 20 }}>
+          👁 Eelvaade — näed tühja õpetaja vaadet. Pärisandmed pole saadaval, kuna oled SUPERADMIN.
+        </div>
+      )}
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <Link href="/dashboard" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
+          ← Töölaud
+        </Link>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2832', marginTop: 8, marginBottom: 4 }}>
+          Tere, {user.name}!
+        </h1>
+        <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Õpetaja töölaud</p>
+      </div>
+
+      {/* Top stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
+        <div style={{ ...card, borderTop: '3px solid #1C2832' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{totalTests}</div>
+          <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Kontrolltööd</div>
+        </div>
+        <div style={{ ...card, borderTop: '3px solid #DAD0A1' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{totalAnalyzed}</div>
+          <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Analüüsitud</div>
+        </div>
+        <div style={{ ...card, borderTop: '3px solid #f97316' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{pendingReview}</div>
+          <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Ülevaatust ootab</div>
+        </div>
+        <div style={{ ...card, borderTop: '3px solid #22c55e' }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{sharedCount}</div>
+          <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Jagatud</div>
+        </div>
+      </div>
+
+      {/* Pipeline — Tööde seis */}
+      <div style={{ ...card, marginBottom: 28 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 18 }}>Tööde seis</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }} className="md:grid-cols-6">
+          {PIPELINE_STATUSES.map((status) => {
+            const tests = pipelineGroups[status] ?? [];
+            const colColor = TEST_STATUS_COLORS[status] ?? '#6b7280';
+            return (
+              <div key={status} style={{ background: '#F8F3DA', borderRadius: 6, padding: '12px 10px' }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: colColor,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: 6,
+                }}>
+                  {TEST_STATUS_LABELS[status]}
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
+                  {tests.length}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {tests.slice(0, 3).map((t) => (
+                    <Link
+                      key={t.id}
+                      href={`/dashboard/tests/${t.id}`}
+                      style={{
+                        fontSize: 11,
+                        color: '#1C2832',
+                        textDecoration: 'none',
+                        background: '#fff',
+                        padding: '4px 6px',
+                        borderRadius: 3,
+                        border: '1px solid #DAD0A1',
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={t.title}
+                    >
+                      {t.title}
+                    </Link>
+                  ))}
+                  {tests.length > 3 && (
+                    <div style={{ fontSize: 10, color: '#1C2832', opacity: 0.5, marginTop: 2 }}>
+                      + {tests.length - 3} rohkem
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Needs attention */}
+      <div style={{ ...card, marginBottom: 28 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
+          Vajavad tähelepanu
+        </h2>
+        {needsAttention.length === 0 ? (
+          <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.5 }}>
+            Kõik tulemused on korras — midagi ülevaatamist ei oota.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {needsAttention.map((r, i) => {
+              const statusInfo = RESULT_STATUS_COLORS[r.status] ?? { bg: '#e5e7eb', color: '#374151' };
+              const timeRef = r.approvedAt ?? r.analyzedAt;
+              const studentName = r.student?.user?.name ?? r.studentName ?? 'Nimetu õpilane';
+              return (
+                <Link
+                  key={r.id}
+                  href={`/dashboard/tests/${r.test.id}/results/${r.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 14px',
+                    borderBottom: i < needsAttention.length - 1 ? '1px solid #F8F3DA' : 'none',
+                    textDecoration: 'none',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>{studentName}</div>
+                    <div style={{ fontSize: 12, color: '#1C2832', opacity: 0.6, marginTop: 2 }}>
+                      {r.test.title}
+                      {timeRef && ` · ${timeAgo(timeRef)}`}
+                    </div>
+                  </div>
+                  <span style={{
+                    background: statusInfo.bg,
+                    color: statusInfo.color,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 3,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    {RESULT_STATUS_LABELS[r.status] ?? r.status}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
+        <Link href="/dashboard/tests/new" style={{ textDecoration: 'none' }}>
+          <div style={{ background: '#1C2832', color: '#F8F3DA', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>➕</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Uus kontrolltöö</div>
+          </div>
+        </Link>
+        <Link href="/dashboard/assignments/new" style={{ textDecoration: 'none' }}>
+          <div style={{ background: '#F8F3DA', border: '2px solid #DAD0A1', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>📚</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Uus kodutöö</div>
+          </div>
+        </Link>
+        <Link href="/dashboard/tests" style={{ textDecoration: 'none' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>📋</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Kontrolltööd</div>
+          </div>
+        </Link>
+        <Link href="/dashboard/exercises" style={{ textDecoration: 'none' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
+            <div style={{ fontSize: 20, marginBottom: 4 }}>📓</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Harjutused</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Jagatud õpilastelt</div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Two-column lower section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Audit log */}
+        <div style={card}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
+            Viimased tegevused
+          </h2>
+          {auditLogs.length === 0 ? (
+            <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.5 }}>Tegevusi pole veel.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {auditLogs.map((log, i) => (
+                <div
+                  key={log.id}
+                  style={{
+                    padding: '10px 0',
+                    borderBottom: i < auditLogs.length - 1 ? '1px solid #F8F3DA' : 'none',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1C2832' }}>
+                    {formatAuditAction(log.action)}
+                  </div>
+                  {log.targetType && (
+                    <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6, marginTop: 1 }}>
+                      {log.targetType}{log.targetId ? ` #${log.targetId.slice(0, 8)}` : ''}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.45, marginTop: 2 }}>
+                    {formatTimestamp(log.timestamp)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Results by subject */}
+        <div style={card}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
+            Tulemuste jaotus aineti
+          </h2>
+          {subjectStats.length === 0 ? (
+            <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.5 }}>Tulemused puuduvad.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {subjectStats.map((s) => {
+                const avg = s.countWithScore > 0
+                  ? Math.round(s.totalScore / s.countWithScore)
+                  : null;
+                return (
+                  <div key={s.name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C2832' }}>{s.name}</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: '#1C2832', opacity: 0.55 }}>{s.count} tulemust</span>
+                        {avg != null && (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1C2832' }}>{avg}%</span>
+                        )}
+                      </div>
+                    </div>
+                    {avg != null && (
+                      <div style={{ height: 8, borderRadius: 4, background: '#DAD0A1' }}>
+                        <div style={{ height: '100%', width: `${avg}%`, background: '#1C2832', borderRadius: 4 }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

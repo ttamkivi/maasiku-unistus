@@ -1,0 +1,110 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { db } from '@/lib/db';
+import UsersClient from './UsersClient';
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPERADMIN:     'Superadmin',
+  SCHOOL_ADMIN:   'Kooli admin',
+  ADMIN:          'Admin',
+  TEACHER:        'Õpetaja',
+  KLASSIJUHATAJA: 'Klassijuhataja',
+  STUDENT:        'Õpilane',
+  PARENT:         'Lapsevanem',
+};
+
+function formatDate(date: Date): string {
+  const d = new Date(date);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>;
+}) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('mu_session')?.value;
+  if (!token) redirect('/auth/login');
+
+  const session = await db.session.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+
+  if (!session || session.expiresAt < new Date() || !['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'].includes(session.user.role)) {
+    redirect('/auth/login');
+  }
+
+  const { role: roleFilter } = await searchParams;
+
+  const usersRaw = await db.user.findMany({
+    where: roleFilter ? { role: roleFilter as 'SUPERADMIN' | 'SCHOOL_ADMIN' | 'ADMIN' | 'TEACHER' | 'KLASSIJUHATAJA' | 'STUDENT' | 'PARENT' } : undefined,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      studentProfile: {
+        select: {
+          id: true,
+          class: true,
+          grade: true,
+          subjectConsents: {
+            where: { status: 'ACTIVE' },
+            orderBy: { startDate: 'desc' },
+            take: 1,
+            select: {
+              startDate: true,
+              parent: {
+                select: { user: { select: { name: true } } },
+              },
+            },
+          },
+          klassijuhatajRecord: {
+            select: {
+              eligibility: { select: { isEligible: true, updatedAt: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const users = usersRaw.map((u) => {
+    const sp = u.studentProfile;
+    const activeConsent = sp?.subjectConsents[0] ?? null;
+    const eligibility = sp?.klassijuhatajRecord?.eligibility ?? null;
+
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      createdAt: u.createdAt,
+      createdAtStr: formatDate(u.createdAt),
+      roleLabel: ROLE_LABELS[u.role] ?? u.role,
+      // AI consent info (students only)
+      aiConsent: sp ? {
+        hasConsent: !!activeConsent,
+        consentBy: activeConsent?.parent.user.name ?? null,
+        consentAt: activeConsent ? formatDate(activeConsent.startDate) : null,
+        isEligible: eligibility?.isEligible ?? false,
+        eligibleAt: eligibility ? formatDate(eligibility.updatedAt) : null,
+      } : null,
+      studentProfileId: sp?.id ?? null,
+    };
+  });
+
+  return (
+    <UsersClient
+      users={users}
+      callerRole={session.user.role}
+      callerId={session.user.id}
+      roleFilter={roleFilter}
+    />
+  );
+}
