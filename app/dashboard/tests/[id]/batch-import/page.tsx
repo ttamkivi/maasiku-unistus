@@ -12,7 +12,7 @@ interface Assignment {
   include: boolean;
 }
 
-type Phase = 'upload' | 'identifying' | 'review' | 'confirming' | 'done';
+type Phase = 'upload' | 'rendering' | 'identifying' | 'review' | 'confirming' | 'done';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -25,6 +25,36 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+async function renderPdfPages(file: File, onProgress?: (done: number, total: number) => void): Promise<string[]> {
+  // Dynamically import pdfjs-dist to keep it out of the initial bundle
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const pdfDoc = await loadingTask.promise;
+  const numPages = pdfDoc.numPages;
+  const pages: string[] = [];
+
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    // Scale to ~100 DPI for A4 (794px wide) — readable by Claude, compact enough to transfer
+    const viewport = page.getViewport({ scale: 1.0 });
+    const scale = Math.min(1.0, 800 / viewport.width);
+    const scaledViewport = page.getViewport({ scale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+    await page.render({ canvas, viewport: scaledViewport }).promise;
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+    pages.push(dataUrl.split(',')[1]); // strip "data:image/jpeg;base64,"
+    onProgress?.(i, numPages);
+  }
+
+  return pages;
+}
+
 export default function BatchImportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: testId } = use(params);
   const router = useRouter();
@@ -32,6 +62,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   const [phase, setPhase] = useState<Phase>('upload');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,32 +78,54 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
     }
 
     setError(null);
-    setPhase('identifying');
+    setPhase('rendering');
+    setRenderProgress(null);
 
     try {
-      const formData = new FormData();
-      formData.append('pdf', file);
-
-      const res = await fetch(`/api/tests/${testId}/batch-import`, {
-        method: 'POST',
-        body: formData,
+      // Step 1: render PDF pages to JPEG in the browser
+      const pages = await renderPdfPages(file, (done, total) => {
+        setRenderProgress({ done, total });
       });
 
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || 'Töötlemine ebaõnnestus');
+      if (pages.length === 0) {
+        throw new Error('PDF-ist ei saanud ühtegi lehte');
       }
 
-      const result = await res.json() as {
-        pages: Array<{ index: number; imageB64: string; name: string | null }>;
-      };
+      // Step 2: send page images to the server for AI name identification
+      setPhase('identifying');
+
+      const BATCH = 20; // send in batches of 20 to avoid hitting context limits
+      const nameMap = new Map<number, string | null>();
+
+      for (let start = 0; start < pages.length; start += BATCH) {
+        const slice = pages.slice(start, start + BATCH);
+        const res = await fetch(`/api/tests/${testId}/batch-import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'identify', pages: slice }),
+        });
+
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || 'Tuvastamine ebaõnnestus');
+        }
+
+        const result = await res.json() as {
+          pages: Array<{ index: number; name: string | null }>;
+        };
+
+        for (const p of result.pages ?? []) {
+          // Adjust index relative to full array
+          nameMap.set(start + p.index, p.name ?? null);
+        }
+      }
 
       setAssignments(
-        result.pages.map((p) => ({
-          index: p.index,
-          imageB64: p.imageB64,
-          proposedName: p.name,
-          confirmedName: p.name ?? '',
+        pages.map((b64, i) => ({
+          index: i,
+          imageB64: b64,
+          proposedName: nameMap.get(i) ?? null,
+          confirmedName: nameMap.get(i) ?? '',
           include: true,
         }))
       );
@@ -102,7 +155,6 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
           assignments: toCreate.map((a) => ({
             studentName: a.confirmedName.trim(),
             photo: a.imageB64,
-            storageMode: 'local_only',
           })),
         }),
       });
@@ -170,15 +222,32 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      {/* ── Phase: rendering ── */}
+      {phase === 'rendering' && (
+        <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '40px 32px', textAlign: 'center', borderRadius: 6 }}>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🖼️</div>
+          <p style={{ fontSize: 15, color: '#1C2832', fontWeight: 600, marginBottom: 8 }}>
+            Lehti töödeldakse brauseris…
+          </p>
+          {renderProgress ? (
+            <p style={{ fontSize: 13, color: '#6b7280' }}>
+              {renderProgress.done} / {renderProgress.total} lehte
+            </p>
+          ) : (
+            <p style={{ fontSize: 13, color: '#6b7280' }}>Palun oota.</p>
+          )}
+        </div>
+      )}
+
       {/* ── Phase: identifying ── */}
       {phase === 'identifying' && (
         <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '40px 32px', textAlign: 'center', borderRadius: 6 }}>
-          <div style={{ fontSize: 36, marginBottom: 16 }}>⚙️</div>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🔍</div>
           <p style={{ fontSize: 15, color: '#1C2832', fontWeight: 600, marginBottom: 8 }}>
-            Server renderdab lehti ja tuvastab nimesid…
+            AI tuvastab õpilaste nimesid…
           </p>
           <p style={{ fontSize: 13, color: '#6b7280' }}>
-            Suurem PDF võtab ~30–90 sekundit. Palun oota.
+            30 õpilase puhul ~20–40 sekundit. Palun oota.
           </p>
         </div>
       )}
@@ -290,7 +359,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
             </button>
             <button
               type="button"
-              onClick={() => { setPhase('upload'); setAssignments([]); setError(null); }}
+              onClick={() => { setPhase('upload'); setAssignments([]); setError(null); setRenderProgress(null); }}
               style={{ padding: '13px 20px', background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 15, border: '1.5px solid #DAD0A1', cursor: 'pointer', borderRadius: 4 }}
             >
               Alusta uuesti
