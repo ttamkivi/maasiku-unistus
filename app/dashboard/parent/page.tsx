@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { isFeatureEnabled } from '@/lib/features';
+import ConsentManagementCard from './ConsentManagementCard';
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return '—';
@@ -56,6 +57,18 @@ export default async function ParentDashboardPage() {
                   sharedAt: true,
                 },
               },
+              consentGrants: {
+                select: {
+                  id: true,
+                  status: true,
+                  scope: true,
+                  startDate: true,
+                  endDate: true,
+                  revokedAt: true,
+                  subject: { select: { name: true } },
+                },
+                orderBy: { startDate: 'desc' },
+              },
             },
           },
         },
@@ -64,6 +77,13 @@ export default async function ParentDashboardPage() {
   });
 
   const children = parentWithChildren?.children ?? [];
+
+  // Build consent data per child for the ConsentManagementCard
+  const childrenConsents = children.map(({ student }) => ({
+    studentId: student.id,
+    studentName: student.user.name ?? student.id,
+    grants: student.consentGrants,
+  }));
 
   const card = {
     background: '#fff',
@@ -172,6 +192,14 @@ export default async function ParentDashboardPage() {
           })}
         </div>
       )}
+
+      {/* GDPR consent management + data rights */}
+      <div style={{ marginTop: 32 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
+          Nõusolekud ja andmete haldus
+        </h2>
+        <ConsentManagementCard childrenConsents={childrenConsents} />
+      </div>
     </div>
   );
 }

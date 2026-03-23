@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { FeedbackData } from '@/lib/types';
 import { isFeatureEnabled } from '@/lib/features';
+import DataRightsCard from './DataRightsCard';
 
 function scoreColor(pct: number): string {
   if (pct >= 70) return '#16a34a';
@@ -382,7 +383,7 @@ export default async function StudentDashboardPage() {
 
       {/* Recommendations */}
       {allRecommendations.length > 0 && (
-        <div style={card}>
+        <div style={{ ...card, marginBottom: 24 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 14 }}>
             Soovitatavad harjutused
           </h2>
@@ -393,6 +394,9 @@ export default async function StudentDashboardPage() {
           </ul>
         </div>
       )}
+
+      {/* Data rights — GDPR Art 15 & 17 */}
+      {!isPreview && <DataRightsCard />}
     </div>
   );
 }
