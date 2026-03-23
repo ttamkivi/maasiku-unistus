@@ -272,27 +272,32 @@ export default async function TestDetailPage({
               </Link>
               <Link
                 href={`/dashboard/tests/${test.id}/batch-import`}
-                style={{ background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #DAD0A1' }}
+                style={{ background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap' }}
               >
-                PDF import
+                📄 Lae üles skannitud PDF
               </Link>
               <Link
                 href={`/dashboard/tests/${test.id}/results/new`}
-                style={{ background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap' }}
+                style={{ background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #DAD0A1' }}
               >
-                + Lisa tulemus
+                + Lisa üks tulemus
               </Link>
             </div>
           </div>
 
           {test.results.length === 0 ? (
             <div style={{ background: '#F8F3DA', border: '2px dashed #DAD0A1', padding: '48px 24px', textAlign: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
               <p style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>Ühtegi tulemust pole veel lisatud</p>
-              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>Pildista õpilase kontrolltöö ja lisa tulemus</p>
-              <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', marginTop: 16, background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-                + Lisa esimene tulemus
-              </Link>
+              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>Lae üles skannitud PDF kõigi õpilaste töödega</p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                <Link href={`/dashboard/tests/${test.id}/batch-import`} style={{ display: 'inline-block', background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+                  📄 Lae üles skannitud PDF
+                </Link>
+                <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', background: '#fff', color: '#1C2832', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #DAD0A1' }}>
+                  + Lisa üks tulemus käsitsi
+                </Link>
+              </div>
             </div>
           ) : (
             // Desktop: proper table; mobile: card list

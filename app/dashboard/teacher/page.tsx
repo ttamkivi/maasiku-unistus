@@ -194,6 +194,40 @@ export default async function TeacherDashboardPage() {
     padding: '20px 22px',
   };
 
+  // Compute happy-path stage
+  const hasDraft = allResults.some((r) => (r.status as ResultStatus) === 'DRAFT');
+  const hasApproved = allResults.some((r) => (r.status as ResultStatus) === 'APPROVED');
+
+  type HappyStep = { n: number; label: string; cta: string; href: string; active: boolean };
+  const happySteps: HappyStep[] = [
+    {
+      n: 1, label: 'Loo kontrolltöö', cta: 'Loo kontrolltöö',
+      href: '/dashboard/tests/new',
+      active: totalTests === 0,
+    },
+    {
+      n: 2, label: 'Skaneeri tööd', cta: 'Skaneeri',
+      href: totalTests > 0 ? `/dashboard/tests/${allTests[0]?.id}/batch-import` : '/dashboard/tests',
+      active: totalTests > 0 && allResults.length === 0,
+    },
+    {
+      n: 3, label: 'Vaata tagasisidet', cta: 'Vaata mustandeid',
+      href: '/dashboard/tests',
+      active: hasDraft,
+    },
+    {
+      n: 4, label: 'Jaga õpilastega', cta: 'Jaga',
+      href: '/dashboard/tests',
+      active: hasApproved && !hasDraft,
+    },
+  ];
+  const activeStep = happySteps.find((s) => s.active);
+
+  // Recent scannable tests (not COMPLETE / ARCHIVED)
+  const scannableTests = allTests
+    .filter((t) => !(['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status))
+    .slice(0, 5);
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
       {isPreview && (
@@ -202,7 +236,7 @@ export default async function TeacherDashboardPage() {
         </div>
       )}
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         <Link href="/dashboard" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
           ← Töölaud
         </Link>
@@ -210,6 +244,104 @@ export default async function TeacherDashboardPage() {
           Tere, {user.name}!
         </h1>
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Õpetaja töölaud</p>
+      </div>
+
+      {/* Happy path guidance banner */}
+      {activeStep && (
+        <div style={{
+          background: '#1C2832',
+          color: '#F8F3DA',
+          borderRadius: 8,
+          padding: '16px 20px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.6, marginBottom: 4 }}>
+              Järgmine samm
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>
+              {activeStep.n}. {activeStep.label}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {/* step indicators */}
+            {happySteps.map((s) => (
+              <div
+                key={s.n}
+                style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: s.n < activeStep.n ? '#22c55e' : s.n === activeStep.n ? '#F8F3DA' : 'rgba(255,255,255,0.15)',
+                  color: s.n === activeStep.n ? '#1C2832' : s.n < activeStep.n ? '#fff' : 'rgba(255,255,255,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700,
+                }}
+              >
+                {s.n < activeStep.n ? '✓' : s.n}
+              </div>
+            ))}
+            <Link
+              href={activeStep.href}
+              style={{
+                background: '#F8F3DA', color: '#1C2832',
+                fontSize: 13, fontWeight: 700, padding: '8px 16px',
+                textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap',
+              }}
+            >
+              {activeStep.cta} →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Hero: Scan class papers */}
+      <div style={{ ...card, marginBottom: 20, background: '#F8F3DA', border: '2px solid #DAD0A1' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: scannableTests.length > 0 ? 14 : 0, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: 4 }}>
+              Peamine töövoog
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', margin: 0 }}>
+              📄 Skaneeri klassi tööd
+            </h2>
+            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>
+              Lae üles PDF → AI tuvastab nimesid → kontrolli → loo kõik tulemused korraga
+            </p>
+          </div>
+          {totalTests === 0 && (
+            <Link
+              href="/dashboard/tests/new"
+              style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 13, fontWeight: 700, padding: '10px 18px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              Loo kontrolltöö esmalt
+            </Link>
+          )}
+        </div>
+        {scannableTests.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {scannableTests.map((t) => (
+              <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: '1px solid #DAD0A1', borderRadius: 6, padding: '10px 14px', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {t.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                    {TEST_STATUS_LABELS[t.status] ?? t.status} · {t.results.length} tulemust
+                  </div>
+                </div>
+                <Link
+                  href={`/dashboard/tests/${t.id}/batch-import`}
+                  style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  Skaneeri
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Top stats row */}
