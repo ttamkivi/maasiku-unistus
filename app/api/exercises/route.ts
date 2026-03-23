@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { analyzeExercise, reviewFeedback } from '@/lib/exerciseAnalysis';
+import { CreateExerciseSchema, parseBody } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -16,17 +17,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { photos, topic, subjectId, grade, studentNote } = await req.json();
+  const rawBody = await req.json();
+  // Validate using schema — photos array expects string entries (base64Data values extracted for validation)
+  const photoStrings = Array.isArray(rawBody.photos)
+    ? rawBody.photos.map((p: unknown) =>
+        typeof p === 'string' ? p : typeof p === 'object' && p !== null && 'base64Data' in p
+          ? (p as { base64Data: string }).base64Data
+          : ''
+      )
+    : rawBody.photos;
+  const parsed = parseBody(CreateExerciseSchema, { ...rawBody, photos: photoStrings });
+  if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-  if (!topic?.trim()) {
-    return NextResponse.json({ error: 'Teema on kohustuslik' }, { status: 400 });
-  }
-  if (!photos || photos.length === 0) {
-    return NextResponse.json({ error: 'Vähemalt üks foto on kohustuslik' }, { status: 400 });
-  }
-  if (photos.length > 10) {
-    return NextResponse.json({ error: 'Maksimaalselt 10 fotot' }, { status: 400 });
-  }
+  const { topic, subjectId } = parsed.data;
+  const photos = rawBody.photos as { base64Data: string; caption?: string }[];
+  const { grade, studentNote } = rawBody as { grade?: string; studentNote?: string };
 
   const studentId = session.user.studentProfile?.id ?? null;
   const studentName = session.user.name;

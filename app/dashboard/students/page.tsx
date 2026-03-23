@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
@@ -95,11 +96,31 @@ export default async function StudentsPage() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', marginBottom: 4 }}>Minu õpilased</h1>
-        <p style={{ fontSize: 14, color: '#6b7280' }}>
-          {totalStudents} õpilast · {withConsent} AI analüüsi nõusolekuga
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', marginBottom: 4 }}>Minu õpilased</h1>
+          <p style={{ fontSize: 14, color: '#6b7280' }}>
+            {totalStudents} õpilast · {withConsent} AI analüüsi nõusolekuga
+          </p>
+        </div>
+        <Link
+          href="/dashboard/students/import"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '9px 18px',
+            background: '#1C2832',
+            color: '#ffffff',
+            borderRadius: 6,
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          + Impordi CSV-st
+        </Link>
       </div>
 
       {schoolGroups.length === 0 && (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies, headers } from 'next/headers';
 import { db } from '@/lib/db';
+import { UserFeedbackSchema, parseBody } from '@/lib/validation';
 import fs from 'fs';
 import path from 'path';
 
@@ -63,17 +64,12 @@ async function trySendEmail(entry: FeedbackEntry) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { type, message, email, page } = body as {
-      type?: string;
-      message?: string;
-      email?: string;
-      page?: string;
-    };
+    const raw = await request.json();
+    const parsed = parseBody(UserFeedbackSchema, raw);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    if (!message || !message.trim()) {
-      return NextResponse.json({ error: 'Sõnum on kohustuslik' }, { status: 400 });
-    }
+    const { type, message, email } = parsed.data;
+    const page = (raw as { page?: string }).page;
 
     // Get userId from session
     let userId: string | undefined;
@@ -97,9 +93,9 @@ export async function POST(request: NextRequest) {
 
     const entry: FeedbackEntry = {
       id: crypto.randomUUID(),
-      type: type ?? 'other',
-      message: message.trim(),
-      email: email?.trim() || undefined,
+      type,
+      message,
+      email: email || undefined,
       userId,
       page: page ?? undefined,
       referer,

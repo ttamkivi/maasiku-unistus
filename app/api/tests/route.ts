@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { CreateTestSchema, parseBody } from '@/lib/validation';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -49,34 +50,30 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Kehtetu sessioon või puudub õpetaja profiil' }, { status: 401 });
 
     const teacherProfile = session.user.teacherProfile!;
-    const body = await request.json();
+    const raw = await request.json();
+    const parsed = parseBody(CreateTestSchema, raw);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    const { title, topic, grade, subjectId, plannedDate, notes, rubric, answerKey } = body as {
-      title: string;
-      topic?: string;
+    const { title, topic, rubric, answerKey } = parsed.data;
+    // Preserve non-schema fields from raw body
+    const { grade, subjectId, plannedDate, notes } = raw as {
       grade?: string;
       subjectId?: string;
       plannedDate?: string;
       notes?: string;
-      rubric?: string;
-      answerKey?: string;
     };
-
-    if (!title || !title.trim()) {
-      return NextResponse.json({ error: 'Pealkiri on kohustuslik' }, { status: 400 });
-    }
 
     const test = await db.test.create({
       data: {
         teacherId: teacherProfile.id,
-        title: title.trim(),
-        topic: topic?.trim() || null,
+        title,
+        topic: topic ?? null,
         grade: grade || null,
         subjectId: subjectId || null,
         plannedDate: plannedDate ? new Date(plannedDate) : null,
         notes: notes?.trim() || null,
-        rubric: rubric?.trim() || null,
-        answerKey: answerKey?.trim() || null,
+        rubric: rubric ?? null,
+        answerKey: answerKey ?? null,
         status: 'PREPARING',
       },
     });

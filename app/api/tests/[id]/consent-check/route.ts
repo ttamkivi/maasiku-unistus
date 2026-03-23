@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
+import { ConsentCheckActionSchema, parseBody } from '@/lib/validation';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -34,10 +35,11 @@ export async function POST(
     });
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });
 
-    const body = await request.json() as {
-      action: 'merge' | 'delete_without_consent';
-      consentedNames?: string[];
-    };
+    const raw = await request.json();
+    const parsed = parseBody(ConsentCheckActionSchema, raw);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+    const body = parsed.data;
 
     const allResults = await db.testResult.findMany({
       where: { testId: id },

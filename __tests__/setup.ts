@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 // Global test setup — runs before every test file
 // Keep this minimal: only things that truly need to be global
 

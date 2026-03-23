@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { ResetPasswordSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, password } = await request.json();
-    if (!token || !password) {
-      return NextResponse.json({ error: 'Puuduvad andmed' }, { status: 400 });
-    }
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Parool peab olema vähemalt 8 märki' }, { status: 400 });
-    }
+    const raw = await request.json();
+    const parsed = parseBody(ResetPasswordSchema, raw);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+    const { token, password } = parsed.data;
 
     const invite = await db.inviteToken.findUnique({ where: { token } });
     if (!invite || invite.usedAt || invite.expiresAt < new Date()) {

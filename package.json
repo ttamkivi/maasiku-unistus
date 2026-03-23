@@ -17,6 +17,7 @@
     "@libsql/client": "^0.17.2",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@sentry/nextjs": "^10.45.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.11",
     "bcryptjs": "^3.0.3",

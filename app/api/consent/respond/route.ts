@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { ConsentRespondSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, status, reason, parentName, parentEmail: bodyParentEmail } = body as {
-      token: string;
-      status: 'APPROVED' | 'DECLINED';
-      reason?: string;
-      parentName?: string;
-      parentEmail?: string;
-    };
+    const parsed = parseBody(ConsentRespondSchema, body);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
-    if (!token || !status) {
-      return NextResponse.json({ error: 'Token ja status on kohustuslikud' }, { status: 400 });
-    }
-
-    if (status !== 'APPROVED' && status !== 'DECLINED') {
-      return NextResponse.json({ error: 'Vigane status' }, { status: 400 });
-    }
+    const { token } = parsed.data;
+    const status = parsed.data.response === 'approve' ? 'APPROVED' : 'DECLINED' as 'APPROVED' | 'DECLINED';
+    const reason = parsed.data.declineReason ?? (body as { reason?: string }).reason;
+    const parentName = (body as { parentName?: string }).parentName;
+    const bodyParentEmail = (body as { parentEmail?: string }).parentEmail;
 
     const consentRequest = await db.consentRequest.findUnique({
       where: { inviteToken: token },

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { randomBytes } from 'crypto';
+import { ForgotPasswordSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
-    if (!email) return NextResponse.json({ error: 'E-post on kohustuslik' }, { status: 400 });
+    const raw = await request.json();
+    const parsed = parseBody(ForgotPasswordSchema, raw);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+    const { email } = parsed.data;
 
     const user = await db.user.findUnique({ where: { email } });
 

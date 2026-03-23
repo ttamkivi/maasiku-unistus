@@ -34,17 +34,19 @@ describe('hasAIConsent()', () => {
     mockGrantFindFirst.mockResolvedValueOnce(null);
     await hasAIConsent('student-xyz', 'subj-1');
 
-    const where = mockGrantFindFirst.mock.calls[0]![0]!.where;
-    expect(where.studentId).toBe('student-xyz');
-    expect(where.status).toBe('ACTIVE');
+    const call = mockGrantFindFirst.mock.calls[0]?.[0];
+    const where = call?.where as Record<string, unknown> | undefined;
+    expect(where?.studentId).toBe('student-xyz');
+    expect(where?.status).toBe('ACTIVE');
   });
 
   it('includes OR for null subjectId (all-subjects grant)', async () => {
     mockGrantFindFirst.mockResolvedValueOnce(null);
     await hasAIConsent('s-1', 'subj-fizika');
 
-    const where = mockGrantFindFirst.mock.calls[0]![0]!.where;
-    expect(where.OR).toEqual(
+    const call = mockGrantFindFirst.mock.calls[0]?.[0];
+    const where = call?.where as Record<string, unknown> | undefined;
+    expect(where?.OR).toEqual(
       expect.arrayContaining([{ subjectId: null }])
     );
   });
@@ -97,7 +99,8 @@ describe('hasAIConsentByName()', () => {
     mockProfileFindFirst.mockResolvedValueOnce(null);
 
     await hasAIConsentByName('Anyone', null, 'teacher-abc');
-    expect(mockSchoolFindMany.mock.calls[0]![0]!.where.teacherId).toBe('teacher-abc');
+    const schoolCall = mockSchoolFindMany.mock.calls[0]?.[0] as { where: Record<string, unknown> } | undefined;
+    expect(schoolCall?.where.teacherId).toBe('teacher-abc');
   });
 
   it('passes all found schoolIds to student profile lookup', async () => {
@@ -108,7 +111,8 @@ describe('hasAIConsentByName()', () => {
     mockProfileFindFirst.mockResolvedValueOnce(null);
 
     await hasAIConsentByName('Mari', null, 'teacher-1');
-    const where = mockProfileFindFirst.mock.calls[0]![0]!.where;
-    expect(where.schoolId).toEqual({ in: ['sch-1', 'sch-2'] });
+    const profileCall = mockProfileFindFirst.mock.calls[0]?.[0] as { where: Record<string, unknown> } | undefined;
+    const where = profileCall?.where;
+    expect((where as Record<string, unknown> | undefined)?.schoolId).toEqual({ in: ['sch-1', 'sch-2'] });
   });
 });
