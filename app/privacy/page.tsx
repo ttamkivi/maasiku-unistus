@@ -168,12 +168,20 @@ export default function PrivacyPage() {
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, opacity: 0.65 }}>
           Viimati uuendatud: 23.03.2026
         </p>
-        <Link
-          href="/legal"
-          style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
-        >
-          Vaata õiguslikku teavet →
-        </Link>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <Link
+            href="/privacy/parent-letter"
+            style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Lapsevanema teavituskiri →
+          </Link>
+          <Link
+            href="/legal"
+            style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Õiguslik teave →
+          </Link>
+        </div>
       </div>
     </div>
   );

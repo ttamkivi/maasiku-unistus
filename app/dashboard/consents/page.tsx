@@ -115,6 +115,23 @@ export default async function ConsentsPage() {
               Saadetud lapsevanema nõusolekutaotlused ({requests.length})
             </p>
           </div>
+          <Link
+            href="/privacy/parent-letter"
+            target="_blank"
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#1C2832',
+              background: '#F8F3DA',
+              border: '1.5px solid #DAD0A1',
+              padding: '8px 14px',
+              borderRadius: 5,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Lapsevanema teavituskiri (PDF) →
+          </Link>
         </div>
 
         {requests.length === 0 ? (
