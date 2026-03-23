@@ -267,7 +267,7 @@ export default function ConsentTokenPage() {
         <ul style={{ margin: 0, paddingLeft: 18, marginBottom: 10 }}>
           <li>Õigus tutvuda oma lapse isikuandmetega</li>
           <li>Õigus andmete parandamisele</li>
-          <li>Õigus andmete kustutamisele ("õigus olla unustatud")</li>
+          <li>Õigus andmete kustutamisele (&quot;õigus olla unustatud&quot;)</li>
           <li>Õigus nõusolek igal ajal tagasi võtta</li>
           <li>Õigus esitada kaebus Andmekaitse Inspektsioonile</li>
         </ul>

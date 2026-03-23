@@ -62,7 +62,7 @@ export default function PrivacyPage() {
             <><strong>Kasutajakonto andmed:</strong> nimi, e-posti aadress, krüpteeritud parool, kasutajaroll (õpetaja/õpilane/lapsevanem).</>,
             <><strong>Seanssiandmed:</strong> autentimistoken küpsisena, seansi aegumisaeg.</>,
             <><strong>Kontrolltööde fotod:</strong> üleslaaditud pildid (base64 formaadis), mis võivad sisaldada õpilase nime, käekirja ja vastuseid. Fotod salvestatakse meie andmebaasi ning kustutatakse automaatselt pärast seda, kui õpetaja on tulemuse kinnitanud (APPROVED / SHARED staatus).</>,
-            <><strong>AI-genereeritud tagasiside:</strong> kontrolltöö analüüsi tulemused salvestatakse andmebaasi (rawFeedback, editedFeedback väljad) ja kustutatakse automaatselt 13 kuud pärast jagamist. <strong>Tähtis:</strong> enne Anthropic API-le saatmist asendatakse õpilase nimi pseudonüümiga „Õpilane" — pärisnimi ei lahku meie serverist.</>,
+            <><strong>AI-genereeritud tagasiside:</strong> kontrolltöö analüüsi tulemused salvestatakse andmebaasi (rawFeedback, editedFeedback väljad) ja kustutatakse automaatselt 13 kuud pärast jagamist. <strong>Tähtis:</strong> enne Anthropic API-le saatmist asendatakse õpilase nimi pseudonüümiga „Õpilane&quot; — pärisnimi ei lahku meie serverist.</>,
             <><strong>Nõusolekuandmed:</strong> lapsevanema antud AI-analüüsi nõusolekud koos kuupäeva, e-posti aadressi ja IP-aadressiga (audit trail GDPR tõendamiseks).</>,
             <><strong>Audit-logi kirjed:</strong> kasutajate toimingud (sisselogimine, tulemuste kinnitamine, andmete eksport/kustutamine) säilitatakse 90 päeva.</>,
             <><strong>Küpsiste nõusolek:</strong> nõusoleku aeg ja kasutaja ID (kui sisselogitud).</>,
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
           <BulletList items={[
             <><strong>Juurdepääsu õigus (art 15):</strong> saate küsida, milliseid andmeid teie kohta töödeldakse. Sisselogitud kasutajad saavad oma andmed alla laadida otse oma profiililehelt (JSON-formaadis).</>,
             <><strong>Parandamise õigus (art 16):</strong> saate lasta oma andmeid parandada.</>,
-            <><strong>Kustutamise õigus (art 17):</strong> saate nõuda oma andmete kustutamist ("õigus olla unustatud"). Sisselogitud kasutajad saavad konto kustutamise käivitada otse oma profiililehelt.</>,
+            <><strong>Kustutamise õigus (art 17):</strong> saate nõuda oma andmete kustutamist (&quot;õigus olla unustatud&quot;). Sisselogitud kasutajad saavad konto kustutamise käivitada otse oma profiililehelt.</>,
             <><strong>Töötlemise piiramise õigus (art 18):</strong> teatud juhtudel saate töötlemist piirata.</>,
             <><strong>Nõusoleku tagasivõtmine:</strong> lapsevanemad saavad AI-analüüsi nõusoleku igal ajal tühistada oma profiililehel. Nõusoleku tagasivõtmine ei mõjuta enne tühistamist toimunud töötlust.</>,
             <><strong>Andmete ülekandmise õigus (art 20):</strong> saate oma andmed masinloetavas formaadis kätte (JSON allalaadimine profiililehel).</>,

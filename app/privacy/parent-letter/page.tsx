@@ -82,7 +82,7 @@ export default function ParentLetterPage() {
           Õpetaja pildistab või skannib õpilase täidetud kontrolltöö ning laeb selle Maasiku Unistuse süsteemi. Süsteem saadab pildi Anthropic Claude AI-le, mis genereerib üksikasjaliku tagasiside: mis läks hästi, mis vajab harjutamist ja mida soovitame edasi teha.
         </p>
         <p style={{ marginBottom: 16 }}>
-          Enne pildi saatmist <strong>asendatakse õpilase nimi automaatselt pseudonüümiga „Õpilane"</strong> — pärisnimi ei lahku meie serverist. Anthropic ei saa teada, kelle töö see on.
+          Enne pildi saatmist <strong>asendatakse õpilase nimi automaatselt pseudonüümiga „Õpilane&quot;</strong> — pärisnimi ei lahku meie serverist. Anthropic ei saa teada, kelle töö see on.
         </p>
         <p style={{ marginBottom: 16 }}>
           Õpetaja vaatab AI-tagasiside üle, teeb vajadusel muudatusi ning jagab lõpliku tulemuse ainult siis, kui ta sellega nõustub. <strong>Otsuse teeb alati õpetaja, mitte masin.</strong>

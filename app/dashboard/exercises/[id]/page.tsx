@@ -100,7 +100,7 @@ export default async function ExercisePage({
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832' }}>{exercise.topic}</h1>
         {exercise.studentNote && (
           <p style={{ fontSize: 14, color: '#6b7280', marginTop: 6, fontStyle: 'italic' }}>
-            "{exercise.studentNote}"
+            &ldquo;{exercise.studentNote}&rdquo;
           </p>
         )}
       </div>
