@@ -2,8 +2,10 @@ import { z } from 'zod';
 
 // Auth
 export const LoginSchema = z.object({
-  email: z.string().trim().toLowerCase().email('Vigane e-posti aadress').max(254),
-  password: z.string().min(1, 'Parool on kohustuslik').max(128),
+  email: z.string({ required_error: 'E-posti aadress on kohustuslik' })
+    .trim().toLowerCase().email('Vigane e-posti aadress').max(254),
+  password: z.string({ required_error: 'Parool on kohustuslik' })
+    .min(1, 'Parool on kohustuslik').max(128),
 });
 
 export const RegisterSchema = z.object({
