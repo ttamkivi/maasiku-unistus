@@ -60,6 +60,7 @@ export default function TestInfoForm({
   // Load classes + students when school is selected
   useEffect(() => {
     if (!selectedSchoolId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setClasses([]);
       setStudents([]);
       setSelectedClass('');
@@ -81,6 +82,7 @@ export default function TestInfoForm({
   // Load students when class is selected within school
   useEffect(() => {
     if (!selectedSchoolId || !selectedClass) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetch(`/api/analyze/context?schoolId=${selectedSchoolId}&class=${encodeURIComponent(selectedClass)}`)
       .then((r) => r.json())

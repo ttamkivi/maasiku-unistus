@@ -152,6 +152,195 @@ After all changes:
 4. Verify the teacher dashboard only shows test-related navigation
 5. Verify PDF upload works without Ghostscript (client-side rendering)
 
+## Task 7: Seed Realistic Demo Data for Teacher Testing
+
+The current seed only creates schools, subjects, and admin users. A teacher testing the app needs a fully wired demo class. Seed the following in `lib/seed.ts`:
+
+### 7a. Teacher account
+- Email: `demo.opetaja@maasikuunistus.ee`, password: `Opetaja2024!`
+- Role: `TEACHER`, name: `Demo Õpetaja`
+- Create `TeacherProfile`, link to `Demo Kool` via `TeacherSchool`
+- Link to subject `Füüsika` via `TeacherSubject`
+
+### 7b. Academic year & class
+- Create `AcademicYear`: label `2025/2026`, schoolId = Demo Kool, isActive = true, startDate 2025-09-01, endDate 2026-06-15
+- Create `SchoolClass`: name `9.B`, gradeLevel 9, linked to Demo Kool + academic year, homroomTeacherId = the demo teacher
+
+### 7c. 38 students with parents
+Create 38 students with realistic Estonian names. For each student:
+- Create a `User` with role `STUDENT`, email pattern: `eesnimi.perenimi@demo.maasikuunistus.ee`
+- Create `StudentProfile` linked to Demo Kool and class 9.B
+- Create a parent `ParentProfile` (can be unregistered — userId null, just email + name)
+- Create `ParentStudentLink`
+
+Use these 38 names (first + last):
+1. Juhan Mets, 2. Mari Kask, 3. Peeter Tamm, 4. Liis Kuusk, 5. Rasmus Pärn,
+6. Anna Saar, 7. Karl Lepp, 8. Kadri Vaher, 9. Martin Rebane, 10. Laura Ilves,
+11. Siim Põld, 12. Hanna Järv, 13. Oliver Raud, 14. Emma Laur, 15. Markus Sepp,
+16. Sofia Rand, 17. Kristjan Org, 18. Mia Kukk, 19. Robert Lill, 20. Helena Paju,
+21. Andreas Mägi, 22. Grete Kivi, 23. Oskar Teder, 24. Nora Kallas, 25. Henrik Ots,
+26. Liisa Pihl, 27. Mattias Roots, 28. Mirtel Nurm, 29. Daniel Valk, 30. Kertu Aas,
+31. Sander Koppel, 32. Triin Luik, 33. Sten Tomson, 34. Hele Mitt, 35. Joosep Vahter,
+36. Anette Pärg, 37. Taavi Rätsep, 38. Elina Hint
+
+### 7d. Consent grants — 30 with, 8 without
+- Students 1–30 get an ACTIVE consent grant for subject `Füüsika`, scoped to the academic year
+- For each: create a `ConsentRequest` (status APPROVED) and a `ConsentGrant` (status ACTIVE, scope SPECIFIC_SUBJECT, subjectId = Füüsika)
+- Students 31–38 (Sander, Triin, Sten, Hele, Joosep, Anette, Taavi, Elina) have NO consent — no ConsentRequest, no ConsentGrant
+- This lets the teacher see what happens when consent is missing during AI analysis
+
+### 7e. Sample test (optional but helpful)
+- Create one `Test` for the demo teacher, subject Füüsika, class 9.B, title "Mehaanika kontrolltöö", status READY
+- No test results yet — the teacher will upload scanned papers themselves
+
+### Important notes
+- Use `upsert` patterns (find by email or unique field) so the seed is idempotent
+- Generate a unique `inviteToken` for each ConsentRequest (use `crypto.randomUUID()`)
+- Set ConsentRequest.expiresAt to 1 year from now
+- Parent names: use pattern "Ema/Isa [student last name]" (e.g., "Ema Mets" for Juhan Mets)
+- Parent emails: `ema.perenimi@demo.maasikuunistus.ee`
+
+## Task 8: Rebuild the AI Feedback Brain — Science-Based Grading & Assessment
+
+The current AI prompt in `lib/claude.ts` works but lacks grounding in Estonian assessment standards and education science. This task rebuilds the system prompt so every piece of AI feedback follows research-backed best practices.
+
+### Sources embedded in the new prompt
+
+**1. Tallinna Reaalkool hindamisjuhend (TRK grading guide)**
+- The official school grading framework that teachers actually use
+- Stored at: `references/trk-hindamisjuhend.md`
+
+**2. Aus, Arro & Malleus-Kotšegarov (2022) "Teaduspõhine vaade hindamisele"**
+- Three top Estonian educational psychologists (Tallinn University / University of Tartu)
+- Their key research-backed recommendations for how assessment should work
+
+**3. International research consensus** (Guskey 2019, Koenka et al 2021, Hattie & Timperley 2007, Ryan & Deci 2020, Harks et al 2014, Knight & Cooper 2019)
+
+### 8a. Create reference file `references/assessment-science.md`
+
+Create a reference file that the AI system prompt can include (similar to how `lib/curriculum.ts` works). This file encodes the assessment science principles as rules the AI must follow. Contents:
+
+```markdown
+# Teaduspõhised hindamise ja tagasiside põhimõtted
+# (Science-based assessment and feedback principles)
+
+## Source: Aus, Arro & Malleus-Kotšegarov (2022), Guskey (2019), Koenka et al (2021),
+## Hattie & Timperley (2007), Ryan & Deci (2020)
+
+### Three distinct concepts — never confuse them:
+1. HINDAMINE (assessment) = collecting info about where the student is in their learning
+2. TAGASISIDESTAMINE (feedback) = giving the student actionable info to support their growth
+3. HINDE PANEMINE (grading) = assigning a number/letter — this is the SMALLEST part
+
+### The 12 feedback rules:
+
+RULE 1: SEPARATE SCORES FROM FEEDBACK
+- Never display the grade/score inside the detailed feedback text
+- Scores go in `test_info.score` and `tasks[].points_earned` — they are NOT repeated in the narrative
+- Research: students ignore written feedback when a grade is visible (Guskey 2019, Butler 1988)
+
+RULE 2: MASTERY FRAMING, NEVER PERFORMANCE FRAMING
+- Frame everything as "where you are on your learning journey" — NOT ranking or sorting
+- NEVER compare to classmates, class average, or "what good students do"
+- Use: "Sa oled õppimas..." (You are learning...) not "Sa said halvasti..." (You did poorly)
+- Research: mastery framing reduces achievement gaps (Souchal et al 2014)
+
+RULE 3: PROCESS OVER PERSON
+- Give feedback at task-level and process-level, NOT self-level
+- BAD: "Tubli!" (Good job!) or "Sa oled nõrk füüsikas" (You're weak in physics)
+- GOOD: "See lahenduskäik näitab, et Sa mõistad jõu mõistet" (This solution shows you understand the concept of force)
+- Research: self-level feedback harms motivation (Hattie & Timperley 2007)
+
+RULE 4: ANSWER THE THREE QUESTIONS (Hattie & Timperley 2007)
+Every feedback response MUST answer:
+1. KUHU MA LÄHEN? (Where am I going?) — the learning goal
+2. KUIDAS MUL LÄHEB? (How am I going?) — progress evidence from the actual test
+3. MIDA EDASI? (Where to next?) — specific, actionable next steps
+
+RULE 5: INFORMATIONAL, NOT CONTROLLING LANGUAGE
+- Use curious, collaborative Estonian: "Pane tähele, et..." (Notice that...), "Proovi mõelda..." (Try thinking about...)
+- NEVER use: "Sa pead..." (You must), "See on vale" (This is wrong), "Sa ei suutnud..." (You couldn't)
+- Research: controlling language kills intrinsic motivation (Ryan & Deci 2020)
+
+RULE 6: ALWAYS START FROM STRENGTH
+- Even in a test with 20% score, identify what the student DID understand
+- Name the specific competence demonstrated, however small
+- This is not empty praise — it's accurate diagnostic information about what foundations exist
+- Research: strengths-based feedback supports self-efficacy (Koenka et al 2021)
+
+RULE 7: ERRORS ARE LEARNING DATA, NOT FAILURES
+- Treat each mistake as diagnostic info: what misconception does this reveal?
+- Classify errors: conceptual gap (väärarusaam), formula confusion, calculation error, unit error, incomplete reasoning, misread question
+- Frame: "See viga näitab, et..." (This error shows that...) → "Järgmine samm oleks..." (The next step would be...)
+
+RULE 8: CONNECT TO CURRICULUM JOURNEY
+- Place THIS test in the broader learning arc: what was already covered, what builds on this
+- Use the curriculum reference to show that today's struggle is tomorrow's foundation
+- "See teema on aluseks järgmisele peatükile, kus..." (This topic is the foundation for the next chapter, where...)
+
+RULE 9: MAKE IT PERSONALLY ACTIONABLE
+- Every "mida parandada" item must include a CONCRETE next step the student can take TODAY
+- Not: "Õpi valemeid paremini" (Learn formulas better)
+- Yes: "Kirjuta Newtoni II seadus (F=ma) iga ülesande algusesse enne lahendamist" (Write Newton's 2nd law at the start of each problem before solving)
+
+RULE 10: TEACHER NOTES ARE DIAGNOSTIC, NOT EVALUATIVE
+- `markmed_opetajale` should help the teacher understand patterns, misconceptions, and what to focus on
+- Include: which curriculum objectives are met/unmet, suggested differentiation
+- Never include language that labels the student ("weak", "lazy", "talented")
+
+RULE 11: NO COMPARISON, NO RANKING
+- The AI must NEVER generate text comparing this student to others
+- No percentiles, no "most students get this right", no "this is below average"
+- Each student's feedback exists in isolation — about THEIR learning journey only
+
+RULE 12: ACKNOWLEDGE UNCERTAINTY HONESTLY
+- If handwriting is unclear: "[loetamatu]" — don't guess
+- If the AI isn't sure about the student's reasoning: say "Tundub, et..." (It seems that...) not "Sa arvasid valesti" (You thought wrong)
+- Honesty about AI limitations builds trust
+```
+
+### 8b. Create `lib/assessment-rules.ts`
+
+Export the assessment science as a TypeScript constant (like `lib/curriculum.ts` does):
+
+```typescript
+// Auto-generated from references/assessment-science.md
+// Source: Aus, Arro & Malleus-Kotšegarov (2022), Guskey (2019), Koenka et al (2021),
+// Hattie & Timperley (2007), Ryan & Deci (2020)
+export const ASSESSMENT_RULES = `...contents of assessment-science.md...`;
+```
+
+### 8c. Update `lib/claude.ts` system prompt
+
+Rewrite `buildSystemPrompt()` to incorporate the assessment science. Key changes:
+
+1. **Add `ASSESSMENT_RULES` import** and embed in the system prompt after the curriculum reference
+2. **Restructure the JSON output** to align with the three questions:
+   - Rename `mis_laks_hasti` → `tugevused` (strengths) — what the student demonstrably knows
+   - Rename `mida_parandada` → `arengukohad` (development areas) — framed as growth, not deficit
+   - Rename `uldine_muster` → `oppimise_hetkeseeis` (current learning state) — diagnostic, not judgmental
+   - Keep `soovitused` but rename → `jargmised_sammud` (next steps) — must be concrete actions
+   - Keep `pilk_ettepoole` → `oppeteekond` (learning journey) — connect to curriculum arc
+   - Keep `markmed_opetajale` but add explicit guidance about diagnostic focus
+   - Add new field: `opieesmark` — the learning objective this test assessed
+3. **Add Estonian grading scale to the prompt** (from TRK hindamisjuhend):
+   - For grades 5–9 (kümnepallisüsteem): 10=95-100%, 9=90-94%, 8=85-89%, 7=75-84%, 6=70-74%, 5=60-69%, 4=50-59%, 3=40-49%, 2=20-39%, 1=0-19%
+   - For grades 5–9 (viiepalliline): väga hea=5, hea=4, rahuldav=3, puudulik=2, nõrk=1
+   - The AI should detect if a score/percentage is visible and map to the correct scale, but NOT emphasise the grade in the feedback text
+4. **Rewrite the CRITICAL RULES section** to embed the 12 assessment science rules
+5. **Change tone instructions**: replace "Be specific — reference actual questions" with richer guidance about informational, mastery-oriented language
+6. **Keep all existing functionality**: privacy placeholder, tasks array, resources, drawings
+
+### 8d. Update `lib/types.ts` FeedbackData type
+
+Update the TypeScript type to match the new JSON field names. Keep backward compatibility — accept both old and new field names during transition.
+
+### Important implementation notes
+- The system prompt will be longer — this is fine, it fits within claude-sonnet-4-6's context
+- Test with the demo class data from Task 7 before shipping
+- The teacher still reviews and can edit all AI feedback before sharing with students
+- Store `references/assessment-science.md` in git so it can be updated as research evolves
+
 ## Order of Operations
 
 Do these in order, committing after each task:
@@ -160,4 +349,6 @@ Do these in order, committing after each task:
 3. Task 2 (fix PDF pipeline) — production blocker
 4. Task 3 (fuzzy name matching) — depends on Task 2 working
 5. Task 4 (hero workflow) — final polish
-6. Task 6 (verify everything)
+6. Task 7 (seed demo data) — teacher needs this to test
+7. Task 8 (AI feedback brain) — the core value proposition
+8. Task 6 (verify everything)

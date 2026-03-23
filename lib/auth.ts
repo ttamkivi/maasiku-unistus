@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { db } from './db';
-import { Role } from './generated/prisma/client';
+import { Role, User } from './generated/prisma/client';
 
 export const SESSION_COOKIE = 'mu_session';
 export const SESSION_DURATION_DAYS = 30;
@@ -37,7 +37,7 @@ export async function createSession(userId: string): Promise<string> {
 
 export async function getSession(
   token: string
-): Promise<{ userId: string; user: any } | null> {
+): Promise<{ userId: string; user: User } | null> {
   const session = await db.session.findUnique({
     where: { token },
     include: { user: true },
