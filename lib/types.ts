@@ -42,6 +42,8 @@ export interface TaskFeedback {
 
 export interface FeedbackData {
   test_info: TestInfo;
+  // New field: the learning objective this test assessed (added Task 8)
+  opieesmark?: string;
   mis_laks_hasti: FeedbackItem[];
   mida_parandada: FeedbackItem[];
   uldine_muster: string;
