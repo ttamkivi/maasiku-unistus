@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
+import { ConsentRevokeSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,12 +37,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = session;
-    const body = await request.json() as { consentGrantId?: string };
-    const { consentGrantId } = body;
-
-    if (!consentGrantId) {
-      return NextResponse.json({ error: 'consentGrantId on kohustuslik' }, { status: 400 });
+    const raw = await request.json();
+    const parsed = parseBody(ConsentRevokeSchema, raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+    const { consentGrantId } = parsed.data;
 
     // Load the grant with student info
     const grant = await db.consentGrant.findUnique({

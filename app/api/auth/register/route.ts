@@ -2,24 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/generated/prisma/client';
+import { RegisterSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, email: rawEmail, password, role } = body;
-
-    if (!name || !rawEmail || !password) {
-      return NextResponse.json({ error: 'Kõik väljad on kohustuslikud' }, { status: 400 });
+    const raw = await request.json();
+    const parsed = parseBody(RegisterSchema, raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
+    const { name, email, password, role } = parsed.data;
 
-    const email = rawEmail.trim().toLowerCase();
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json({ error: 'See e-posti aadress on juba kasutusel' }, { status: 409 });
     }
 
     const validRoles: Role[] = ['TEACHER', 'STUDENT', 'PARENT', 'SCHOOL_ADMIN'];
-    const userRole: Role = validRoles.includes(role) ? role : 'TEACHER';
+    const userRole: Role = role && validRoles.includes(role) ? role : 'TEACHER';
 
     const hashedPassword = await bcrypt.hash(password, 12);
 

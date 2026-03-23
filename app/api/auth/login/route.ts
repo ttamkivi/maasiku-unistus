@@ -2,28 +2,64 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
+import { LoginSchema, parseBody } from '@/lib/validation';
+
+// Brute-force constants
+const MAX_FAILURES = 10;       // max failed attempts per window
+const WINDOW_MS    = 15 * 60 * 1000; // 15-minute rolling window
+const LOCKOUT_MS   = 15 * 60 * 1000; // lockout duration
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email: rawEmail, password } = body;
+    const raw = await request.json();
+    const parsed = parseBody(LoginSchema, raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { email, password } = parsed.data;
 
-    if (!rawEmail || !password) {
-      return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const windowStart = new Date(Date.now() - WINDOW_MS);
+
+    // Check recent failures for this IP (LibSQL doesn't support string_contains on JSON fields)
+    const recentFailures = await db.auditLog.count({
+      where: {
+        action: 'LOGIN_FAILED',
+        timestamp: { gte: windowStart },
+        ipAddress: ip,
+      },
+    });
+
+    if (recentFailures >= MAX_FAILURES) {
+      await audit('LOGIN_BLOCKED', {
+        details: { email, reason: 'brute_force', recentFailures },
+        ip,
+        userAgent: request.headers.get('user-agent'),
+      });
+      return NextResponse.json(
+        { error: `Liiga palju ebaõnnestunud katseid. Proovi ${Math.ceil(LOCKOUT_MS / 60000)} minuti pärast uuesti.` },
+        { status: 429 }
+      );
     }
 
-    const email = rawEmail.trim().toLowerCase();
     const user = await db.user.findUnique({ where: { email } });
 
     if (!user || !user.password) {
+      // Still audit failure even for unknown email (timing-safe: no early return)
+      await audit('LOGIN_FAILED', {
+        details: { email },
+        ip,
+        userAgent: request.headers.get('user-agent'),
+      });
       return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       await audit('LOGIN_FAILED', {
+        userId: user.id,
         details: { email },
-        ip: request.headers.get('x-forwarded-for'),
+        ip,
         userAgent: request.headers.get('user-agent'),
       });
       return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
@@ -37,7 +73,7 @@ export async function POST(request: NextRequest) {
     await audit('LOGIN', {
       userId: user.id,
       details: { role: user.role },
-      ip: request.headers.get('x-forwarded-for'),
+      ip,
       userAgent: request.headers.get('user-agent'),
     });
 

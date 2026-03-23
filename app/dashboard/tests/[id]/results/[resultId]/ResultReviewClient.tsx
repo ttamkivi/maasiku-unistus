@@ -708,7 +708,7 @@ export default function ResultReviewClient({
           </div>
 
           {/* Next student button — shown whenever there's a next result */}
-          {nextResultId && (
+          {nextResultId ? (
             <button
               type="button"
               onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
@@ -731,6 +731,28 @@ export default function ResultReviewClient({
                 </span>
               )}
             </button>
+          ) : queueTotal > 1 && (
+            <div style={{
+              width: '100%',
+              background: '#F0FDF4',
+              border: '1.5px solid #86EFAC',
+              color: '#15803d',
+              fontWeight: 700,
+              fontSize: 14,
+              padding: '11px',
+              textAlign: 'center',
+              borderRadius: 4,
+            }}>
+              ✓ Kõik {queueTotal} õpilast läbi vaadatud
+              <div style={{ fontWeight: 400, fontSize: 12, color: '#166534', marginTop: 3 }}>
+                <a
+                  href={`/dashboard/tests/${testId}`}
+                  style={{ color: '#166534', textDecoration: 'underline' }}
+                >
+                  Tagasi kontrolltöö lehele →
+                </a>
+              </div>
+            </div>
           )}
         </div>
       </div>

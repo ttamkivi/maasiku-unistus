@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { db } from '@/lib/db';
+import { audit } from '@/lib/audit';
+import { ConsentRequestSchema, parseBody } from '@/lib/validation';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const CONSENT_RATE_LIMIT = 5;           // max emails per IP per window
+const CONSENT_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 async function sendConsentEmail(
   parentEmail: string,
@@ -13,40 +20,33 @@ async function sendConsentEmail(
   const consentUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'}/consent/${token}`;
   const greeting = parentName ? `Lugupeetud ${parentName}` : 'Lugupeetud lapsevanem';
 
-  const htmlBody = `
-<!DOCTYPE html>
+  const htmlBody = `<!DOCTYPE html>
 <html lang="et">
 <head><meta charset="UTF-8"><title>Lapsevanema nõusolek — Maasiku Unistus</title></head>
 <body style="font-family: 'Open Sans', Arial, sans-serif; background: #F8F3DA; padding: 32px;">
   <div style="max-width: 560px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 36px; box-shadow: 0 2px 12px rgba(28,40,50,0.08);">
     <h1 style="font-size: 22px; color: #1C2832; margin-bottom: 8px;">Maasiku Unistus</h1>
     <div style="height: 3px; background: #DAD0A1; margin-bottom: 24px;"></div>
-
     <p style="font-size: 15px; color: #1C2832;">${greeting},</p>
-
     <p style="font-size: 15px; color: #1C2832; line-height: 1.6;">
       Õpetaja <strong>${teacherName}</strong> kasutab Maasiku Unistus platvormi, et anda Teie lapsele
       (<strong>${studentName}</strong>) isikupärastatud tagasisidet kontrolltööde kohta.
     </p>
-
     <p style="font-size: 15px; color: #1C2832; line-height: 1.6;">
       Selleks on vaja Teie nõusolekut, sest süsteem kasutab tehisintellekti Teie lapse
-      töödest tagasiside koostamiseks. Andmeid säilitatakse turvaliselt ja ei jagata
-      kolmandate osapooltega.
+      töödest tagasiside koostamiseks. <strong>Enne analüüsi asendatakse õpilase nimi pseudonüümiga</strong> — pärisnimi ei lahku meie serverist.
     </p>
-
     <div style="background: #F8F3DA; border-radius: 6px; padding: 16px; margin: 20px 0; border: 1.5px solid #DAD0A1;">
       <strong style="font-size: 13px; color: #1C2832;">Teie GDPR-i õigused:</strong>
       <ul style="font-size: 13px; color: #1C2832; margin-top: 8px; padding-left: 18px; line-height: 1.7;">
         <li>Õigus tutvuda oma lapse andmetega</li>
         <li>Õigus andmete kustutamisele</li>
-        <li>Õigus nõusolek igal ajal tagasi võtta</li>
+        <li>Õigus nõusolek igal ajal tagasi võtta (aadressil maasiku-unistus.vercel.app/dashboard/parent)</li>
       </ul>
       <p style="font-size: 12px; color: #1C2832; opacity: 0.7; margin-top: 8px; margin-bottom: 0;">
         Õiguslik alus: GDPR art. 6(1)(a) — nõusolek
       </p>
     </div>
-
     <div style="text-align: center; margin: 28px 0;">
       <a href="${consentUrl}"
          style="background: #1C2832; color: #fff; font-size: 15px; font-weight: 700;
@@ -54,55 +54,25 @@ async function sendConsentEmail(
         Vasta nõusolekutaotlusele →
       </a>
     </div>
-
     <p style="font-size: 12px; color: #1C2832; opacity: 0.6; text-align: center;">
       See link aegub 30 päeva pärast.<br>
-      Kui Teil on küsimusi, võtke ühendust õpetajaga.
+      Küsimuste korral võtke ühendust õpetajaga või kirjutage taavi.tamkivi@gmail.com
     </p>
   </div>
 </body>
 </html>`;
 
-  const textBody = `${greeting},
-
-Õpetaja ${teacherName} kasutab Maasiku Unistus platvormi, et anda Teie lapsele (${studentName}) isikupärastatud tagasisidet kontrolltööde kohta.
-
-Selleks on vaja Teie nõusolekut. Tehisintellekt analüüsib Teie lapse töid ja saadab tagasiside õpetajale. Andmeid säilitatakse turvaliselt.
-
-Teie GDPR-i õigused: juurdepääs andmetele, andmete kustutamine, nõusolek igal ajal tagasi võtta.
-Õiguslik alus: GDPR art. 6(1)(a)
-
-Vasta nõusolekutaotlusele: ${consentUrl}
-
-Link aegub 30 päeva pärast.`;
-
-  const smtpConfigured =
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
-
-  if (!smtpConfigured) {
-    console.log('[Consent email - SMTP not configured, logging to console]');
-    console.log(`To: ${parentEmail}`);
-    console.log(`Subject: Lapsevanema nõusolek — Maasiku Unistus`);
-    console.log(`Consent URL: ${consentUrl}`);
-    console.log(textBody);
+  if (!process.env.RESEND_API_KEY) {
+    // Dev-only fallback — logs to console so dev can verify email content
+    console.log('[Consent email – RESEND_API_KEY not set, logging to console]');
+    console.log(`To: ${parentEmail}\nConsent URL: ${consentUrl}`);
     return;
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: Number(process.env.SMTP_PORT ?? 587) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  await transporter.sendMail({
-    from: `"Maasiku Unistus" <${process.env.SMTP_USER}>`,
+  await resend.emails.send({
+    from: 'Maasiku Unistus <noreply@maasiku-unistus.ee>',
     to: parentEmail,
     subject: 'Lapsevanema nõusolek — Maasiku Unistus',
-    text: textBody,
     html: htmlBody,
   });
 }
@@ -137,19 +107,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Õpetaja profiil puudub' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { studentId, parentEmail, parentName } = body as {
-      studentId: string;
-      parentEmail: string;
-      parentName?: string;
-    };
-
-    if (!studentId || !parentEmail) {
+    // Rate limit: max 5 consent emails per IP per hour
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const windowStart = new Date(Date.now() - CONSENT_RATE_WINDOW_MS);
+    const recentCount = await db.auditLog.count({
+      where: {
+        action: 'CONSENT_REQUESTED',
+        ipAddress: ip,
+        timestamp: { gte: windowStart },
+      },
+    });
+    if (recentCount >= CONSENT_RATE_LIMIT) {
       return NextResponse.json(
-        { error: 'studentId ja parentEmail on kohustuslikud' },
-        { status: 400 }
+        { error: 'Liiga palju nõusolekutaotlusi. Proovi tunni aja pärast uuesti.' },
+        { status: 429 }
       );
     }
+
+    const raw = await request.json();
+    const parsed = parseBody(ConsentRequestSchema, raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const { studentId, parentEmail, parentName } = parsed.data;
 
     const student = await db.studentProfile.findUnique({
       where: { id: studentId },
@@ -175,17 +155,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await db.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: 'CONSENT_REQUESTED',
-        targetType: 'ParentConsentRequest',
-        targetId: consentRequest.id,
-        details: JSON.stringify({ parentEmail, studentId, studentName: student.user.name }),
-        consentRequestId: consentRequest.id,
-        ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
-        userAgent: request.headers.get('user-agent') ?? undefined,
-      },
+    await audit('CONSENT_REQUESTED', {
+      userId: session.user.id,
+      targetType: 'ConsentRequest',
+      targetId: consentRequest.id,
+      details: { parentEmail, studentId, studentName: student.user.name },
+      consentRequestId: consentRequest.id,
+      ip,
+      userAgent: request.headers.get('user-agent'),
     });
 
     await sendConsentEmail(
