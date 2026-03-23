@@ -1,14 +1,23 @@
 'use client';
 
-import { useState, useRef, useCallback, use } from 'react';
+import { useState, useRef, useCallback, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+interface RosterStudent {
+  id: string;
+  name: string;
+}
+
+type Confidence = 'high' | 'medium' | 'low' | 'none';
 
 interface Assignment {
   index: number;
   imageB64: string;
-  proposedName: string | null;
-  confirmedName: string;
+  proposedName: string | null;      // raw name from AI
+  confirmedName: string;            // editable by teacher
+  matchedStudentId: string | null;  // roster student ID (if matched)
+  confidence: Confidence;
   include: boolean;
 }
 
@@ -25,8 +34,100 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+// ── Fuzzy matching ────────────────────────────────────────────────────────────
+
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // strip diacritics
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function fuzzyMatch(
+  rawName: string | null,
+  roster: RosterStudent[]
+): { studentId: string | null; confidence: Confidence } {
+  if (!rawName || roster.length === 0) return { studentId: null, confidence: 'none' };
+
+  const query = normalize(rawName);
+  const queryParts = query.split(/\s+/);
+  const queryFirst = queryParts[0] ?? '';
+  const queryLastInitial = queryParts.length > 1 ? queryParts[queryParts.length - 1][0] : null;
+
+  let bestId: string | null = null;
+  let bestScore = Infinity;
+  let bestConfidence: Confidence = 'none';
+
+  for (const s of roster) {
+    const norm = normalize(s.name);
+
+    // Exact match
+    if (norm === query) {
+      return { studentId: s.id, confidence: 'high' };
+    }
+
+    const parts = norm.split(/\s+/);
+    const first = parts[0] ?? '';
+    const lastInitial = parts.length > 1 ? parts[parts.length - 1][0] : null;
+
+    // First name + last initial match
+    if (queryFirst && first === queryFirst && queryLastInitial && lastInitial === queryLastInitial) {
+      if (bestConfidence !== 'high') {
+        bestId = s.id;
+        bestConfidence = 'high';
+        bestScore = 0;
+      }
+      continue;
+    }
+
+    // First name only match
+    if (queryFirst && first === queryFirst && queryParts.length === 1) {
+      if (bestConfidence === 'none' || bestConfidence === 'low') {
+        bestId = s.id;
+        bestConfidence = 'medium';
+        bestScore = 0;
+      }
+      continue;
+    }
+
+    // Levenshtein distance
+    const dist = levenshtein(query, norm);
+    const maxLen = Math.max(query.length, norm.length);
+    const ratio = dist / maxLen;
+
+    if (ratio < 0.3 && dist < bestScore) {
+      bestScore = dist;
+      bestId = s.id;
+      bestConfidence = ratio < 0.15 ? 'high' : 'medium';
+    } else if (ratio < 0.5 && bestConfidence === 'none' && dist < bestScore) {
+      bestScore = dist;
+      bestId = s.id;
+      bestConfidence = 'low';
+    }
+  }
+
+  return { studentId: bestId, confidence: bestConfidence };
+}
+
+// ── PDF rendering ─────────────────────────────────────────────────────────────
+
 async function renderPdfPages(file: File, onProgress?: (done: number, total: number) => void): Promise<string[]> {
-  // Dynamically import pdfjs-dist to keep it out of the initial bundle
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
@@ -38,7 +139,6 @@ async function renderPdfPages(file: File, onProgress?: (done: number, total: num
 
   for (let i = 1; i <= numPages; i++) {
     const page = await pdfDoc.getPage(i);
-    // Scale to ~100 DPI for A4 (794px wide) — readable by Claude, compact enough to transfer
     const viewport = page.getViewport({ scale: 1.0 });
     const scale = Math.min(1.0, 800 / viewport.width);
     const scaledViewport = page.getViewport({ scale });
@@ -46,14 +146,30 @@ async function renderPdfPages(file: File, onProgress?: (done: number, total: num
     const canvas = document.createElement('canvas');
     canvas.width = scaledViewport.width;
     canvas.height = scaledViewport.height;
+
     await page.render({ canvas, viewport: scaledViewport }).promise;
     const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-    pages.push(dataUrl.split(',')[1]); // strip "data:image/jpeg;base64,"
+    pages.push(dataUrl.split(',')[1]);
     onProgress?.(i, numPages);
   }
 
   return pages;
 }
+
+// ── Confidence badge ──────────────────────────────────────────────────────────
+
+const CONFIDENCE_STYLES: Record<Confidence, React.CSSProperties> = {
+  high:   { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' },
+  medium: { background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' },
+  low:    { background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' },
+  none:   { background: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db' },
+};
+
+const CONFIDENCE_LABELS: Record<Confidence, string> = {
+  high: 'Kindel', medium: 'Umbkaudne', low: 'Kahtlane', none: 'Leidmata',
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function BatchImportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: testId } = use(params);
@@ -61,9 +177,18 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
 
   const [phase, setPhase] = useState<Phase>('upload');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [roster, setRoster] = useState<RosterStudent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load class roster on mount
+  useEffect(() => {
+    fetch(`/api/tests/${testId}/roster`)
+      .then((r) => r.ok ? r.json() : { students: [] })
+      .then((d: { students: RosterStudent[] }) => setRoster(d.students))
+      .catch(() => {});
+  }, [testId]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,19 +207,15 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
     setRenderProgress(null);
 
     try {
-      // Step 1: render PDF pages to JPEG in the browser
       const pages = await renderPdfPages(file, (done, total) => {
         setRenderProgress({ done, total });
       });
 
-      if (pages.length === 0) {
-        throw new Error('PDF-ist ei saanud ühtegi lehte');
-      }
+      if (pages.length === 0) throw new Error('PDF-ist ei saanud ühtegi lehte');
 
-      // Step 2: send page images to the server for AI name identification
       setPhase('identifying');
 
-      const BATCH = 20; // send in batches of 20 to avoid hitting context limits
+      const BATCH = 20;
       const nameMap = new Map<number, string | null>();
 
       for (let start = 0; start < pages.length; start += BATCH) {
@@ -115,26 +236,43 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         };
 
         for (const p of result.pages ?? []) {
-          // Adjust index relative to full array
           nameMap.set(start + p.index, p.name ?? null);
         }
       }
 
+      // Apply fuzzy matching against loaded roster
       setAssignments(
-        pages.map((b64, i) => ({
-          index: i,
-          imageB64: b64,
-          proposedName: nameMap.get(i) ?? null,
-          confirmedName: nameMap.get(i) ?? '',
-          include: true,
-        }))
+        pages.map((b64, i) => {
+          const aiName = nameMap.get(i) ?? null;
+          const { studentId, confidence } = fuzzyMatch(aiName, roster);
+          const matchedStudent = roster.find((s) => s.id === studentId);
+          return {
+            index: i,
+            imageB64: b64,
+            proposedName: aiName,
+            confirmedName: matchedStudent?.name ?? aiName ?? '',
+            matchedStudentId: studentId,
+            confidence,
+            include: true,
+          };
+        })
       );
       setPhase('review');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Viga töötlemisel');
       setPhase('upload');
     }
-  }, [testId]);
+  }, [testId, roster]);
+
+  const handleConfirmAll = () => {
+    setAssignments((prev) =>
+      prev.map((a) =>
+        a.confidence === 'high' && a.matchedStudentId
+          ? { ...a, include: true }
+          : a
+      )
+    );
+  };
 
   const handleConfirm = async () => {
     const toCreate = assignments.filter((a) => a.include && a.confirmedName.trim());
@@ -173,6 +311,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   };
 
   const includedCount = assignments.filter((a) => a.include && a.confirmedName.trim()).length;
+  const highConfidenceCount = assignments.filter((a) => a.confidence === 'high' && a.include).length;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -190,6 +329,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       </h1>
       <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24, marginTop: 0 }}>
         Lae üles skannitud PDF — AI tuvastab iga lehe õpilase nime automaatselt.
+        {roster.length > 0 && ` Klass: ${roster.length} õpilast registris.`}
       </p>
 
       {/* ── Phase: upload ── */}
@@ -255,11 +395,20 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       {/* ── Phase: review ── */}
       {phase === 'review' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <p style={{ fontSize: 14, color: '#1C2832', margin: 0 }}>
               <strong>{assignments.length}</strong> lehte · {includedCount} kaasatakse
             </p>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {highConfidenceCount > 0 && roster.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmAll}
+                  style={{ fontSize: 12, padding: '6px 12px', background: '#dcfce7', border: '1.5px solid #86efac', color: '#15803d', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  ✓ Kinnita kõik kindlad ({highConfidenceCount})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setAssignments((prev) => prev.map((a) => ({ ...a, include: true })))}
@@ -276,6 +425,20 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
               </button>
             </div>
           </div>
+
+          {roster.length > 0 && (
+            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {(['high', 'medium', 'low', 'none'] as Confidence[]).map((c) => {
+                const count = assignments.filter((a) => a.confidence === c).length;
+                if (count === 0) return null;
+                return (
+                  <span key={c} style={{ ...CONFIDENCE_STYLES[c], padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                    {CONFIDENCE_LABELS[c]}: {count}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
             {assignments.map((a) => (
@@ -313,6 +476,16 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                   >
                     {a.include ? '✓' : '×'}
                   </button>
+                  {/* Confidence badge */}
+                  {roster.length > 0 && (
+                    <span style={{
+                      position: 'absolute', bottom: 6, left: 6,
+                      fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 8,
+                      ...CONFIDENCE_STYLES[a.confidence],
+                    }}>
+                      {CONFIDENCE_LABELS[a.confidence]}
+                    </span>
+                  )}
                 </div>
                 <div style={{ padding: '8px 10px' }}>
                   {a.proposedName && (
@@ -320,10 +493,29 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                       AI: {a.proposedName}
                     </p>
                   )}
+                  {roster.length > 0 ? (
+                    <select
+                      value={a.matchedStudentId ?? ''}
+                      onChange={(e) => {
+                        const s = roster.find((r) => r.id === e.target.value);
+                        setAssignments((prev) => prev.map((x) =>
+                          x.index === a.index
+                            ? { ...x, matchedStudentId: s?.id ?? null, confirmedName: s?.name ?? '', confidence: s ? 'high' : 'none' }
+                            : x
+                        ));
+                      }}
+                      style={{ ...inputStyle, marginBottom: 4 }}
+                    >
+                      <option value="">— Vali õpilane —</option>
+                      {roster.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  ) : null}
                   <input
                     type="text"
                     value={a.confirmedName}
-                    onChange={(e) => setAssignments((prev) => prev.map((x) => x.index === a.index ? { ...x, confirmedName: e.target.value } : x))}
+                    onChange={(e) => setAssignments((prev) => prev.map((x) => x.index === a.index ? { ...x, confirmedName: e.target.value, matchedStudentId: null } : x))}
                     placeholder="Õpilase nimi"
                     style={inputStyle}
                   />
