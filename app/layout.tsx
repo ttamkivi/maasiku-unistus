@@ -4,6 +4,7 @@ import Link from 'next/link';
 import NavBar from '@/components/NavBar';
 import CookieConsent from '@/components/CookieConsent';
 import FeedbackWidget from '@/components/FeedbackWidget';
+import { PostHogProvider } from '@/components/PostHogProvider';
 import './globals.css';
 
 const openSans = Open_Sans({ subsets: ['latin'], weight: ['300', '400', '600', '700'] });
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="et">
       <body className={openSans.className} style={{ background: '#fff', color: '#1C2832' }}>
+        <PostHogProvider>
         <NavBar />
         {/* Gold wave divider */}
         <div style={{ height: 3, background: '#DAD0A1' }} />
@@ -51,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </footer>
         <CookieConsent />
         <FeedbackWidget />
+        </PostHogProvider>
       </body>
     </html>
   );

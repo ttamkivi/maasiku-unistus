@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 import { uploadPhotoToBlob } from '@/lib/blob';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -140,6 +141,7 @@ Return ONLY valid JSON in this exact format, no other text:
         })
       );
 
+      captureServerEvent(session.user.id, 'scan_uploaded', { testId: id, count: created.length });
       return NextResponse.json({ created }, { status: 201 });
     }
 

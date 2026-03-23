@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { CreateTestSchema, parseBody } from '@/lib/validation';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    captureServerEvent(session.user.id, 'test_created', { testId: test.id, title });
     return NextResponse.json(test, { status: 201 });
   } catch (error) {
     console.error('POST /api/tests error:', error);

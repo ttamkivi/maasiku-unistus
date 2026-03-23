@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 
 interface RosterStudent {
   id: string;
@@ -516,6 +517,11 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                     type="text"
                     value={a.confirmedName}
                     onChange={(e) => setAssignments((prev) => prev.map((x) => x.index === a.index ? { ...x, confirmedName: e.target.value, matchedStudentId: null } : x))}
+                    onBlur={(e) => {
+                      if (e.target.value !== a.proposedName) {
+                        posthog.capture('student_name_corrected', { pageIndex: a.index });
+                      }
+                    }}
                     placeholder="Õpilase nimi"
                     style={inputStyle}
                   />

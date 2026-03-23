@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { analyzeTest } from '@/lib/claude';
 import { hasAIConsentByName } from '@/lib/consent';
 import { audit } from '@/lib/audit';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -111,6 +112,7 @@ export async function POST(
           targetId: resultId,
           details: { studentId: result.studentId, testId: id },
         });
+        captureServerEvent(session.user.id, 'ai_analysis_blocked_no_consent', { resultId, testId: id, reason: 'studentId' });
         return NextResponse.json({ error: 'AI analüüs pole lubatud — nõusolek puudub' }, { status: 403 });
       }
     } else if (result.studentName) {
@@ -122,11 +124,13 @@ export async function POST(
           targetId: resultId,
           details: { studentName: result.studentName, testId: id },
         });
+        captureServerEvent(session.user.id, 'ai_analysis_blocked_no_consent', { resultId, testId: id, reason: 'name' });
         return NextResponse.json({ error: 'AI analüüs pole lubatud — nõusolek puudub' }, { status: 403 });
       }
       // allowed === null means student not found in system — proceed (teacher has verified)
     }
 
+    captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id });
     const feedback = await analyzeTest(
       test.grade || '9',
       test.topic || test.title,
@@ -145,6 +149,7 @@ export async function POST(
       },
     });
 
+    captureServerEvent(session.user.id, 'ai_analysis_completed', { resultId, testId: id });
     return NextResponse.json({ ok: true, resultId });
   } catch (error) {
     console.error('POST /api/tests/[id]/bulk-analyze error:', error);

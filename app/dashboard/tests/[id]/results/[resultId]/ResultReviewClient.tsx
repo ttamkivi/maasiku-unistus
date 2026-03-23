@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData, FeedbackItem } from '@/lib/types';
+import posthog from 'posthog-js';
 
 type Tab = 'ai' | 'edits' | 'notes';
 
@@ -281,6 +282,12 @@ export default function ResultReviewClient({
 }: Props) {
   const router = useRouter();
   const [analyzing, setAnalyzing] = useState(initialStatus === 'UPLOADED');
+
+  // Track feedback_reviewed on mount
+  useEffect(() => {
+    posthog.capture('feedback_reviewed', { resultId, testId });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-trigger analysis if this result is still UPLOADED when we land here
   useEffect(() => {

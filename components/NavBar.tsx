@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import posthog from 'posthog-js';
 
 interface User {
   id: string;
@@ -112,7 +113,12 @@ export default function NavBar() {
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => { if (!res.ok) return null; return res.json(); })
-      .then((data) => { if (data && data.id) setUser(data); })
+      .then((data) => {
+        if (data && data.id) {
+          setUser(data);
+          posthog.identify(data.id, { email: data.email, role: data.role });
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -130,6 +136,7 @@ export default function NavBar() {
 
   async function handleLogout() {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+    posthog.reset();
     window.location.href = '/';
   }
 

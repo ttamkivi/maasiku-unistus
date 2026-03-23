@@ -46,7 +46,7 @@ export default function CookieConsent() {
       }}
     >
       <p style={{ fontSize: 14, margin: 0, flex: '1 1 300px', lineHeight: 1.5 }}>
-        Kasutame küpsiseid seansi haldamiseks. Rohkem infot meie{' '}
+        Kasutame küpsiseid seansi haldamiseks ning PostHog analüütikat teenuse parandamiseks (andmed EU serverites, ilma isikuandmeteta). Rohkem infot meie{' '}
         <Link
           href="/privacy"
           style={{ color: '#DAD0A1', textDecoration: 'underline' }}

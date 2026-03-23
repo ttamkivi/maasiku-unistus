@@ -341,6 +341,120 @@ Update the TypeScript type to match the new JSON field names. Keep backward comp
 - The teacher still reviews and can edit all AI feedback before sharing with students
 - Store `references/assessment-science.md` in git so it can be updated as research evolves
 
+## Task 9: Add PostHog Product Analytics (Teacher Behaviour Tracking)
+
+We need to understand how the teacher actually uses the app — what they click, where they get stuck, what they ignore. PostHog gives us session recordings, heatmaps, funnels, and custom events.
+
+### 9a. Install PostHog
+
+```bash
+npm install posthog-js
+```
+
+Add to `.env.example` and `.env.local`:
+```
+NEXT_PUBLIC_POSTHOG_KEY=phc_your_key_here
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+```
+
+Use the EU cloud instance (eu.i.posthog.com) for GDPR compliance — data stays in EU.
+
+### 9b. Create PostHog provider
+
+Create `components/PostHogProvider.tsx` — a client component that initialises PostHog:
+
+```typescript
+'use client';
+import posthog from 'posthog-js';
+import { PostHogProvider as PHProvider } from 'posthog-js/react';
+import { useEffect } from 'react';
+
+export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+        capture_pageview: true,         // auto-track page views
+        capture_pageleave: true,        // track when users leave pages
+        autocapture: true,              // auto-track clicks, form submits, page views
+        session_recording: {
+          maskAllInputs: true,          // GDPR: mask form inputs in recordings
+          maskTextSelector: '[data-student-name]', // mask student names
+        },
+        persistence: 'memory',          // no cookies — GDPR friendly
+        person_profiles: 'identified_only',
+      });
+    }
+  }, []);
+
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return <>{children}</>;
+  return <PHProvider client={posthog}>{children}</PHProvider>;
+}
+```
+
+Wrap the root layout (`app/layout.tsx`) with this provider.
+
+### 9c. Identify users on login
+
+In the login success handler (or in a layout that checks auth), call:
+```typescript
+posthog.identify(user.id, {
+  email: user.email,
+  role: user.role,
+  school: user.school?.name,
+});
+```
+
+On logout, call `posthog.reset()`.
+
+### 9d. Track key teacher workflow events
+
+Add `posthog.capture()` calls at these critical moments in the teacher journey:
+
+| Event name | Where | Why we track it |
+|-----------|-------|----------------|
+| `test_created` | POST /api/tests | Did the teacher create a test? |
+| `scan_uploaded` | batch-import route (confirm) | Did they successfully upload scans? |
+| `scan_pages_split` | batch-import client component | Did the PDF split into pages? |
+| `student_names_identified` | batch-import (identify action) | Did AI recognise student names? |
+| `student_name_corrected` | client-side name edit | How often are names wrong? |
+| `ai_analysis_started` | bulk-analyze route | Did they trigger AI feedback? |
+| `ai_analysis_completed` | bulk-analyze success | Did it finish without error? |
+| `ai_analysis_blocked_no_consent` | bulk-analyze consent check | How often does consent block analysis? |
+| `feedback_reviewed` | result detail page load | Did teacher actually read the feedback? |
+| `feedback_approved` | approve route | Did they approve it for sharing? |
+| `feedback_edited` | result edit save | Did they change the AI text? (important signal!) |
+| `feedback_shared` | share route | Did feedback actually reach the student? |
+
+For each event, include relevant properties:
+```typescript
+posthog.capture('feedback_edited', {
+  testId: test.id,
+  resultId: result.id,
+  editedFields: ['mida_parandada', 'soovitused'], // which sections the teacher changed
+});
+```
+
+### 9e. Define the core funnel
+
+In PostHog dashboard (manual setup after deploy), create a funnel:
+```
+login → test_created → scan_uploaded → ai_analysis_completed → feedback_reviewed → feedback_approved → feedback_shared
+```
+
+This shows exactly where teachers drop off.
+
+### 9f. GDPR notes
+- Use EU cloud (eu.i.posthog.com) — data never leaves EU
+- `persistence: 'memory'` means no cookies stored
+- `maskAllInputs: true` in session recordings
+- Student names masked with `data-student-name` attribute selector
+- PostHog is only initialised when the env key is set — disabled by default in dev
+- Add PostHog to the cookie consent notice in `CookieConsent.tsx`
+
+### Important: PostHog is FREE for up to 1M events/month + 5K session recordings
+No credit card needed for the free tier. Just sign up at eu.posthog.com and grab the project API key.
+
 ## Order of Operations
 
 Do these in order, committing after each task:
@@ -351,4 +465,5 @@ Do these in order, committing after each task:
 5. Task 4 (hero workflow) — final polish
 6. Task 7 (seed demo data) — teacher needs this to test
 7. Task 8 (AI feedback brain) — the core value proposition
-8. Task 6 (verify everything)
+8. Task 9 (PostHog analytics) — track teacher behaviour
+9. Task 6 (verify everything)

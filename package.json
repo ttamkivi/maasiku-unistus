@@ -29,6 +29,8 @@
     "next": "16.2.1",
     "nodemailer": "^8.0.3",
     "pdfjs-dist": "^5.5.207",
+    "posthog-js": "^1.363.3",
+    "posthog-node": "^5.28.5",
     "prisma": "^7.5.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

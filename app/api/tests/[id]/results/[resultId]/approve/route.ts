@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
+import { captureServerEvent } from '@/lib/posthog-server';
 
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
@@ -68,6 +69,7 @@ export async function POST(
       userAgent: request.headers.get('user-agent'),
     });
 
+    captureServerEvent(session.user.id, 'feedback_approved', { resultId, testId: id, teacherModifiedAI: wasEdited });
     return NextResponse.json(updated);
   } catch (error) {
     console.error('POST approve error:', error);
