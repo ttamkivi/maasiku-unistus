@@ -37,6 +37,7 @@ const ALL_ROLES = [
 const TEACHER_TABS = [
   { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
   { href: '/dashboard/tests',    icon: '•', label: 'Kontrolltööd' },
+  { href: '/dashboard/classes',  icon: '•', label: 'Klassid' },
   { href: '/dashboard/students', icon: '•', label: 'Minu klass' },
   { href: '/dashboard/consents', icon: '•', label: 'Load' },
   { href: '/dashboard/invites',  icon: '•', label: 'Kutsu' },

@@ -177,6 +177,7 @@ model TeacherProfile {
   accessGrantsReceived TestAccessGrant[] @relation("GrantReceived")
   accessGrantsGiven    TestAccessGrant[] @relation("GrantGiven")
   consentRequestsMade  ConsentRequest[]
+  classAssignments     TeacherClassAssignment[]
 }
 
 model StudentProfile {
@@ -264,10 +265,11 @@ model AcademicYear {
 
   school  School? @relation(fields: [schoolId], references: [id])
 
-  classes       SchoolClass[]
-  tests         Test[]
-  assignments   Assignment[]
-  consentGrants ConsentGrant[]
+  classes          SchoolClass[]
+  classAssignments TeacherClassAssignment[]
+  tests            Test[]
+  assignments      Assignment[]
+  consentGrants    ConsentGrant[]
 }
 
 // SchoolClass is a first-class entity: a named class in a school year.
@@ -311,17 +313,38 @@ model TeacherSubject {
   @@id([teacherId, subjectId])
 }
 
+// Which classes a teacher teaches per subject per year.
+// E.g., "Ms. Tamm teaches Füüsika to 9A, 9B, 10A in 2025/2026"
+model TeacherClassAssignment {
+  id              String  @id @default(cuid())
+  teacherId       String
+  subjectId       String
+  academicYearId  String
+  gradeLevel      Int     // 1-12
+  parallel        String  // "A", "B", "C" etc.
+
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject      Subject        @relation(fields: [subjectId], references: [id])
+  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, subjectId, academicYearId, gradeLevel, parallel])
+}
+
 model Subject {
   id          String @id @default(cuid())
   name        String
   category    String  // loodusained, matemaatika, sotsiaalained, etc.
   gradeLevels String  // display string e.g. "7-9, 10-12"
 
-  teacherSubjects TeacherSubject[]
-  tests           Test[]
-  assignments     Assignment[]
-  exercises       Exercise[]
-  consentGrants   ConsentGrant[]
+  teacherSubjects  TeacherSubject[]
+  classAssignments TeacherClassAssignment[]
+  tests            Test[]
+  assignments      Assignment[]
+  exercises        Exercise[]
+  consentGrants    ConsentGrant[]
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
