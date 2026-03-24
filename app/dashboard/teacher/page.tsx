@@ -235,6 +235,35 @@ export default async function TeacherDashboardPage() {
           👁 Eelvaade — näed tühja õpetaja vaadet. Pärisandmed pole saadaval, kuna oled SUPERADMIN.
         </div>
       )}
+
+      {/* Task 8c: incomplete onboarding banner */}
+      {!user.onboardingCompleted && (
+        <div style={{
+          background: '#fef9c3',
+          border: '1px solid #fde047',
+          borderRadius: 8,
+          padding: '12px 18px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 14, color: '#854d0e', fontWeight: 500 }}>
+            ⚙️ Seadistamine on pooleli.
+          </span>
+          <a href="/dashboard/onboarding" style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#854d0e',
+            textDecoration: 'underline',
+          }}>
+            Lõpeta seadistus →
+          </a>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <Link href="/dashboard" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
@@ -364,7 +393,40 @@ export default async function TeacherDashboardPage() {
         </div>
       </div>
 
+      {/* Task 6a: Empty state when no tests yet */}
+      {totalTests === 0 && (
+        <div style={{ ...card, marginBottom: 28, textAlign: 'center', padding: '36px 28px' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
+            Alusta oma esimese kontrolltööga
+          </h2>
+          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 24, textAlign: 'left', maxWidth: 340, margin: '0 auto 24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                'Loo kontrolltöö',
+                'Pildista või skaneeri õpilaste tööd',
+                'AI koostab tagasiside, Sina vaatad üle',
+              ].map((step, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1C2832', color: '#F8F3DA', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <span>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <a
+            href="/dashboard/tests/new"
+            style={{ display: 'inline-block', background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 14, padding: '12px 24px', textDecoration: 'none', borderRadius: 4 }}
+          >
+            Loo esimene kontrolltöö →
+          </a>
+        </div>
+      )}
+
       {/* Pipeline — Tööde seis */}
+      {totalTests > 0 && (
       <div style={{ ...card, marginBottom: 28 }}>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 18 }}>Tööde seis</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }} className="md:grid-cols-6">
@@ -420,6 +482,7 @@ export default async function TeacherDashboardPage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Needs attention */}
       <div style={{ ...card, marginBottom: 28 }}>
