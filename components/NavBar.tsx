@@ -287,6 +287,19 @@ export default function NavBar() {
                     {isPreviewMode ? ROLE_LABELS[previewRole!] : (ROLE_LABELS[user.role] ?? user.role)}
                   </span>
                 </div>
+                <Link
+                  href="/dashboard/feedback"
+                  style={{
+                    fontSize: 12,
+                    color: '#6b7280',
+                    textDecoration: 'none',
+                    padding: '5px 10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                  }}
+                >
+                  💬 Tagasiside
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -410,6 +423,19 @@ export default function NavBar() {
                     </Link>
                   )}
 
+                  <Link
+                    href="/dashboard/feedback"
+                    style={{
+                      padding: '10px 8px',
+                      color: '#374151',
+                      fontWeight: 500,
+                      textDecoration: 'none',
+                      fontSize: 15,
+                      borderRadius: 6,
+                    }}
+                  >
+                    💬 Tagasiside
+                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
