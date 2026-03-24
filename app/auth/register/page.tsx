@@ -11,11 +11,24 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
 };
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1.5px solid #DAD0A1',
+  borderRadius: 4,
+  fontSize: 14,
+  color: '#1C2832',
+  background: '#F8F3DA',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('TEACHER');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,8 +36,18 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
+    // Client-side password validation
+    if (password.length < 8 || !/\d/.test(password)) {
+      setError('Parool peab olema vähemalt 8 tähemärki pikk ja sisaldama numbrit');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Paroolid ei kattu');
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -39,7 +62,10 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/dashboard');
+      // Auto-login: session cookie is already set by the API.
+      // Redirect teachers to onboarding, everyone else to dashboard.
+      const userRole = data.user?.role ?? role;
+      window.location.href = userRole === 'TEACHER' ? '/dashboard/onboarding' : '/dashboard';
     } catch {
       setError('Võrguühenduse viga. Proovi uuesti.');
     } finally {
@@ -97,17 +123,7 @@ export default function RegisterPage() {
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1.5px solid #DAD0A1',
-                borderRadius: 4,
-                fontSize: 14,
-                color: '#1C2832',
-                background: '#F8F3DA',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle}
             />
           </div>
 
@@ -125,17 +141,7 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1.5px solid #DAD0A1',
-                borderRadius: 4,
-                fontSize: 14,
-                color: '#1C2832',
-                background: '#F8F3DA',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle}
             />
           </div>
 
@@ -153,17 +159,28 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1.5px solid #DAD0A1',
-                borderRadius: 4,
-                fontSize: 14,
-                color: '#1C2832',
-                background: '#F8F3DA',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle}
+            />
+            <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+              Vähemalt 8 tähemärki, sisaldagu vähemalt ühte numbrit
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            <label
+              htmlFor="confirmPassword"
+              style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1C2832', marginBottom: 6 }}
+            >
+              Parool uuesti
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              style={inputStyle}
             />
           </div>
 
@@ -178,18 +195,7 @@ export default function RegisterPage() {
               id="role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1.5px solid #DAD0A1',
-                borderRadius: 4,
-                fontSize: 14,
-                color: '#1C2832',
-                background: '#F8F3DA',
-                outline: 'none',
-                boxSizing: 'border-box',
-                cursor: 'pointer',
-              }}
+              style={{ ...inputStyle, cursor: 'pointer' }}
             >
               {Object.entries(ROLE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
