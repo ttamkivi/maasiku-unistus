@@ -154,20 +154,37 @@ export default async function Home() {
                 Mine töölauale →
               </Link>
             ) : (
-              <Link
-                href="/auth/login"
-                style={{
-                  background: '#F8F3DA',
-                  color: '#1C2832',
-                  fontWeight: 700,
-                  fontSize: 15,
-                  padding: '13px 28px',
-                  textDecoration: 'none',
-                  borderRadius: 6,
-                }}
-              >
-                Logi sisse →
-              </Link>
+              <>
+                <Link
+                  href="/auth/register"
+                  style={{
+                    background: '#F8F3DA',
+                    color: '#1C2832',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    padding: '13px 28px',
+                    textDecoration: 'none',
+                    borderRadius: 6,
+                  }}
+                >
+                  Registreeru →
+                </Link>
+                <Link
+                  href="/auth/login"
+                  style={{
+                    background: 'transparent',
+                    color: '#F8F3DA',
+                    fontWeight: 600,
+                    fontSize: 15,
+                    padding: '13px 28px',
+                    textDecoration: 'none',
+                    borderRadius: 6,
+                    border: '1.5px solid rgba(248,243,218,0.4)',
+                  }}
+                >
+                  Logi sisse
+                </Link>
+              </>
             )}
             <Link
               href="/demo"
@@ -179,7 +196,7 @@ export default async function Home() {
                 padding: '13px 28px',
                 textDecoration: 'none',
                 borderRadius: 6,
-                border: '1.5px solid rgba(248,243,218,0.4)',
+                border: '1.5px solid rgba(248,243,218,0.2)',
               }}
             >
               Vaata näidist
@@ -443,38 +460,57 @@ export default async function Home() {
           Valmis alustama?
         </h2>
         <p style={{ fontSize: 15, color: '#F8F3DA', opacity: 0.75, marginBottom: 28 }}>
-          Logi sisse oma kontoga või küsi koolihaldurit sind registreerima.
+          {isLoggedIn ? 'Jätka oma töölaual.' : 'Loo konto ja alusta minutitega.'}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href={isLoggedIn ? dashHref : '/auth/login'}
-            style={{
-              background: '#F8F3DA',
-              color: '#1C2832',
-              fontWeight: 700,
-              fontSize: 15,
-              padding: '13px 32px',
-              textDecoration: 'none',
-              borderRadius: 6,
-            }}
-          >
-            {isLoggedIn ? 'Mine töölauale →' : 'Logi sisse →'}
-          </Link>
-          <Link
-            href="/demo"
-            style={{
-              background: 'transparent',
-              color: '#F8F3DA',
-              fontWeight: 600,
-              fontSize: 15,
-              padding: '13px 28px',
-              textDecoration: 'none',
-              borderRadius: 6,
-              border: '1.5px solid rgba(248,243,218,0.35)',
-            }}
-          >
-            Vaata näidiseid
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href={dashHref}
+              style={{
+                background: '#F8F3DA',
+                color: '#1C2832',
+                fontWeight: 700,
+                fontSize: 15,
+                padding: '13px 32px',
+                textDecoration: 'none',
+                borderRadius: 6,
+              }}
+            >
+              Mine töölauale →
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/register"
+                style={{
+                  background: '#F8F3DA',
+                  color: '#1C2832',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  padding: '13px 32px',
+                  textDecoration: 'none',
+                  borderRadius: 6,
+                }}
+              >
+                Registreeru →
+              </Link>
+              <Link
+                href="/auth/login"
+                style={{
+                  background: 'transparent',
+                  color: '#F8F3DA',
+                  fontWeight: 600,
+                  fontSize: 15,
+                  padding: '13px 28px',
+                  textDecoration: 'none',
+                  borderRadius: 6,
+                  border: '1.5px solid rgba(248,243,218,0.35)',
+                }}
+              >
+                Logi sisse
+              </Link>
+            </>
+          )}
         </div>
         <p style={{ fontSize: 12, color: '#F8F3DA', opacity: 0.45, marginTop: 20 }}>
           Prototüüp · Loodud Eesti koolide jaoks · <Link href="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privaatsuspoliitika</Link>

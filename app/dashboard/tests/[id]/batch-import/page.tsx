@@ -333,6 +333,24 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         {roster.length > 0 && ` Klass: ${roster.length} õpilast registris.`}
       </p>
 
+      {/* Notice when roster is empty */}
+      {roster.length === 0 && phase === 'upload' && (
+        <div style={{ background: '#fef9c3', border: '1.5px solid #fde047', borderRadius: 6, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+          <div>
+            <p style={{ fontSize: 13, color: '#854d0e', fontWeight: 600, margin: '0 0 4px 0' }}>
+              Klassil pole veel õpilaste nimekirja
+            </p>
+            <p style={{ fontSize: 12, color: '#854d0e', margin: 0 }}>
+              Nimede automaatne sobitamine ei tööta ilma nimekirjata. Sa saad siiski PDF-i üles laadida ja nimesid käsitsi sisestada.{' '}
+              <Link href="/dashboard/students" style={{ color: '#854d0e', fontWeight: 700, textDecoration: 'underline' }}>
+                Lisa õpilased →
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Phase: upload ── */}
       {phase === 'upload' && (
         <div
@@ -533,6 +551,21 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
           {error && (
             <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '10px 14px', fontSize: 13, color: '#b91c1c', marginBottom: 16 }}>
               {error}
+            </div>
+          )}
+
+          {/* Confirmation summary */}
+          {includedCount > 0 && (
+            <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: 6, padding: '14px 18px', marginBottom: 16 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#166534', margin: '0 0 6px 0' }}>
+                Kokkuvõte enne kinnitamist:
+              </p>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#15803d' }}>
+                <span>Kindlad: <strong>{assignments.filter((a) => a.include && a.confidence === 'high').length}</strong></span>
+                <span>Kahtlased: <strong>{assignments.filter((a) => a.include && (a.confidence === 'medium' || a.confidence === 'low')).length}</strong></span>
+                <span>Leidmata: <strong>{assignments.filter((a) => a.include && a.confidence === 'none').length}</strong></span>
+                <span>Välja jäetud: <strong>{assignments.filter((a) => !a.include).length}</strong></span>
+              </div>
             </div>
           )}
 

@@ -10,6 +10,41 @@ const nextConfig: NextConfig = {
     'prisma',
     '@anthropic-ai/sdk',
   ],
+  headers: async () => [
+    {
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'X-Frame-Options',
+          value: 'DENY',
+        },
+        {
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'Referrer-Policy',
+          value: 'strict-origin-when-cross-origin',
+        },
+        {
+          key: 'Permissions-Policy',
+          value: 'camera=(self), microphone=(), geolocation=()',
+        },
+        {
+          key: 'Content-Security-Policy',
+          value: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://eu.i.posthog.com",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:",
+            "font-src 'self'",
+            "connect-src 'self' https://eu.i.posthog.com https://*.sentry.io",
+            "frame-ancestors 'none'",
+          ].join('; '),
+        },
+      ],
+    },
+  ],
 };
 
 export default withSentryConfig(nextConfig, {

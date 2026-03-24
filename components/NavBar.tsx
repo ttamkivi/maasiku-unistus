@@ -37,8 +37,8 @@ const ALL_ROLES = [
 const TEACHER_TABS = [
   { href: '/dashboard/teacher',  icon: '📊', label: 'Ülevaade' },
   { href: '/dashboard/tests',    icon: '📝', label: 'Kontrolltööd' },
-  { href: '/dashboard/students', icon: '👥', label: 'Õpilased' },
-  { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
+  { href: '/dashboard/students', icon: '👥', label: 'Minu klass' },
+  { href: '/dashboard/consents', icon: '✅', label: 'Lapsevanema load' },
   { href: '/dashboard',          icon: '👤', label: 'Profiil' },
 ];
 
@@ -309,9 +309,15 @@ export default function NavBar() {
                 </Link>
                 <Link
                   href="/auth/login"
-                  style={{ background: '#1C2832', color: '#fff', fontSize: 14, fontWeight: 700, padding: '8px 18px', textDecoration: 'none', borderRadius: 4 }}
+                  style={{ color: '#1C2832', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
                 >
                   Logi sisse
+                </Link>
+                <Link
+                  href="/auth/register"
+                  style={{ background: '#1C2832', color: '#fff', fontSize: 14, fontWeight: 700, padding: '8px 18px', textDecoration: 'none', borderRadius: 4 }}
+                >
+                  Registreeru
                 </Link>
               </>
             )}
@@ -424,12 +430,15 @@ export default function NavBar() {
                 <Link href="/demo" style={{ color: '#374151', fontSize: 15, fontWeight: 500, textDecoration: 'none', padding: '8px 0' }}>
                   Näidised
                 </Link>
-                <Link href="/auth/login" style={{
+                <Link href="/auth/login" style={{ color: '#374151', fontSize: 15, fontWeight: 500, textDecoration: 'none', padding: '8px 0' }}>
+                  Logi sisse
+                </Link>
+                <Link href="/auth/register" style={{
                   background: '#1C2832', color: '#fff', fontSize: 15,
                   fontWeight: 700, padding: '12px', textDecoration: 'none',
                   borderRadius: 6, textAlign: 'center', display: 'block',
                 }}>
-                  Logi sisse
+                  Registreeru
                 </Link>
               </div>
             )}

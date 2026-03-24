@@ -33,11 +33,14 @@ export async function GET(request: NextRequest) {
     let studentProfileId: string | null = null;
 
     if (targetStudentId) {
-      if (!user.adminProfile) {
+      // Only users with admin role may export other students' data
+      const adminRoles = ['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'];
+      if (!adminRoles.includes(user.role)) {
         return NextResponse.json({ error: 'Ligipääs keelatud' }, { status: 403 });
       }
       studentProfileId = targetStudentId;
     } else {
+      // Non-admin users can only export their own student profile data
       studentProfileId = user.studentProfile?.id ?? null;
     }
 

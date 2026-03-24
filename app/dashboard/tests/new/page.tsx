@@ -43,6 +43,7 @@ export default function NewTestPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     fetch('/api/subjects')
@@ -170,43 +171,70 @@ export default function NewTestPage() {
           />
         </div>
 
+        {/* Collapsible advanced section */}
         <div>
-          <label style={labelStyle}>Õpetaja märkmed (blanki kohta)</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            placeholder="Märkused kontrolltöö blanki, korralduse jms kohta..."
-            style={{ ...inputStyle, resize: 'vertical' }}
-          />
-        </div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#6b7280',
+              padding: '8px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span style={{ transform: showAdvanced ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>▶</span>
+            Täpsemad seaded (hindamisjuhend, vastused, märkmed)
+          </button>
 
-        <div>
-          <label style={labelStyle}>
-            Hindamisjuhend / rubriik{' '}
-            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(AI kontekst)</span>
-          </label>
-          <textarea
-            value={rubric}
-            onChange={(e) => setRubric(e.target.value)}
-            rows={4}
-            placeholder="nt. Ülesanne 1 (4p): valem 1p, asendus 1p, arvutus 1p, ühik 1p..."
-            style={{ ...inputStyle, resize: 'vertical' }}
-          />
-        </div>
+          {showAdvanced && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 8, paddingLeft: 4, borderLeft: '2px solid #DAD0A1' }}>
+              <div style={{ paddingLeft: 12 }}>
+                <label style={labelStyle}>Õpetaja märkmed (blanki kohta)</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Märkused kontrolltöö blanki, korralduse jms kohta..."
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
 
-        <div>
-          <label style={labelStyle}>
-            Õiged vastused{' '}
-            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(AI kontekst)</span>
-          </label>
-          <textarea
-            value={answerKey}
-            onChange={(e) => setAnswerKey(e.target.value)}
-            rows={4}
-            placeholder="nt. 1a) v = 5 m/s; 1b) a = 2 m/s²; 2) F = 12 N..."
-            style={{ ...inputStyle, resize: 'vertical' }}
-          />
+              <div style={{ paddingLeft: 12 }}>
+                <label style={labelStyle}>
+                  Hindamisjuhend / rubriik{' '}
+                  <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(aitab AI-l täpsemalt hinnata)</span>
+                </label>
+                <textarea
+                  value={rubric}
+                  onChange={(e) => setRubric(e.target.value)}
+                  rows={4}
+                  placeholder="nt. Ülesanne 1 (4p): valem 1p, asendus 1p, arvutus 1p, ühik 1p..."
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ paddingLeft: 12 }}>
+                <label style={labelStyle}>
+                  Õiged vastused{' '}
+                  <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(aitab AI-l vigu tuvastada)</span>
+                </label>
+                <textarea
+                  value={answerKey}
+                  onChange={(e) => setAnswerKey(e.target.value)}
+                  rows={4}
+                  placeholder="nt. 1a) v = 5 m/s; 1b) a = 2 m/s²; 2) F = 12 N..."
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (

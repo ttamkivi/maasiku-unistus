@@ -44,20 +44,15 @@ export async function POST(request: NextRequest) {
 
     const user = await db.user.findUnique({ where: { email } });
 
-    if (!user || !user.password) {
-      // Still audit failure even for unknown email (timing-safe: no early return)
-      await audit('LOGIN_FAILED', {
-        details: { email },
-        ip,
-        userAgent: request.headers.get('user-agent'),
-      });
-      return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
-    }
+    // Dummy hash for constant-time comparison when user doesn't exist.
+    // This prevents timing attacks that could reveal valid email addresses.
+    const DUMMY_HASH = '$2a$12$0000000000000000000000000000000000000000000000000000';
+    const hashToCompare = (user && user.password) ? user.password : DUMMY_HASH;
+    const passwordMatch = await bcrypt.compare(password, hashToCompare);
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
+    if (!user || !user.password || !passwordMatch) {
       await audit('LOGIN_FAILED', {
-        userId: user.id,
+        userId: user?.id,
         details: { email },
         ip,
         userAgent: request.headers.get('user-agent'),

@@ -141,7 +141,7 @@ export async function analyzeTest(
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 8000,
+    max_tokens: 16000,
     // Anthropic API does not use API data for model training by default.
     // We additionally pass metadata with no PII for our own audit purposes.
     metadata: { user_id: 'pseudonymised' },
