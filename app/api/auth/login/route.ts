@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
+import { createSession, SESSION_DURATION_DAYS } from '@/lib/auth';
 import { LoginSchema, parseBody } from '@/lib/validation';
 
 // Brute-force constants
@@ -60,10 +61,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Vale e-post või parool' }, { status: 401 });
     }
 
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-    await db.session.create({ data: { userId: user.id, token, expiresAt } });
+    const token = await createSession(user.id);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS);
 
     await audit('LOGIN', {
       userId: user.id,

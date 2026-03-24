@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/generated/prisma/client';
+import { hashPassword, createSession, SESSION_DURATION_DAYS } from '@/lib/auth';
 import { RegisterSchema, parseBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const validRoles: Role[] = ['TEACHER', 'STUDENT', 'PARENT', 'SCHOOL_ADMIN'];
     const userRole: Role = role && validRoles.includes(role) ? role : 'TEACHER';
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await hashPassword(password);
 
     const user = await db.user.create({
       data: { name, email, password: hashedPassword, role: userRole },
@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
       await db.adminProfile.create({ data: { userId: user.id } });
     }
 
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await db.session.create({ data: { userId: user.id, token, expiresAt } });
+    const token = await createSession(user.id);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS);
 
     const response = NextResponse.json({
       ok: true,
