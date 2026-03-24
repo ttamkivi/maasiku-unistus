@@ -53,6 +53,8 @@ export default function InvitesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [invites, setInvites] = useState<Invite[]>([]);
 
   useEffect(() => {
@@ -71,6 +73,8 @@ export default function InvitesPage() {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setInviteLink(null);
+    setCopied(false);
     try {
       const res = await fetch('/api/invites', {
         method: 'POST',
@@ -79,7 +83,12 @@ export default function InvitesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Viga kutse saatmisel');
-      setSuccess(`Kutse saadetud aadressile ${email.trim()}!`);
+      if (data.emailSent) {
+        setSuccess(`Kutse saadetud aadressile ${email.trim()}!`);
+      } else {
+        setSuccess(`Kutse loodud! E-kirja ei õnnestunud saata — jaga allolevat linki ise:`);
+        setInviteLink(data.inviteUrl);
+      }
       setName('');
       setEmail('');
       // Refresh invites list
@@ -146,6 +155,45 @@ export default function InvitesPage() {
           {success && (
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 14px', fontSize: 13, color: '#15803d', marginBottom: 16 }}>
               {success}
+              {inviteLink && (
+                <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={inviteLink}
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      fontSize: 12,
+                      border: '1px solid #bbf7d0',
+                      background: '#fff',
+                      color: '#1C2832',
+                      outline: 'none',
+                    }}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(inviteLink);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    style={{
+                      background: '#1C2832',
+                      color: '#F8F3DA',
+                      border: 'none',
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {copied ? 'Kopeeritud!' : 'Kopeeri'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

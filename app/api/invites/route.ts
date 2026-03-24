@@ -102,12 +102,15 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://fyysika-tagasiside.vercel.app';
     const inviterName = user.name || 'Kolleeg';
+    const inviteUrl = `${baseUrl}/auth/register?invite=${token}&email=${encodeURIComponent(email)}`;
 
-    await resend.emails.send({
-      from: 'Õpetaja Tagasiside <onboarding@resend.dev>',
-      to: email,
-      subject: `${inviterName} kutsub sind Õpetaja Tagasisidet proovima`,
-      html: `<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+    let emailSent = false;
+    try {
+      await resend.emails.send({
+        from: 'Õpetaja Tagasiside <onboarding@resend.dev>',
+        to: email,
+        subject: `${inviterName} kutsub sind Õpetaja Tagasisidet proovima`,
+        html: `<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
   <h2 style="color: #1C2832; font-size: 20px;">Tere, ${name}!</h2>
   <p style="color: #374151; font-size: 15px; line-height: 1.6;">
     ${inviterName} kutsub sind proovima <strong>Õpetaja Tagasisidet</strong> — AI-põhist tagasiside platvormi,
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
   <p style="color: #374151; font-size: 15px; line-height: 1.6;">
     Registreeru ja proovi tasuta:
   </p>
-  <a href="${baseUrl}/auth/register?invite=${token}&email=${encodeURIComponent(email)}"
+  <a href="${inviteUrl}"
      style="display: inline-block; background: #1C2832; color: #F8F3DA; padding: 12px 24px;
             text-decoration: none; font-weight: 700; font-size: 15px; margin: 16px 0;">
     Loo konto →
@@ -125,10 +128,16 @@ export async function POST(request: NextRequest) {
     See kutse kehtib 7 päeva. Kui sa ei soovi liituda, ignoreeri seda kirja.
   </p>
 </div>`,
-    });
+      });
+      emailSent = true;
+    } catch (emailError) {
+      console.error('Email sending failed (invite still saved):', emailError);
+    }
 
     return NextResponse.json({
       success: true,
+      emailSent,
+      inviteUrl,
       invite: {
         id: invite.id,
         email: invite.email,
