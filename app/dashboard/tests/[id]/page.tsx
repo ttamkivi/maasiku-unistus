@@ -121,11 +121,11 @@ export default async function TestDetailPage({
 
   return (
     <div>
-      {/* Back link */}
-      <div style={{ marginBottom: 16 }}>
-        <Link href="/dashboard/tests" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
-          ← Kõik kontrolltööd
-        </Link>
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
+        <Link href="/dashboard/tests" style={{ color: '#6b7280', textDecoration: 'underline' }}>Kontrolltööd</Link>
+        <span style={{ color: '#d1d5db' }}>&gt;</span>
+        <span style={{ color: '#1C2832' }}>{test.title}</span>
       </div>
 
       {/* Header — full width */}

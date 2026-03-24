@@ -163,14 +163,13 @@ export default async function ResultReviewPage({
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 100 }}>
-      {/* Back link */}
-      <div style={{ marginBottom: 16 }}>
-        <Link
-          href={`/dashboard/tests/${id}`}
-          style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}
-        >
-          ← Tagasi kontrolltöö juurde
-        </Link>
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
+        <Link href="/dashboard/tests" style={{ color: '#6b7280', textDecoration: 'underline' }}>Kontrolltööd</Link>
+        <span style={{ color: '#d1d5db' }}>&gt;</span>
+        <Link href={`/dashboard/tests/${id}`} style={{ color: '#6b7280', textDecoration: 'underline' }}>{result.test.title}</Link>
+        <span style={{ color: '#d1d5db' }}>&gt;</span>
+        <span style={{ color: '#1C2832' }}>{result.studentName || 'Nimetu õpilane'}</span>
       </div>
 
       {/* Header */}

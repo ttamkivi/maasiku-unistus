@@ -179,15 +179,20 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   const [phase, setPhase] = useState<Phase>('upload');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [roster, setRoster] = useState<RosterStudent[]>([]);
+  const [testTitle, setTestTitle] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load class roster on mount
+  // Load class roster and test title on mount
   useEffect(() => {
     fetch(`/api/tests/${testId}/roster`)
       .then((r) => r.ok ? r.json() : { students: [] })
       .then((d: { students: RosterStudent[] }) => setRoster(d.students))
+      .catch(() => {});
+    fetch(`/api/tests/${testId}`)
+      .then((r) => r.ok ? r.json() : {})
+      .then((d: { title?: string }) => { if (d.title) setTestTitle(d.title); })
       .catch(() => {});
   }, [testId]);
 
@@ -316,13 +321,13 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div style={{ marginBottom: 20 }}>
-        <Link
-          href={`/dashboard/tests/${testId}`}
-          style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}
-        >
-          ← Tagasi kontrolltöö juurde
-        </Link>
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280' }}>
+        <Link href="/dashboard/tests" style={{ color: '#6b7280', textDecoration: 'underline' }}>Kontrolltööd</Link>
+        <span style={{ color: '#d1d5db' }}>&gt;</span>
+        <Link href={`/dashboard/tests/${testId}`} style={{ color: '#6b7280', textDecoration: 'underline' }}>{testTitle || '...'}</Link>
+        <span style={{ color: '#d1d5db' }}>&gt;</span>
+        <span style={{ color: '#1C2832' }}>Sisselugemine</span>
       </div>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
