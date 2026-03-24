@@ -70,7 +70,7 @@ export default function ParentLetterPage() {
         </p>
 
         <p style={{ marginBottom: 16 }}>
-          Meie kool kasutab õpilaste kontrolltöödele individuaalse tagasiside koostamiseks veebiteenust <strong>Õpetaja Tagasiside</strong> (maasiku-unistus.vercel.app), mida arendab OÜ Susilaane (edaspidi <em>teenusepakkuja</em>).
+          Meie kool kasutab õpilaste kontrolltöödele individuaalse tagasiside koostamiseks veebiteenust <strong>Õpetaja Tagasiside</strong> (fyysika-tagasiside.vercel.app), mida arendab OÜ Susilaane (edaspidi <em>teenusepakkuja</em>).
         </p>
 
         <p style={{ marginBottom: 16 }}>
@@ -79,7 +79,7 @@ export default function ParentLetterPage() {
 
         <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>1. Mida teenus teeb?</h2>
         <p style={{ marginBottom: 16 }}>
-          Õpetaja pildistab või skannib õpilase täidetud kontrolltöö ning laeb selle Õpetaja Tagasisidee süsteemi. Süsteem saadab pildi Anthropic Claude AI-le, mis genereerib üksikasjaliku tagasiside: mis läks hästi, mis vajab harjutamist ja mida soovitame edasi teha.
+          Õpetaja pildistab või skannib õpilase täidetud kontrolltöö ning laeb selle Õpetaja Tagasiside süsteemi. Süsteem saadab pildi Anthropic Claude AI-le, mis genereerib üksikasjaliku tagasiside: mis läks hästi, mis vajab harjutamist ja mida soovitame edasi teha.
         </p>
         <p style={{ marginBottom: 16 }}>
           Enne pildi saatmist <strong>asendatakse õpilase nimi automaatselt pseudonüümiga „Õpilane&quot;</strong> — pärisnimi ei lahku meie serverist. Anthropic ei saa teada, kelle töö see on.
@@ -114,7 +114,7 @@ export default function ParentLetterPage() {
         <p style={{ marginBottom: 16 }}>
           Õiguste kasutamiseks kirjutage koolile (<strong>[KOOLI E-POST]</strong>) või otse teenusepakkujale:{' '}
           <strong>taavi.tamkivi@gmail.com</strong>. Logitud lapsevanemad saavad nõusoleku tühistada ja andmed alla laadida iseseisvalt aadressil{' '}
-          <strong>maasiku-unistus.vercel.app/dashboard/parent</strong>.
+          <strong>fyysika-tagasiside.vercel.app/dashboard/parent</strong>.
         </p>
         <p style={{ marginBottom: 16 }}>
           Kui leiate, et teie andmete töötlemine rikub teie õigusi, on teil õigus esitada kaebus Andmekaitse Inspektsioonile (aki.ee).
@@ -132,7 +132,7 @@ export default function ParentLetterPage() {
             Palun täita ja tagastada klassijuhatajale hiljemalt <strong>[KUUPÄEV]</strong>.
           </p>
           <p style={{ marginBottom: 20 }}>
-            Annan nõusoleku, et minu lapse <strong>________________________</strong> (nimi) kontrolltöid analüüsitakse Õpetaja Tagasisidee AI-süsteemi abil, tuginedes eespool kirjeldatud tingimustele.
+            Annan nõusoleku, et minu lapse <strong>________________________</strong> (nimi) kontrolltöid analüüsitakse Õpetaja Tagasiside AI-süsteemi abil, tuginedes eespool kirjeldatud tingimustele.
           </p>
           <div style={{ display: 'flex', gap: 40, marginBottom: 20 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 15 }}>
@@ -157,7 +157,7 @@ export default function ParentLetterPage() {
         </div>
 
         <p style={{ fontSize: 12, color: '#1C2832', opacity: 0.55, marginTop: 24, borderTop: '1px solid #DAD0A1', paddingTop: 16 }}>
-          Täielik privaatsuspoliitika: maasiku-unistus.vercel.app/privacy · Teenusepakkuja: OÜ Susilaane · taavi.tamkivi@gmail.com · +372 56634636
+          Täielik privaatsuspoliitika: fyysika-tagasiside.vercel.app/privacy · Teenusepakkuja: OÜ Susilaane · taavi.tamkivi@gmail.com · +372 56634636
         </p>
       </div>
 

@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="maasiku-unistus-andmed-${new Date().toISOString().slice(0, 10)}.json"`,
+        'Content-Disposition': `attachment; filename="opetaja-tagasiside-andmed-${new Date().toISOString().slice(0, 10)}.json"`,
       },
     });
   } catch (error) {

@@ -53,7 +53,7 @@ export default function LoginPage() {
           Logi sisse
         </h1>
         <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 28 }}>
-          Tere tulemast Õpetaja Tagasisidese
+          Tere tulemast!
         </p>
 
         <form onSubmit={handleSubmit}>

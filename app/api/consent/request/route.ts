@@ -41,7 +41,7 @@ async function sendConsentEmail(
       <ul style="font-size: 13px; color: #1C2832; margin-top: 8px; padding-left: 18px; line-height: 1.7;">
         <li>Õigus tutvuda oma lapse andmetega</li>
         <li>Õigus andmete kustutamisele</li>
-        <li>Õigus nõusolek igal ajal tagasi võtta (aadressil maasiku-unistus.vercel.app/dashboard/parent)</li>
+        <li>Õigus nõusolek igal ajal tagasi võtta (aadressil fyysika-tagasiside.vercel.app/dashboard/parent)</li>
       </ul>
       <p style="font-size: 12px; color: #1C2832; opacity: 0.7; margin-top: 8px; margin-bottom: 0;">
         Õiguslik alus: GDPR art. 6(1)(a) — nõusolek
@@ -70,7 +70,7 @@ async function sendConsentEmail(
   }
 
   await resend.emails.send({
-    from: 'Õpetaja Tagasiside <noreply@maasiku-unistus.ee>',
+    from: 'Õpetaja Tagasiside <onboarding@resend.dev>',
     to: parentEmail,
     subject: 'Lapsevanema nõusolek — Õpetaja Tagasiside',
     html: htmlBody,

@@ -39,7 +39,7 @@ export default function PrivacyPage() {
 
       <div style={{ background: '#F8F3DA', padding: '12px 16px', borderLeft: '4px solid #DAD0A1' }}>
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, lineHeight: 1.6 }}>
-          Viimati uuendatud: <strong>23.03.2026</strong>. See privaatsuspoliitika kirjeldab, kuidas OÜ Susilaane töötleb isikuandmeid Õpetaja Tagasisidee teenuse raames.
+          Viimati uuendatud: <strong>23.03.2026</strong>. See privaatsuspoliitika kirjeldab, kuidas OÜ Susilaane töötleb isikuandmeid Õpetaja Tagasiside teenuse raames.
         </p>
       </div>
 
