@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const ROLE_LABELS: Record<string, string> = {
   TEACHER: 'Õpetaja',
@@ -24,9 +24,21 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Laen...</div>}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('invite') || '';
+  const inviteEmail = searchParams.get('email') || '';
+
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('TEACHER');
@@ -52,7 +64,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, ...(inviteToken ? { inviteToken } : {}) }),
       });
 
       const data = await res.json();
@@ -108,6 +120,21 @@ export default function RegisterPage() {
           Liitu Maasiku Unistusega
         </p>
 
+        {inviteToken && (
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: 4,
+            padding: '10px 14px',
+            fontSize: 13,
+            color: '#15803d',
+            marginBottom: 18,
+            fontWeight: 500,
+          }}>
+            Sind kutsuti liituma! Loo konto allpool.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 18 }}>
             <label
@@ -138,10 +165,11 @@ export default function RegisterPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { if (!inviteToken) setEmail(e.target.value); }}
               required
               autoComplete="email"
-              style={inputStyle}
+              readOnly={!!inviteToken}
+              style={{ ...inputStyle, ...(inviteToken ? { background: '#e5e7eb', cursor: 'not-allowed' } : {}) }}
             />
           </div>
 

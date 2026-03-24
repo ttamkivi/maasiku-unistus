@@ -326,6 +326,40 @@ export default async function TeacherDashboardPage() {
         </div>
       )}
 
+      {/* Invite colleague banner */}
+      <div style={{
+        background: '#F8F3DA',
+        border: '1.5px solid #DAD0A1',
+        borderRadius: 8,
+        padding: '12px 18px',
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        flexWrap: 'wrap',
+      }}>
+        <span style={{ fontSize: 14, color: '#1C2832' }}>
+          Tead kolleegi, kes võiks kasu saada? <strong>Kutsu ta proovima!</strong>
+        </span>
+        <Link
+          href="/dashboard/invites"
+          style={{
+            background: '#1C2832',
+            color: '#F8F3DA',
+            fontSize: 13,
+            fontWeight: 700,
+            padding: '8px 16px',
+            textDecoration: 'none',
+            borderRadius: 4,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          Kutsu kolleeg →
+        </Link>
+      </div>
+
       {/* Hero: Scan class papers */}
       <div style={{ ...card, marginBottom: 20, background: '#F8F3DA', border: '2px solid #DAD0A1' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: scannableTests.length > 0 ? 14 : 0, flexWrap: 'wrap' }}>

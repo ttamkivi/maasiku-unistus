@@ -727,6 +727,7 @@ model AuditLog {
 model InviteToken {
   id        String    @id @default(cuid())
   email     String
+  name      String    @default("")
   role      Role
   token     String    @unique
   createdBy String

@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
-    const { name, email, password, role } = parsed.data;
+    const { name, email, password, role, inviteToken: rawInviteToken } = parsed.data;
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
@@ -35,6 +35,21 @@ export async function POST(request: NextRequest) {
       await db.parentProfile.create({ data: { userId: user.id } });
     } else if (userRole === 'SCHOOL_ADMIN') {
       await db.adminProfile.create({ data: { userId: user.id } });
+    }
+
+    // Mark invite token as used if valid
+    if (rawInviteToken) {
+      try {
+        const invite = await db.inviteToken.findUnique({ where: { token: rawInviteToken } });
+        if (invite && !invite.usedAt && invite.expiresAt > new Date()) {
+          await db.inviteToken.update({
+            where: { token: rawInviteToken },
+            data: { usedAt: new Date() },
+          });
+        }
+      } catch {
+        // Silently ignore invalid invite tokens
+      }
     }
 
     const token = await createSession(user.id);

@@ -39,6 +39,7 @@ const TEACHER_TABS = [
   { href: '/dashboard/tests',    icon: '📝', label: 'Kontrolltööd' },
   { href: '/dashboard/students', icon: '👥', label: 'Minu klass' },
   { href: '/dashboard/consents', icon: '✅', label: 'Lapsevanema load' },
+  { href: '/dashboard/invites',  icon: '✉️', label: 'Kutsu' },
   { href: '/dashboard',          icon: '👤', label: 'Profiil' },
 ];
 

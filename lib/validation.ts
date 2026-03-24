@@ -13,6 +13,7 @@ export const RegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email('Vigane e-posti aadress').max(254),
   password: z.string().min(8, 'Parool peab olema vähemalt 8 tähemärki').max(128),
   role: z.enum(['TEACHER', 'STUDENT', 'PARENT', 'SCHOOL_ADMIN']).optional(),
+  inviteToken: z.string().max(100).optional(),
 });
 
 // Consent
