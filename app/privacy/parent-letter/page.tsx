@@ -2,7 +2,7 @@ import Link from 'next/link';
 import PrintButton from './PrintButton';
 
 export const metadata = {
-  title: 'Lapsevanema teavitusleping — Maasiku Unistus',
+  title: 'Lapsevanema teavitusleping — Õpetaja Tagasiside',
   description: 'Koolile saadetav kiri lapsevanematele AI-põhise tagasiside nõusoleku kohta',
 };
 
@@ -70,7 +70,7 @@ export default function ParentLetterPage() {
         </p>
 
         <p style={{ marginBottom: 16 }}>
-          Meie kool kasutab õpilaste kontrolltöödele individuaalse tagasiside koostamiseks veebiteenust <strong>Maasiku Unistus</strong> (maasiku-unistus.vercel.app), mida arendab OÜ Susilaane (edaspidi <em>teenusepakkuja</em>).
+          Meie kool kasutab õpilaste kontrolltöödele individuaalse tagasiside koostamiseks veebiteenust <strong>Õpetaja Tagasiside</strong> (maasiku-unistus.vercel.app), mida arendab OÜ Susilaane (edaspidi <em>teenusepakkuja</em>).
         </p>
 
         <p style={{ marginBottom: 16 }}>
@@ -79,7 +79,7 @@ export default function ParentLetterPage() {
 
         <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>1. Mida teenus teeb?</h2>
         <p style={{ marginBottom: 16 }}>
-          Õpetaja pildistab või skannib õpilase täidetud kontrolltöö ning laeb selle Maasiku Unistuse süsteemi. Süsteem saadab pildi Anthropic Claude AI-le, mis genereerib üksikasjaliku tagasiside: mis läks hästi, mis vajab harjutamist ja mida soovitame edasi teha.
+          Õpetaja pildistab või skannib õpilase täidetud kontrolltöö ning laeb selle Õpetaja Tagasisidee süsteemi. Süsteem saadab pildi Anthropic Claude AI-le, mis genereerib üksikasjaliku tagasiside: mis läks hästi, mis vajab harjutamist ja mida soovitame edasi teha.
         </p>
         <p style={{ marginBottom: 16 }}>
           Enne pildi saatmist <strong>asendatakse õpilase nimi automaatselt pseudonüümiga „Õpilane&quot;</strong> — pärisnimi ei lahku meie serverist. Anthropic ei saa teada, kelle töö see on.
@@ -132,7 +132,7 @@ export default function ParentLetterPage() {
             Palun täita ja tagastada klassijuhatajale hiljemalt <strong>[KUUPÄEV]</strong>.
           </p>
           <p style={{ marginBottom: 20 }}>
-            Annan nõusoleku, et minu lapse <strong>________________________</strong> (nimi) kontrolltöid analüüsitakse Maasiku Unistuse AI-süsteemi abil, tuginedes eespool kirjeldatud tingimustele.
+            Annan nõusoleku, et minu lapse <strong>________________________</strong> (nimi) kontrolltöid analüüsitakse Õpetaja Tagasisidee AI-süsteemi abil, tuginedes eespool kirjeldatud tingimustele.
           </p>
           <div style={{ display: 'flex', gap: 40, marginBottom: 20 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 15 }}>

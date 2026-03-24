@@ -41,7 +41,7 @@ export async function GET(_request: NextRequest) {
     await db.session.create({ data: { userId: user.id, token, expiresAt } });
 
     const res = NextResponse.json({ state: 'COMPLETE', redirectTo: '/dashboard' });
-    res.cookies.set('mu_session', token, { httpOnly: true, expires: expiresAt, path: '/', sameSite: 'lax' });
+    res.cookies.set('ot_session', token, { httpOnly: true, expires: expiresAt, path: '/', sameSite: 'lax' });
     res.cookies.set('eid_session', '', { maxAge: 0, path: '/' });
     return res;
   } catch (error) {

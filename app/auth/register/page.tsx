@@ -117,7 +117,7 @@ function RegisterForm() {
           Loo konto
         </h1>
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6, marginBottom: 28 }}>
-          Liitu Maasiku Unistusega
+          Liitu Õpetaja Tagasisideega
         </p>
 
         {inviteToken && (

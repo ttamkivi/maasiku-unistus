@@ -102,7 +102,7 @@ export default function ConsentTokenPage() {
   if (state.type === 'loading') {
     return (
       <div style={containerStyle}>
-        <div style={headerStyle}>Maasiku Unistus</div>
+        <div style={headerStyle}>Õpetaja Tagasiside</div>
         <div style={dividerStyle} />
         <p style={{ opacity: 0.6 }}>Laadimine...</p>
       </div>
@@ -112,7 +112,7 @@ export default function ConsentTokenPage() {
   if (state.type === 'error') {
     return (
       <div style={containerStyle}>
-        <div style={headerStyle}>Maasiku Unistus</div>
+        <div style={headerStyle}>Õpetaja Tagasiside</div>
         <div style={dividerStyle} />
         <div
           style={{
@@ -132,7 +132,7 @@ export default function ConsentTokenPage() {
   if (state.type === 'expired') {
     return (
       <div style={containerStyle}>
-        <div style={headerStyle}>Maasiku Unistus — Lapsevanema nõusolek</div>
+        <div style={headerStyle}>Õpetaja Tagasiside — Lapsevanema nõusolek</div>
         <div style={dividerStyle} />
         <div
           style={{
@@ -159,7 +159,7 @@ export default function ConsentTokenPage() {
     const approved = state.status === 'APPROVED';
     return (
       <div style={containerStyle}>
-        <div style={headerStyle}>Maasiku Unistus — Lapsevanema nõusolek</div>
+        <div style={headerStyle}>Õpetaja Tagasiside — Lapsevanema nõusolek</div>
         <div style={dividerStyle} />
         <div
           style={{
@@ -187,7 +187,7 @@ export default function ConsentTokenPage() {
   if (state.type === 'done') {
     return (
       <div style={containerStyle}>
-        <div style={headerStyle}>Maasiku Unistus — Lapsevanema nõusolek</div>
+        <div style={headerStyle}>Õpetaja Tagasiside — Lapsevanema nõusolek</div>
         <div style={dividerStyle} />
         <div
           style={{
@@ -217,11 +217,11 @@ export default function ConsentTokenPage() {
 
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>Maasiku Unistus — Lapsevanema nõusolek</div>
+      <div style={headerStyle}>Õpetaja Tagasiside — Lapsevanema nõusolek</div>
       <div style={dividerStyle} />
 
       <p style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 16 }}>
-        Õpetaja <strong>{data.teacherName}</strong> soovib kasutada Maasiku Unistus platvormi,
+        Õpetaja <strong>{data.teacherName}</strong> soovib kasutada Õpetaja Tagasiside platvormi,
         et anda Teie lapsele <strong>{data.studentName}</strong> isikupärastatud tagasisidet
         kontrolltöödele.
       </p>
@@ -273,7 +273,7 @@ export default function ConsentTokenPage() {
         </ul>
         <p style={{ margin: 0, fontSize: 12, opacity: 0.75 }}>
           Õiguslik alus: andmete töötlemine hariduslikul eesmärgil teie nõusolekul
-          (GDPR art. 6(1)(a)). Vastutav töötleja: Maasiku Unistus OÜ.
+          (GDPR art. 6(1)(a)). Vastutav töötleja: Õpetaja Tagasiside OÜ.
         </p>
       </div>
 

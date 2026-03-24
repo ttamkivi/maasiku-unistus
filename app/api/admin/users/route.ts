@@ -7,7 +7,7 @@ const ADMIN_ROLES = ['SUPERADMIN', 'SCHOOL_ADMIN'];
 
 async function getAdminUser() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) return null;
 
   const session = await db.session.findUnique({

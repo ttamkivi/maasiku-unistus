@@ -7,7 +7,7 @@ const ADMIN_ROLES = ['ADMIN', 'SUPERADMIN', 'SCHOOL_ADMIN'];
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const session = await db.session.findUnique({

@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const token = req.cookies.get('mu_session')?.value;
+  const token = req.cookies.get('ot_session')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const session = await db.session.findUnique({

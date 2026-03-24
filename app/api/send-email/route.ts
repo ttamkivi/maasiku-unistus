@@ -13,11 +13,11 @@ export async function POST(request: NextRequest) {
     }
     const buffer = await generateDocx(feedback);
     const base64 = buffer.toString('base64');
-    const subject = `Füüsika tagasiside: ${feedback.test_info.class} - ${feedback.test_info.topic} - ${feedback.test_info.student}`;
-    const bodyText = `Tere,\n\nLisatud on füüsika kontrolltöö tagasiside. See tagasiside on loodud AI abil õpetaja juhendamisel.\n\n${feedback.test_info.class} | ${feedback.test_info.topic} | ${feedback.test_info.student}${feedback.test_info.score ? ` | ${feedback.test_info.score}` : ''}${note ? `\n\nÕpetaja märkus: ${note}` : ''}\n\nTagasiside fail on lisatud manusena (.docx).\n\nFüüsika Tagasiside rakendus`;
+    const subject = `Õpetaja tagasiside: ${feedback.test_info.class} - ${feedback.test_info.topic} - ${feedback.test_info.student}`;
+    const bodyText = `Tere,\n\nLisatud on kontrolltöö tagasiside. See tagasiside on loodud AI abil õpetaja juhendamisel.\n\n${feedback.test_info.class} | ${feedback.test_info.topic} | ${feedback.test_info.student}${feedback.test_info.score ? ` | ${feedback.test_info.score}` : ''}${note ? `\n\nÕpetaja märkus: ${note}` : ''}\n\nTagasiside fail on lisatud manusena (.docx).\n\nÕpetaja Tagasiside rakendus`;
     const filename = `tagasiside_${feedback.test_info.class}_${feedback.test_info.student}.docx`.replace(/[^a-zA-Z0-9._-]/g, '_');
     await resend.emails.send({
-      from: 'Füüsika Tagasiside <onboarding@resend.dev>',
+      from: 'Õpetaja Tagasiside <onboarding@resend.dev>',
       to: email,
       subject,
       text: bodyText,

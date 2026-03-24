@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   try {
     // ── 1. Authentication ──────────────────────────────────────────────────
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Palun logi sisse.' }, { status: 401 });
     }

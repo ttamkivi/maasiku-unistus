@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<TestStatus, { bg: string; color: string }> = {
 
 export default async function TestsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
 
   if (!token) redirect('/auth/login');
 

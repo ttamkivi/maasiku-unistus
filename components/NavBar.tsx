@@ -35,34 +35,34 @@ const ALL_ROLES = [
 ];
 
 const TEACHER_TABS = [
-  { href: '/dashboard/teacher',  icon: '📊', label: 'Ülevaade' },
-  { href: '/dashboard/tests',    icon: '📝', label: 'Kontrolltööd' },
-  { href: '/dashboard/students', icon: '👥', label: 'Minu klass' },
-  { href: '/dashboard/consents', icon: '✅', label: 'Lapsevanema load' },
-  { href: '/dashboard/invites',  icon: '✉️', label: 'Kutsu' },
-  { href: '/dashboard',          icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
+  { href: '/dashboard/tests',    icon: '•', label: 'Kontrolltööd' },
+  { href: '/dashboard/students', icon: '•', label: 'Minu klass' },
+  { href: '/dashboard/consents', icon: '•', label: 'Load' },
+  { href: '/dashboard/invites',  icon: '•', label: 'Kutsu' },
+  { href: '/dashboard',          icon: '•', label: 'Profiil' },
 ];
 
 const STUDENT_TABS = [
-  { href: '/dashboard/student',     icon: '📊', label: 'Tulemused' },
-  { href: '/dashboard/exercises',   icon: '📓', label: 'Harjutused' },
-  { href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' },
-  { href: '/dashboard',             icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/student',     icon: '•', label: 'Tulemused' },
+  { href: '/dashboard/exercises',   icon: '•', label: 'Harjutused' },
+  { href: '/dashboard/assignments', icon: '•', label: 'Kodutööd' },
+  { href: '/dashboard',             icon: '•', label: 'Profiil' },
 ];
 
 const PARENT_TABS = [
-  { href: '/dashboard/parent', icon: '👶', label: 'Laps' },
-  { href: '/dashboard',        icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/parent', icon: '•', label: 'Laps' },
+  { href: '/dashboard',        icon: '•', label: 'Profiil' },
 ];
 
 const ADMIN_TABS = [
-  { href: '/admin',    icon: '⚙️', label: 'Admin' },
-  { href: '/dashboard', icon: '👤', label: 'Profiil' },
+  { href: '/admin',    icon: '•', label: 'Admin' },
+  { href: '/dashboard', icon: '•', label: 'Profiil' },
 ];
 
 const KLASSIJUHATAJA_TABS = [
-  { href: '/dashboard/klassijuhataja', icon: '🏫', label: 'Klass' },
-  { href: '/dashboard',                icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/klassijuhataja', icon: '•', label: 'Klass' },
+  { href: '/dashboard',                icon: '•', label: 'Profiil' },
 ];
 
 function getTabsForRole(role: string, features?: Record<string, boolean>) {
@@ -100,7 +100,7 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
 
 function readPreviewRoleCookie(): string | null {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)mu_preview_role=([^;]+)/);
+  const match = document.cookie.match(/(?:^|;\s*)ot_preview_role=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -203,7 +203,7 @@ export default function NavBar() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: 20, fontWeight: 700, color: '#1C2832', letterSpacing: '-0.5px' }}>
-              Maasiku Unistus
+              Õpetaja Tagasiside
             </span>
           </Link>
 

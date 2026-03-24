@@ -24,7 +24,7 @@ function parseFeedback(json: string | null | undefined): FeedbackData | null {
 
 export default async function StudentDashboardPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) redirect('/auth/login');
 
   const session = await db.session.findUnique({
@@ -35,7 +35,7 @@ export default async function StudentDashboardPage() {
   if (!session || session.expiresAt < new Date()) redirect('/auth/login');
 
   const user = session.user;
-  const isPreview = user.role === 'SUPERADMIN' && !!cookieStore.get('mu_preview_role')?.value;
+  const isPreview = user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
 
   if (!user.studentProfile && !isPreview) redirect('/dashboard');
 

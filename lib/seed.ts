@@ -195,9 +195,9 @@ export async function main() {
   console.log('Seeding admin user...');
   const hashedAdminPw = await hashPassword('Admin2024!');
   const adminUser = await db.user.upsert({
-    where: { email: 'admin@maasikuunistus.ee' },
+    where: { email: 'admin@opetajatagasiside.ee' },
     update: { name: 'Admin', role: Role.SCHOOL_ADMIN, password: hashedAdminPw },
-    create: { email: 'admin@maasikuunistus.ee', password: hashedAdminPw, name: 'Admin', role: Role.SCHOOL_ADMIN },
+    create: { email: 'admin@opetajatagasiside.ee', password: hashedAdminPw, name: 'Admin', role: Role.SCHOOL_ADMIN },
   });
   await db.adminProfile.upsert({
     where: { userId: adminUser.id },
@@ -225,10 +225,10 @@ export async function main() {
   console.log('Seeding demo teacher...');
   const hashedTeacherPw = await hashPassword('Opetaja2024!');
   const teacherUser = await db.user.upsert({
-    where: { email: 'demo.opetaja@maasikuunistus.ee' },
+    where: { email: 'demo.opetaja@opetajatagasiside.ee' },
     update: { name: 'Demo Õpetaja', role: Role.TEACHER, password: hashedTeacherPw },
     create: {
-      email: 'demo.opetaja@maasikuunistus.ee',
+      email: 'demo.opetaja@opetajatagasiside.ee',
       password: hashedTeacherPw,
       name: 'Demo Õpetaja',
       role: Role.TEACHER,
@@ -327,7 +327,7 @@ export async function main() {
   for (let i = 0; i < demoStudents.length; i++) {
     const { first, last } = demoStudents[i];
     const fullName = `${first} ${last}`;
-    const studentEmail = toEmail(first, last, 'demo.maasikuunistus.ee');
+    const studentEmail = toEmail(first, last, 'demo.opetajatagasiside.ee');
     const hasConsent = i < CONSENT_CUTOFF;
 
     // Student user
@@ -350,7 +350,7 @@ export async function main() {
     });
 
     // Parent profile (unregistered — no user account, just email + name)
-    const parentEmail = toEmail('ema', last, 'demo.maasikuunistus.ee');
+    const parentEmail = toEmail('ema', last, 'demo.opetajatagasiside.ee');
     const parentName = `Ema ${last}`;
 
     // Find existing parent by email or create new

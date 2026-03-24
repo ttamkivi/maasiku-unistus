@@ -1,7 +1,7 @@
 # Sprint: Teacher-Ready MVP
 
 ## Context
-Maasiku Unistus is an AI feedback platform for Estonian schools. The core test analysis pipeline works. This sprint focuses on getting the app ready for real teachers to use by: removing scope clutter, fixing the #1 production blocker, and making bulk scan the primary workflow.
+Õpetaja Tagasiside is an AI feedback platform for Estonian schools. The core test analysis pipeline works. This sprint focuses on getting the app ready for real teachers to use by: removing scope clutter, fixing the #1 production blocker, and making bulk scan the primary workflow.
 
 Read AGENTS.md first — this project uses Next.js 16 with breaking changes. Check `node_modules/next/dist/docs/` before writing any code.
 
@@ -157,7 +157,7 @@ After all changes:
 The current seed only creates schools, subjects, and admin users. A teacher testing the app needs a fully wired demo class. Seed the following in `lib/seed.ts`:
 
 ### 7a. Teacher account
-- Email: `demo.opetaja@maasikuunistus.ee`, password: `Opetaja2024!`
+- Email: `demo.opetaja@opetajatagasiside.ee`, password: `Opetaja2024!`
 - Role: `TEACHER`, name: `Demo Õpetaja`
 - Create `TeacherProfile`, link to `Demo Kool` via `TeacherSchool`
 - Link to subject `Füüsika` via `TeacherSubject`
@@ -168,7 +168,7 @@ The current seed only creates schools, subjects, and admin users. A teacher test
 
 ### 7c. 38 students with parents
 Create 38 students with realistic Estonian names. For each student:
-- Create a `User` with role `STUDENT`, email pattern: `eesnimi.perenimi@demo.maasikuunistus.ee`
+- Create a `User` with role `STUDENT`, email pattern: `eesnimi.perenimi@demo.opetajatagasiside.ee`
 - Create `StudentProfile` linked to Demo Kool and class 9.B
 - Create a parent `ParentProfile` (can be unregistered — userId null, just email + name)
 - Create `ParentStudentLink`
@@ -198,7 +198,7 @@ Use these 38 names (first + last):
 - Generate a unique `inviteToken` for each ConsentRequest (use `crypto.randomUUID()`)
 - Set ConsentRequest.expiresAt to 1 year from now
 - Parent names: use pattern "Ema/Isa [student last name]" (e.g., "Ema Mets" for Juhan Mets)
-- Parent emails: `ema.perenimi@demo.maasikuunistus.ee`
+- Parent emails: `ema.perenimi@demo.opetajatagasiside.ee`
 
 ## Task 8: Rebuild the AI Feedback Brain — Science-Based Grading & Assessment
 

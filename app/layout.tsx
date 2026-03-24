@@ -10,8 +10,8 @@ import './globals.css';
 const openSans = Open_Sans({ subsets: ['latin'], weight: ['300', '400', '600', '700'] });
 
 export const metadata: Metadata = {
-  title: 'Maasiku Unistus',
-  description: 'Isiklik tagasiside igale õpilasele, toetades õpetajat',
+  title: 'Õpetaja Tagasiside',
+  description: 'AI-põhine tagasiside platvorm õpetajatele — säästa igal nädalal tunde kontrolltööde tagasiside kirjutamiselt',
 };
 
 export const viewport = {
@@ -40,15 +40,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
         </div>
+        {/* Wave divider above footer */}
+        <div style={{ width: '100%', overflow: 'hidden', lineHeight: 0, opacity: 0.3, marginTop: 48 }}>
+          <svg viewBox="0 0 1200 40" preserveAspectRatio="none" style={{ width: '100%', height: 40 }}>
+            <path d="M0,20 C150,40 350,0 600,20 C850,40 1050,0 1200,20 L1200,40 L0,40 Z" fill="#DAD0A1" />
+          </svg>
+        </div>
         {/* Footer */}
-        <footer style={{ background: '#1C2832', color: '#F8F3DA', marginTop: 48 }}>
+        <footer style={{ background: '#1C2832', color: '#F8F3DA' }}>
           <div className="max-w-6xl mx-auto px-4 py-8">
-            <p style={{ fontSize: 14, fontWeight: 600 }}>Maasiku Unistus</p>
-            <p style={{ fontSize: 12, marginTop: 4, opacity: 0.7 }}>Isiklik tagasiside igale õpilasele, toetades õpetajat</p>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>Õpetaja Tagasiside</p>
+            <p style={{ fontSize: 12, marginTop: 4, opacity: 0.7 }}>AI-põhine tagasiside platvorm õpetajatele</p>
             <div className="flex gap-4 mt-4">
               <Link href="/privacy" style={{ color: '#F8F3DA', fontSize: 12, opacity: 0.7 }}>Privaatsus</Link>
               <Link href="/legal" style={{ color: '#F8F3DA', fontSize: 12, opacity: 0.7 }}>Õiguslik teave</Link>
             </div>
+            <p style={{ fontSize: 11, marginTop: 16, opacity: 0.45 }}>© 2026 Õpetaja Tagasiside</p>
           </div>
         </footer>
         <CookieConsent />

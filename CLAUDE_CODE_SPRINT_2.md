@@ -19,7 +19,7 @@ Two remaining tasks: seed the demo data and add PostHog analytics.
 ## Task A: Seed the demo database
 
 The file `lib/seed.ts` is already fully written with:
-- Demo teacher: demo.opetaja@maasikuunistus.ee / Opetaja2024!
+- Demo teacher: demo.opetaja@opetajatagasiside.ee / Opetaja2024!
 - 38 students in class 9.B at Demo Kool
 - 30 students with active parent consent for Füüsika
 - 8 students WITHOUT consent (Sander Koppel through Elina Hint)
@@ -86,7 +86,7 @@ Commit all PostHog changes as one commit.
 1. `npm run build` — must succeed with zero errors
 2. `npm test` — all tests must pass
 3. Start the dev server: `npm run dev`
-4. Log in as `demo.opetaja@maasikuunistus.ee` / `Opetaja2024!`
+4. Log in as `demo.opetaja@opetajatagasiside.ee` / `Opetaja2024!`
 5. Verify: teacher dashboard shows, class 9.B is visible, Mehaanika kontrolltöö test exists
 6. Commit any fixes.
 

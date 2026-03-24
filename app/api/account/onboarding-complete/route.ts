@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 export async function PATCH() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
     if (!token) return NextResponse.json({ error: 'Autentimine nõutav' }, { status: 401 });
 
     const session = await db.session.findUnique({

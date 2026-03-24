@@ -5,7 +5,7 @@ import NewUserForm from './NewUserForm';
 
 export default async function NewUserPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) redirect('/auth/login');
 
   const session = await db.session.findUnique({

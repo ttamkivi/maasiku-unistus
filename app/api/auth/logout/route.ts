@@ -4,7 +4,7 @@ import { audit } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('mu_session')?.value;
+    const token = request.cookies.get('ot_session')?.value;
 
     if (token) {
       const session = await db.session.findUnique({
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.set('mu_session', '', {
+    response.cookies.set('ot_session', '', {
       httpOnly: true,
       path: '/',
       maxAge: 0,

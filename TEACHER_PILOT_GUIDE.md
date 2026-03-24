@@ -1,4 +1,4 @@
-# Maasiku Unistus — Õpetaja pilootjuhend
+# Õpetaja Tagasiside — Õpetaja pilootjuhend
 
 Tere tulemast! See juhend aitab Sul alustada AI-põhise tagasiside andmisega oma õpilastele.
 
@@ -6,7 +6,7 @@ Tere tulemast! See juhend aitab Sul alustada AI-põhise tagasiside andmisega oma
 
 ## Mis see on?
 
-Maasiku Unistus on AI tööriist, mis aitab Sul kontrolltööde põhjal igale õpilasele personaalset tagasisidet anda. Sa pildistad või skaneerid paberil olevad kontrolltööd, AI analüüsib need ja koostab igale õpilasele konstruktiivse tagasiside eesti keeles — riikliku ainekava järgi.
+Õpetaja Tagasiside on AI tööriist, mis aitab Sul kontrolltööde põhjal igale õpilasele personaalset tagasisidet anda. Sa pildistad või skaneerid paberil olevad kontrolltööd, AI analüüsib need ja koostab igale õpilasele konstruktiivse tagasiside eesti keeles — riikliku ainekava järgi.
 
 **Oluline:** AI ei asenda Sind. Sa vaatad iga tagasiside enne jagamist üle, muudad kui vaja, ja otsustad ise, mida õpilasele jagada.
 

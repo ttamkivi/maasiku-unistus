@@ -65,7 +65,7 @@ export default function LegalPage() {
 
       <div style={{ background: '#F8F3DA', padding: '12px 16px', borderLeft: '4px solid #DAD0A1' }}>
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, lineHeight: 1.6 }}>
-          See leht sisaldab Maasiku Unistuse teenuse kasutamise õiguslikku teavet, andmekaitsepõhimõtteid ning turvalisuse kirjeldust.
+          See leht sisaldab Õpetaja Tagasisidee teenuse kasutamise õiguslikku teavet, andmekaitsepõhimõtteid ning turvalisuse kirjeldust.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default function LegalPage() {
       <SectionCard>
         <SectionHeading>2. Kasutustingimused</SectionHeading>
         <Para>
-          Maasiku Unistuse kasutamisega nõustute järgmiste tingimustega:
+          Õpetaja Tagasisidee kasutamisega nõustute järgmiste tingimustega:
         </Para>
         <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', marginTop: 14, marginBottom: 4 }}>Lubatud kasutus:</p>
         <BulletList items={[

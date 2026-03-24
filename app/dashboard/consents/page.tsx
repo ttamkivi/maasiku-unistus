@@ -30,7 +30,7 @@ function formatDate(date: Date | null): string {
 
 export default async function ConsentsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
 
   if (!token) {
     redirect('/auth/login');

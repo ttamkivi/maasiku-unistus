@@ -109,7 +109,7 @@ export default function InvitesPage() {
           Kutsu kolleeg
         </h1>
         <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-          Kutsu teine õpetaja Maasiku Unistust proovima
+          Kutsu teine õpetaja platvormi proovima
         </p>
 
         <form onSubmit={handleSend}>

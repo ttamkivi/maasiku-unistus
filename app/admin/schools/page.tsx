@@ -11,7 +11,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default async function AdminSchoolsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
 
   if (!token) {
     redirect('/auth/login');

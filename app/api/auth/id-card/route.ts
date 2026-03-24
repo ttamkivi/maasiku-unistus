@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set('mu_session', token, {
+    cookieStore.set('ot_session', token, {
       httpOnly: true,
       expires: expiresAt,
       path: '/',

@@ -33,7 +33,7 @@ export default async function ExercisePrintPage({
   params: Promise<{ id: string }>;
 }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) redirect('/auth/login');
 
   const session = await db.session.findUnique({
@@ -197,7 +197,7 @@ export default async function ExercisePrintPage({
         <div className="page">
           {/* Header */}
           <div className="header">
-            <div className="logo">Maasiku Unistus · AI tagasiside</div>
+            <div className="logo">Õpetaja Tagasiside · AI tagasiside</div>
             <div className="topic">{exercise.topic}</div>
             <div className="meta">
               {exercise.studentName ?? session.user.name}
@@ -266,7 +266,7 @@ export default async function ExercisePrintPage({
 
           {/* Footer */}
           <div className="footer">
-            <span>Maasiku Unistus — isiklik AI tagasiside</span>
+            <span>Õpetaja Tagasiside — isiklik AI tagasiside</span>
             <span>Genereeritud {formatDate(new Date())}</span>
           </div>
         </div>

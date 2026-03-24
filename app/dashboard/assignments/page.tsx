@@ -24,7 +24,7 @@ function formatDate(d: Date | string | null | undefined) {
 
 export default async function AssignmentsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) redirect('/auth/login');
 
   const session = await db.session.findUnique({

@@ -189,7 +189,7 @@ describe('POST /api/auth/login — authentication', () => {
 
     const res = await POST(makeRequest({ email: 'mari@kool.ee', password: 'correct' }));
     const setCookie = res.headers.get('set-cookie');
-    expect(setCookie).toMatch(/mu_session=/);
+    expect(setCookie).toMatch(/ot_session=/);
     expect(setCookie).toMatch(/HttpOnly/i);
   });
 

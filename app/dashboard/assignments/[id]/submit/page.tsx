@@ -6,7 +6,7 @@ import AssignmentSubmitClient from './AssignmentSubmitClient';
 export default async function AssignmentSubmitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) redirect('/auth/login?from=' + encodeURIComponent(`/dashboard/assignments/${id}/submit`));
 
   const session = await db.session.findUnique({

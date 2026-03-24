@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
-    response.cookies.set('mu_session', token, {
+    response.cookies.set('ot_session', token, {
       httpOnly: true,
       expires: expiresAt,
       path: '/',

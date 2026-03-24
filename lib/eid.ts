@@ -94,7 +94,7 @@ export async function startSmartIdAuth(
         allowedInteractionsOrder: [
           {
             type: 'displayTextAndPIN',
-            displayText60: 'Logi sisse Maasiku Unistus',
+            displayText60: 'Logi sisse Õpetaja Tagasiside',
           },
         ],
         hash: hashBase64,
@@ -235,7 +235,7 @@ export async function findOrCreateEidUser(
   const existing = await db.user.findUnique({ where: { personalCode } });
   if (existing) return existing;
 
-  const syntheticEmail = `${personalCode}@eid.maasikuunistus.ee`;
+  const syntheticEmail = `${personalCode}@eid.opetajatagasiside.ee`;
 
   const user = await db.user.create({
     data: {

@@ -71,7 +71,7 @@ function makeSession(role: string) {
 
 function setupCookies(token: string | null) {
   const store = {
-    get: (name: string) => (name === 'mu_session' && token ? { value: token } : undefined),
+    get: (name: string) => (name === 'ot_session' && token ? { value: token } : undefined),
   };
   mockCookies.mockResolvedValue(store as never);
 }

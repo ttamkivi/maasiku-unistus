@@ -15,7 +15,7 @@
 ## Three distinct concepts — never confuse them
 
 1. **HINDAMINE** (assessment) = systematic collection of information about where the student is in their learning journey. This is the umbrella process.
-2. **TAGASISIDESTAMINE** (feedback) = giving the student actionable information to support their growth and development. This is what Maasiku Unistus primarily does.
+2. **TAGASISIDESTAMINE** (feedback) = giving the student actionable information to support their growth and development. This is what Õpetaja Tagasiside primarily does.
 3. **HINDE PANEMINE** (grading) = assigning a number/letter to summarise performance. This is the SMALLEST and least important part.
 
 Assessment should be viewed as an overarching process (katusprotsess), with feedback and grading being components within it. Grading alone provides almost no useful learning information to students.
@@ -160,4 +160,4 @@ The AI should detect visible scores on test papers and map them to these scales 
 
 Translation: Assessment framing should support the development of mastery (answering the question: where is the student right now?) rather than stating their position relative to others (who is the student compared to others?).
 
-This is the single most important principle for Maasiku Unistus. The AI is not here to sort students. It is here to help each student understand where they are and what to do next.
+This is the single most important principle for Õpetaja Tagasiside. The AI is not here to sort students. It is here to help each student understand where they are and what to do next.

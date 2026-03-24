@@ -40,7 +40,7 @@ async function getAuthorisedSession(token: string) {
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
     if (!token) return NextResponse.json({ error: 'Autentimine nõutav' }, { status: 401 });
 
     const session = await getAuthorisedSession(token);

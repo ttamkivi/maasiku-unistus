@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Hardcoded to avoid importing server-only lib/auth in proxy context
-const SESSION_COOKIE = 'mu_session';
+const SESSION_COOKIE = 'ot_session';
 
 const PROTECTED_PREFIXES = [
   '/dashboard',

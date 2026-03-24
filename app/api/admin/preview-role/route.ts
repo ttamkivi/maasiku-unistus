@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 // POST /api/admin/preview-role — set preview role (SUPERADMIN only)
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const session = await db.session.findUnique({
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true, previewRole: role });
-  response.cookies.set('mu_preview_role', role, {
+  response.cookies.set('ot_preview_role', role, {
     httpOnly: false, // client needs to read it for UI
     path: '/',
     sameSite: 'lax',
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 // DELETE /api/admin/preview-role — clear preview role
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
-  response.cookies.set('mu_preview_role', '', {
+  response.cookies.set('ot_preview_role', '', {
     httpOnly: false,
     path: '/',
     sameSite: 'lax',

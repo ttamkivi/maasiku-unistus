@@ -2,7 +2,7 @@
 
 ## Context
 
-Maasiku Unistus is an AI feedback platform for Estonian schools. Sprints 1-2 built the core features. Sprint 3 (this file) hardens the app for the first real teacher pilot.
+Õpetaja Tagasiside is an AI feedback platform for Estonian schools. Sprints 1-2 built the core features. Sprint 3 (this file) hardens the app for the first real teacher pilot.
 
 Read AGENTS.md first — this project uses Next.js 16 with breaking changes. Check `node_modules/next/dist/docs/` before writing any code.
 

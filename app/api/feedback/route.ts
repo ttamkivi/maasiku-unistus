@@ -47,7 +47,7 @@ async function trySendEmail(entry: FeedbackEntry) {
     await transporter.sendMail({
       from: smtpUser,
       to: 'taavi.tamkivi@gmail.com',
-      subject: `[Maasiku Unistus] Tagasiside: ${entry.type}`,
+      subject: `[Õpetaja Tagasiside] Tagasiside: ${entry.type}`,
       text: [
         `Tüüp: ${entry.type}`,
         `Sõnum: ${entry.message}`,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     let userId: string | undefined;
     try {
       const cookieStore = await cookies();
-      const token = cookieStore.get('mu_session')?.value;
+      const token = cookieStore.get('ot_session')?.value;
       if (token) {
         const session = await db.session.findUnique({
           where: { token },

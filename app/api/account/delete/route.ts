@@ -22,7 +22,7 @@ import { audit } from '@/lib/audit';
 export async function DELETE(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
     if (!token) return NextResponse.json({ error: 'Autentimine nõutav' }, { status: 401 });
 
     const session = await db.session.findUnique({
@@ -169,7 +169,7 @@ export async function DELETE(request: NextRequest) {
     // If the user deleted themselves, clear their own session cookie
     const resp = NextResponse.json({ ok: true, message: 'Kõik isikuandmed on kustutatud.' });
     if (!targetStudentId) {
-      resp.cookies.set('mu_session', '', { httpOnly: true, path: '/', maxAge: 0 });
+      resp.cookies.set('ot_session', '', { httpOnly: true, path: '/', maxAge: 0 });
     }
     return resp;
   } catch (error) {

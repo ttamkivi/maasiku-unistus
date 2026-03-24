@@ -8,7 +8,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAuthenticatedUser() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
   if (!token) return null;
 
   const session = await db.session.findUnique({
@@ -104,14 +104,14 @@ export async function POST(request: NextRequest) {
     const inviterName = user.name || 'Kolleeg';
 
     await resend.emails.send({
-      from: 'Maasiku Unistus <onboarding@resend.dev>',
+      from: 'Õpetaja Tagasiside <onboarding@resend.dev>',
       to: email,
-      subject: `${inviterName} kutsub sind Maasiku Unistust proovima`,
+      subject: `${inviterName} kutsub sind Õpetaja Tagasisidet proovima`,
       html: `<div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
   <h2 style="color: #1C2832; font-size: 20px;">Tere, ${name}!</h2>
   <p style="color: #374151; font-size: 15px; line-height: 1.6;">
-    ${inviterName} kutsub sind proovima <strong>Maasiku Unistust</strong> — AI-põhist tagasiside platvormi,
-    mis aitab õpetajatel kontrolltööde tagasisidet kiiremini ja põhjalikumalt anda.
+    ${inviterName} kutsub sind proovima <strong>Õpetaja Tagasisidet</strong> — AI-põhist tagasiside platvormi,
+    mis aitab õpetajatel anda igale õpilasele personaalset tagasisidet minutitega.
   </p>
   <p style="color: #374151; font-size: 15px; line-height: 1.6;">
     Registreeru ja proovi tasuta:

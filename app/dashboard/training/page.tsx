@@ -6,7 +6,7 @@ import WithdrawButton from './WithdrawButton';
 
 export default async function TeacherTrainingPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('mu_session')?.value;
+  const token = cookieStore.get('ot_session')?.value;
 
   if (!token) {
     redirect('/auth/login');

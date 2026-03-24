@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { Role, User } from './generated/prisma/client';
 
-export const SESSION_COOKIE = 'mu_session';
+export const SESSION_COOKIE = 'ot_session';
 export const SESSION_DURATION_DAYS = 30;
 
 export async function hashPassword(password: string): Promise<string> {

@@ -22,14 +22,14 @@ async function sendConsentEmail(
 
   const htmlBody = `<!DOCTYPE html>
 <html lang="et">
-<head><meta charset="UTF-8"><title>Lapsevanema nõusolek — Maasiku Unistus</title></head>
+<head><meta charset="UTF-8"><title>Lapsevanema nõusolek — Õpetaja Tagasiside</title></head>
 <body style="font-family: 'Open Sans', Arial, sans-serif; background: #F8F3DA; padding: 32px;">
   <div style="max-width: 560px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 36px; box-shadow: 0 2px 12px rgba(28,40,50,0.08);">
-    <h1 style="font-size: 22px; color: #1C2832; margin-bottom: 8px;">Maasiku Unistus</h1>
+    <h1 style="font-size: 22px; color: #1C2832; margin-bottom: 8px;">Õpetaja Tagasiside</h1>
     <div style="height: 3px; background: #DAD0A1; margin-bottom: 24px;"></div>
     <p style="font-size: 15px; color: #1C2832;">${greeting},</p>
     <p style="font-size: 15px; color: #1C2832; line-height: 1.6;">
-      Õpetaja <strong>${teacherName}</strong> kasutab Maasiku Unistus platvormi, et anda Teie lapsele
+      Õpetaja <strong>${teacherName}</strong> kasutab Õpetaja Tagasiside platvormi, et anda Teie lapsele
       (<strong>${studentName}</strong>) isikupärastatud tagasisidet kontrolltööde kohta.
     </p>
     <p style="font-size: 15px; color: #1C2832; line-height: 1.6;">
@@ -70,9 +70,9 @@ async function sendConsentEmail(
   }
 
   await resend.emails.send({
-    from: 'Maasiku Unistus <noreply@maasiku-unistus.ee>',
+    from: 'Õpetaja Tagasiside <noreply@maasiku-unistus.ee>',
     to: parentEmail,
-    subject: 'Lapsevanema nõusolek — Maasiku Unistus',
+    subject: 'Lapsevanema nõusolek — Õpetaja Tagasiside',
     html: htmlBody,
   });
 }
@@ -80,7 +80,7 @@ async function sendConsentEmail(
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('mu_session')?.value;
+    const token = cookieStore.get('ot_session')?.value;
 
     if (!token) {
       return NextResponse.json({ error: 'Pole sisselogitud' }, { status: 401 });
