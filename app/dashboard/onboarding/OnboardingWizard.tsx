@@ -1,10 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-const STEPS = ['Aine', 'Õpilased', 'Lõpetamine'] as const;
+const STEPS = ['Ained', 'Õpilased', 'Lõpetamine'] as const;
+
+interface Subject {
+  id: string;
+  name: string;
+  category: string;
+  gradeLevels: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  loodusained: 'Loodusained',
+  matemaatika: 'Matemaatika',
+  'keel ja kirjandus': 'Keel ja kirjandus',
+  võõrkeeled: 'Võõrkeeled',
+  sotsiaalained: 'Sotsiaalained',
+  kunstiained: 'Kunstiained',
+  tehnoloogia: 'Tehnoloogia',
+  'kehaline kasvatus': 'Kehaline kasvatus',
+  muu: 'Muu',
+};
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -42,30 +61,79 @@ const secondaryBtn: React.CSSProperties = {
 export function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [subjectName, setSubjectName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdSubjectName, setCreatedSubjectName] = useState('');
 
-  async function handleCreateSubject() {
-    if (!subjectName.trim()) {
-      setError('Aine nimi on kohustuslik');
+  // Subject selection state
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<Subject[]>([]);
+  const [search, setSearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/subjects')
+      .then((r) => r.json())
+      .then((data: Subject[]) => { if (Array.isArray(data)) setAllSubjects(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedIds = new Set(selectedSubjects.map((s) => s.id));
+  const filtered = allSubjects.filter(
+    (s) => !selectedIds.has(s.id) && (
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.category.toLowerCase().includes(search.toLowerCase())
+    ),
+  );
+
+  const grouped: Record<string, Subject[]> = {};
+  for (const s of filtered) {
+    const cat = s.category || 'muu';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(s);
+  }
+
+  function selectSubject(s: Subject) {
+    setSelectedSubjects((prev) => [...prev, s]);
+    setSearch('');
+  }
+
+  function removeSubject(id: string) {
+    setSelectedSubjects((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  async function handleLinkSubjects() {
+    if (selectedSubjects.length === 0) {
+      setError('Vali vähemalt üks aine');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/subjects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: subjectName.trim() }),
-      });
-      const data = await res.json() as { error?: string; name?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Viga aine loomisel');
-      setCreatedSubjectName(subjectName.trim());
+      for (const s of selectedSubjects) {
+        const res = await fetch('/api/teacher/subjects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subjectId: s.id }),
+        });
+        if (!res.ok) {
+          const data = await res.json() as { error?: string };
+          throw new Error(data.error ?? 'Viga ainete sidumisel');
+        }
+      }
       setStep(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Viga aine loomisel');
+      setError(err instanceof Error ? err.message : 'Viga ainete sidumisel');
     } finally {
       setLoading(false);
     }
@@ -128,40 +196,134 @@ export function OnboardingWizard() {
         ))}
       </div>
 
-      {/* Step 0 — Create subject */}
+      {/* Step 0 — Select subjects */}
       {step === 0 && (
         <div style={card}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
-            Loo oma esimene aine
+            Vali oma ained
           </h1>
           <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-            Lisa aine, mida õpetad. Saad hiljem rohkem aineid lisada.
+            Vali ained, mida õpetad. Saad hiljem rohkem aineid lisada.
           </p>
-          <div style={{ marginBottom: 20 }}>
+
+          {/* Selected chips */}
+          {selectedSubjects.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {selectedSubjects.map((s) => (
+                <span
+                  key={s.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: '#F8F3DA',
+                    border: '1px solid #DAD0A1',
+                    padding: '4px 10px',
+                    fontSize: 13,
+                    color: '#1C2832',
+                    fontWeight: 600,
+                  }}
+                >
+                  {s.name}
+                  <button
+                    type="button"
+                    onClick={() => removeSubject(s.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontSize: 15,
+                      color: '#6b7280',
+                      lineHeight: 1,
+                    }}
+                    aria-label={`Eemalda ${s.name}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Searchable dropdown */}
+          <div ref={wrapperRef} style={{ position: 'relative', marginBottom: 20 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
-              Aine nimi <span style={{ color: '#ef4444' }}>*</span>
+              Otsi ainet <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
               type="text"
-              value={subjectName}
-              onChange={(e) => setSubjectName(e.target.value)}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setDropdownOpen(true); }}
+              onFocus={() => setDropdownOpen(true)}
               placeholder="nt. Füüsika, Matemaatika, Keemia..."
               style={inputStyle}
               autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateSubject(); }}
             />
+            {dropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                maxHeight: 300,
+                overflowY: 'auto',
+                background: '#F8F3DA',
+                border: '1.5px solid #DAD0A1',
+                borderTop: 'none',
+                zIndex: 10,
+              }}>
+                {Object.keys(grouped).length === 0 ? (
+                  <div style={{ padding: '12px 14px', fontSize: 13, color: '#6b7280' }}>
+                    Aineid ei leitud
+                  </div>
+                ) : (
+                  Object.entries(grouped).map(([cat, subjects]) => (
+                    <div key={cat}>
+                      <div style={{
+                        padding: '8px 14px 4px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#6b7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}>
+                        {CATEGORY_LABELS[cat] || cat}
+                      </div>
+                      {subjects.map((s) => (
+                        <div
+                          key={s.id}
+                          onClick={() => selectSubject(s)}
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: 14,
+                            color: '#1C2832',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = '#EDE8C8'; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                        >
+                          {s.name} <span style={{ color: '#6b7280', fontSize: 12 }}>— {s.gradeLevels}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
+
           {error && (
             <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '10px 14px', fontSize: 13, color: '#b91c1c', marginBottom: 16 }}>
               {error}
             </div>
           )}
           <button
-            onClick={handleCreateSubject}
-            disabled={loading}
-            style={{ ...primaryBtn, opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+            onClick={handleLinkSubjects}
+            disabled={loading || selectedSubjects.length === 0}
+            style={{ ...primaryBtn, opacity: loading || selectedSubjects.length === 0 ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
-            {loading ? 'Loon...' : 'Loo aine ja jätka →'}
+            {loading ? 'Salvestan...' : 'Vali ained ja jätka →'}
           </button>
         </div>
       )}
@@ -243,7 +405,7 @@ export function OnboardingWizard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
                 <span style={{ color: '#22c55e', fontWeight: 700 }}>✓</span>
                 <span style={{ color: '#1C2832' }}>
-                  Aine <strong>{createdSubjectName}</strong> loodud
+                  Ained: <strong>{selectedSubjects.map((s) => s.name).join(', ')}</strong>
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
