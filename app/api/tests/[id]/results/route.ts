@@ -48,6 +48,21 @@ export async function POST(
       return NextResponse.json({ error: 'Õpilase nimi on kohustuslik' }, { status: 400 });
     }
 
+    // Duplicate check: prevent creating a second result for the same student
+    const existingResults = await db.testResult.findMany({
+      where: { testId: id },
+      select: { id: true, studentName: true },
+    });
+    const duplicate = existingResults.find(
+      (r) => (r.studentName ?? '').trim().toLowerCase() === studentName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      return NextResponse.json(
+        { error: 'Selle nimega tulemus on juba olemas', existingId: duplicate.id },
+        { status: 409 }
+      );
+    }
+
     // Upload photos to Vercel Blob (if token is set), else fall back to base64
     let photoCreateData: Array<{ storageMode: string; storageKey?: string; base64Data: string | null }> | undefined;
     if (photos && photos.length > 0) {

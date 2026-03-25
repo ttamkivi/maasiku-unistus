@@ -117,11 +117,25 @@ export default async function ResultReviewPage({
 
   // 3. All consented results in order (any status) — for position tracking
   // Fall back to ALL results if no consent data is set up yet
-  const consentedQueue = allResults.filter((r) =>
+  // Also deduplicate: if multiple results exist for the same student, keep the one
+  // with the most progress (first seen in createdAt order, but prefer analysed ones)
+  const consentedQueueRaw = allResults.filter((r) =>
     consentedNames.size > 0
       ? consentedNames.has((r.studentName ?? '').trim().toLowerCase())
       : true
   );
+
+  // Deduplicate by studentName — keep first occurrence (oldest), but always
+  // keep the current result's ID so we don't lose our place in the queue
+  const seenNames = new Set<string>();
+  const consentedQueue = consentedQueueRaw.filter((r) => {
+    const key = (r.studentName ?? '').trim().toLowerCase();
+    if (!key) return true; // keep unnamed results
+    if (r.id === resultId) { seenNames.add(key); return true; } // always keep current
+    if (seenNames.has(key)) return false; // skip duplicate
+    seenNames.add(key);
+    return true;
+  });
 
   const currentIdx = consentedQueue.findIndex((r) => r.id === resultId);
 

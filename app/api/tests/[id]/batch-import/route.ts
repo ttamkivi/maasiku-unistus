@@ -120,8 +120,20 @@ Return ONLY valid JSON in this exact format, no other text:
         return NextResponse.json({ error: 'Ühtegi tulemust pole' }, { status: 400 });
       }
 
+      // Filter out students that already have a result in this test
+      const existingResults = await db.testResult.findMany({
+        where: { testId: id },
+        select: { studentName: true },
+      });
+      const existingNames = new Set(
+        existingResults.map((r) => (r.studentName ?? '').trim().toLowerCase())
+      );
+      const newAssignments = assignments.filter(
+        (a) => !existingNames.has(a.studentName.trim().toLowerCase())
+      );
+
       const created = await Promise.all(
-        assignments.map(async (a, studentIdx) => {
+        newAssignments.map(async (a, studentIdx) => {
           const photoRecords = await Promise.all(
             a.photos.map(async (photo, pageIdx) => {
               const blobResult = await uploadPhotoToBlob(
