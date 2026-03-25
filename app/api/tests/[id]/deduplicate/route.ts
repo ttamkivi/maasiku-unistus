@@ -96,7 +96,7 @@ export async function POST(
     }
 
     // Delete photos first (foreign key), then results
-    await db.workPhoto.deleteMany({ where: { resultId: { in: toDelete } } });
+    await db.workPhoto.deleteMany({ where: { testResultId: { in: toDelete } } });
     const deleted = await db.testResult.deleteMany({ where: { id: { in: toDelete } } });
 
     return NextResponse.json({
