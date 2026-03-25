@@ -203,6 +203,27 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       .catch(() => {});
   }, [testId]);
 
+  // Re-run fuzzy matching when roster loads after assignments are already set
+  // (fixes race condition: PDF processed before roster fetch completes)
+  useEffect(() => {
+    if (roster.length === 0 || assignments.length === 0) return;
+    // Only re-match if assignments still have 'none' confidence (unmatched)
+    const hasUnmatched = assignments.some(a => a.confidence === 'none' && a.proposedName);
+    if (!hasUnmatched) return;
+
+    setAssignments(prev => prev.map(a => {
+      if (a.confidence !== 'none' || !a.proposedName) return a;
+      const { studentId, confidence } = fuzzyMatch(a.proposedName, roster);
+      const matchedStudent = roster.find(s => s.id === studentId);
+      return {
+        ...a,
+        matchedStudentId: studentId,
+        confirmedName: matchedStudent?.name ?? a.proposedName ?? '',
+        confidence,
+      };
+    }));
+  }, [roster]);
+
   const processFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Palun vali PDF-fail');
