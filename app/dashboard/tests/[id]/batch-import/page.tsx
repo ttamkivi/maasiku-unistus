@@ -186,6 +186,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
   const [consentStats, setConsentStats] = useState<{ total: number; withConsent: number; withoutConsent: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Load class roster and test title on mount
   useEffect(() => {
@@ -202,9 +203,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       .catch(() => {});
   }, [testId]);
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Palun vali PDF-fail');
       return;
@@ -275,6 +274,36 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       setPhase('upload');
     }
   }, [testId, roster]);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }, [processFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }, [processFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+  }, []);
 
   const handleConfirmAll = () => {
     setAssignments((prev) =>
@@ -473,18 +502,23 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       {phase === 'upload' && (
         <div
           onClick={() => fileInputRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
           style={{
-            border: '2px dashed #DAD0A1',
-            background: '#F8F3DA',
+            border: dragging ? '2px solid #1C2832' : '2px dashed #DAD0A1',
+            background: dragging ? '#e8e4cf' : '#F8F3DA',
             borderRadius: 8,
             padding: '60px 24px',
             textAlign: 'center',
             cursor: 'pointer',
+            transition: 'all 0.15s ease',
           }}
         >
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>{dragging ? '📥' : '📄'}</div>
           <p style={{ fontSize: 16, fontWeight: 700, color: '#1C2832', margin: 0 }}>
-            Klõpsa, et valida PDF-fail
+            {dragging ? 'Lase lahti, et laadida' : 'Lohista PDF siia või klõpsa'}
           </p>
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
             Üks PDF kõigi õpilaste töödega · max 100 MB
