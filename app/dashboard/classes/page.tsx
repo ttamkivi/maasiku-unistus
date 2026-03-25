@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 interface Subject {
   id: string;
@@ -54,6 +56,12 @@ const primaryBtn: React.CSSProperties = {
 };
 
 export default function ClassesPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (PROTOTYPE_MODE) router.replace('/dashboard/teacher');
+  }, [router]);
+
   const [academicYear, setAcademicYear] = useState<AcademicYear | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classAssignments, setClassAssignments] = useState<ClassAssignment[]>([]);
