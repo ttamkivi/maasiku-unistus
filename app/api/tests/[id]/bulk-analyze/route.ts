@@ -6,6 +6,38 @@ import { hasAIConsentByName } from '@/lib/consent';
 import { audit } from '@/lib/audit';
 import { captureServerEvent } from '@/lib/posthog-server';
 
+/**
+ * Resolve a photo record to base64 data.
+ * If stored in blob, fetch the image from its URL and convert to base64.
+ * If stored locally, return the base64Data directly.
+ */
+async function resolvePhotoBase64(photo: {
+  storageMode: string;
+  storageKey: string | null;
+  base64Data: string | null;
+}): Promise<string | null> {
+  // Local storage: base64 is already present
+  if (photo.base64Data) return photo.base64Data;
+
+  // Blob storage: fetch from URL and convert to base64
+  if (photo.storageMode === 'blob' && photo.storageKey) {
+    try {
+      const res = await fetch(photo.storageKey);
+      if (!res.ok) {
+        console.error(`Failed to fetch blob photo: ${photo.storageKey} (${res.status})`);
+        return null;
+      }
+      const buffer = await res.arrayBuffer();
+      return Buffer.from(buffer).toString('base64');
+    } catch (err) {
+      console.error('Error fetching blob photo:', err);
+      return null;
+    }
+  }
+
+  return null;
+}
+
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
     where: { token },
@@ -41,9 +73,21 @@ export async function GET(
 
     const results = await db.testResult.findMany({
       where: { testId: id, status: 'UPLOADED' },
-      include: { photos: { select: { base64Data: true } } },
+      include: { photos: { select: { base64Data: true, storageMode: true, storageKey: true } } },
       orderBy: { createdAt: 'asc' },
     });
+
+    // Resolve blob-stored photos to base64 for the client
+    const resolvedResults = await Promise.all(
+      results.map(async (r) => {
+        const photos = await Promise.all(r.photos.map(resolvePhotoBase64));
+        return {
+          id: r.id,
+          studentName: r.studentName,
+          photos: photos.filter((d): d is string => d !== null),
+        };
+      })
+    );
 
     return NextResponse.json({
       testId: id,
@@ -52,11 +96,7 @@ export async function GET(
       subject: test.subject?.name || 'Füüsika',
       rubric: test.rubric,
       answerKey: test.answerKey,
-      results: results.map((r) => ({
-        id: r.id,
-        studentName: r.studentName,
-        photos: r.photos.map((p) => p.base64Data).filter((d): d is string => d !== null),
-      })),
+      results: resolvedResults,
     });
   } catch (error) {
     console.error('GET /api/tests/[id]/bulk-analyze error:', error);
@@ -92,7 +132,7 @@ export async function POST(
 
     const result = await db.testResult.findFirst({
       where: { id: resultId, testId: id, status: 'UPLOADED' },
-      include: { photos: { select: { base64Data: true } } },
+      include: { photos: { select: { base64Data: true, storageMode: true, storageKey: true } } },
     });
     if (!result) return NextResponse.json({ error: 'Tulemust ei leitud' }, { status: 404 });
 
@@ -130,12 +170,21 @@ export async function POST(
       // allowed === null means student not found in system — proceed (teacher has verified)
     }
 
-    captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id });
+    // Resolve all photos (including blob-stored ones) to base64 for AI analysis
+    const resolvedPhotos = await Promise.all(result.photos.map(resolvePhotoBase64));
+    const images = resolvedPhotos.filter((d): d is string => d !== null);
+
+    if (images.length === 0) {
+      console.error(`No photos resolved for result ${resultId} (${result.photos.length} records, all null after resolution)`);
+      return NextResponse.json({ error: 'Fotode laadimine ebaõnnestus' }, { status: 500 });
+    }
+
+    captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id, photoCount: images.length });
     const feedback = await analyzeTest(
       test.grade || '9',
       test.topic || test.title,
       result.studentName || 'Õpilane',
-      result.photos.map((p) => p.base64Data).filter((d): d is string => d !== null),
+      images,
       test.rubric,
       test.answerKey,
     );
