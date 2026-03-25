@@ -471,7 +471,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
             color: phase === 'review' ? '#DAD0A1' : phase === 'confirming' || phase === 'done' ? '#166534' : '#6b7280',
           }}>
             Sobita klassi nimekirjaga
-            {roster.length > 0 && ` (${roster.length} \u00f5pilast)`}
+            {roster.length > 0 && ` (${roster.length} õpilast)`}
           </div>
         </div>
 
@@ -489,13 +489,13 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
             color: phase === 'confirming' ? '#F8F3DA' : phase === 'done' ? '#15803d' : '#6b7280',
             marginBottom: 4,
           }}>
-            {phase === 'done' ? '\u2713 ' : '3. '}N\u00f5usoleku kontroll
+            {phase === 'done' ? '\u2713 ' : '3. '}Nõusoleku kontroll
           </div>
           <div style={{
             fontSize: 12,
             color: phase === 'confirming' ? '#DAD0A1' : phase === 'done' ? '#166534' : '#6b7280',
           }}>
-            Lapsevanema n\u00f5usolek
+            Lapsevanema nõusolek
             {consentStats && ` (${consentStats.withConsent}/${consentStats.total} olemas)`}
           </div>
         </div>
@@ -592,7 +592,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
               <strong>{assignments.length}</strong> lehte &middot; {includedCount} kaasatakse &middot; <strong>{(() => {
                 const names = new Set(assignments.filter(a => a.include && a.confirmedName.trim()).map(a => a.confirmedName.trim()));
                 return names.size;
-              })()}</strong> &#245;pilast
+              })()}</strong> õpilast
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {highConfidenceCount > 0 && roster.length > 0 && (
@@ -692,7 +692,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                               ? { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }
                               : { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }),
                           }}>
-                            {matchedStudent.hasConsent ? '\u2713 N\u00f5usolek' : '\u26a0 Puudub'}
+                            {matchedStudent.hasConsent ? '\u2713 Nõusolek' : '\u26a0 Puudub'}
                           </span>
                         )}
                       </div>
@@ -760,7 +760,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                           ? { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }
                           : { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }),
                       }}>
-                        {student.hasConsent ? '\u2713 N\u00f5usolek' : '\u26a0 N\u00f5usolek puudub'}
+                        {student.hasConsent ? '\u2713 Nõusolek' : '\u26a0 Nõusolek puudub'}
                       </span>
                     );
                   })()}
@@ -828,7 +828,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
               </div>
               {consentStats && (
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#15803d', marginTop: 8 }}>
-                  <span style={{ fontWeight: 600 }}>N&#245;usolek:</span>
+                  <span style={{ fontWeight: 600 }}>Nõusolek:</span>
                   <span style={{ color: '#15803d' }}>Olemas: <strong>{(() => {
                     const matched = assignments.filter(a => a.include && a.matchedStudentId);
                     return matched.filter(a => roster.find(s => s.id === a.matchedStudentId)?.hasConsent).length;
@@ -866,7 +866,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
               Kinnita ja loo {(() => {
                 const names = new Set(assignments.filter(a => a.include && a.confirmedName.trim()).map(a => a.confirmedName.trim()));
                 return names.size;
-              })()} &#245;pilase tulemused ({includedCount} lehte)
+              })()} õpilase tulemused ({includedCount} lehte)
             </button>
             <button
               type="button"

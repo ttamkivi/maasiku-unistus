@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
 import TestAdvanceButton from './TestAdvanceButton';
 import BulkAnalyzeButton from './BulkAnalyzeButton';
+import AutoImportUpload from './AutoImportUpload';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 const TEST_STATUS_LABELS: Record<TestStatus, string> = {
@@ -265,18 +266,22 @@ export default async function TestDetailPage({
               {uploadedCount > 0 && (
                 <BulkAnalyzeButton testId={test.id} uploadedCount={uploadedCount} />
               )}
-              <Link
-                href={`/dashboard/tests/${test.id}/consent-check`}
-                style={{ background: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #fcd34d' }}
-              >
-                ✓ Nõusolekud
-              </Link>
-              <Link
-                href={`/dashboard/tests/${test.id}/batch-import`}
-                style={{ background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap' }}
-              >
-                📄 Lae üles skannitud PDF
-              </Link>
+              {!PROTOTYPE_MODE && (
+                <Link
+                  href={`/dashboard/tests/${test.id}/consent-check`}
+                  style={{ background: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #fcd34d' }}
+                >
+                  ✓ Nõusolekud
+                </Link>
+              )}
+              {!PROTOTYPE_MODE && (
+                <Link
+                  href={`/dashboard/tests/${test.id}/batch-import`}
+                  style={{ background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap' }}
+                >
+                  📄 Lae üles skannitud PDF
+                </Link>
+              )}
               {!PROTOTYPE_MODE && <Link
                 href={`/dashboard/tests/${test.id}/results/new`}
                 style={{ background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #DAD0A1' }}
@@ -287,19 +292,23 @@ export default async function TestDetailPage({
           </div>
 
           {test.results.length === 0 ? (
-            <div style={{ background: '#F8F3DA', border: '2px dashed #DAD0A1', padding: '48px 24px', textAlign: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>Ühtegi tulemust pole veel lisatud</p>
-              <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>Lae üles skannitud PDF kõigi õpilaste töödega</p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-                <Link href={`/dashboard/tests/${test.id}/batch-import`} style={{ display: 'inline-block', background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
-                  📄 Lae üles skannitud PDF
-                </Link>
-                {!PROTOTYPE_MODE && <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', background: '#fff', color: '#1C2832', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #DAD0A1' }}>
-                  + Lisa üks tulemus käsitsi
-                </Link>}
+            PROTOTYPE_MODE ? (
+              <AutoImportUpload testId={test.id} />
+            ) : (
+              <div style={{ background: '#F8F3DA', border: '2px dashed #DAD0A1', padding: '48px 24px', textAlign: 'center', borderRadius: 6 }}>
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>Ühtegi tulemust pole veel lisatud</p>
+                <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>Lae üles skannitud PDF kõigi õpilaste töödega</p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                  <Link href={`/dashboard/tests/${test.id}/batch-import`} style={{ display: 'inline-block', background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+                    📄 Lae üles skannitud PDF
+                  </Link>
+                  <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', background: '#fff', color: '#1C2832', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #DAD0A1' }}>
+                    + Lisa üks tulemus käsitsi
+                  </Link>
+                </div>
               </div>
-            </div>
+            )
           ) : (
             // Desktop: proper table; mobile: card list
             <>
@@ -377,6 +386,13 @@ export default async function TestDetailPage({
                 })}
               </div>
             </>
+          )}
+
+          {/* In prototype mode, show upload zone below results too */}
+          {PROTOTYPE_MODE && test.results.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <AutoImportUpload testId={test.id} />
+            </div>
           )}
         </div>
 
