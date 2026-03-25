@@ -5,7 +5,6 @@ import { db } from '@/lib/db';
 import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData } from '@/lib/types';
 import ResultReviewClient from './ResultReviewClient';
-import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 const RESULT_STATUS_LABELS: Record<ResultStatus, string> = {
   PENDING: 'Ootel',
@@ -208,43 +207,41 @@ export default async function ResultReviewPage({
         </div>
       </div>
 
-      {/* Status lifecycle bar — hidden in prototype mode */}
-      {!PROTOTYPE_MODE && (
-        <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {LIFECYCLE.map((step, i) => {
-              const isDone = i < currentStatusIndex;
-              const isCurrent = i === currentStatusIndex;
-              const isFuture = i > currentStatusIndex;
-              return (
-                <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                  {i > 0 && (
-                    <div style={{
-                      position: 'absolute', top: 9, left: '-50%', right: '50%', height: 2,
-                      background: isDone || isCurrent ? '#1C2832' : '#DAD0A1', zIndex: 0,
-                    }} />
-                  )}
+      {/* Status lifecycle bar */}
+      <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {LIFECYCLE.map((step, i) => {
+            const isDone = i < currentStatusIndex;
+            const isCurrent = i === currentStatusIndex;
+            const isFuture = i > currentStatusIndex;
+            return (
+              <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                {i > 0 && (
                   <div style={{
-                    width: 20, height: 20, borderRadius: '50%',
-                    background: isCurrent ? '#1C2832' : isDone ? '#DAD0A1' : '#F8F3DA',
-                    border: `2px solid ${isCurrent ? '#1C2832' : isDone ? '#1C2832' : '#DAD0A1'}`,
-                    zIndex: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {isDone && <span style={{ fontSize: 9, color: '#1C2832', fontWeight: 700 }}>✓</span>}
-                  </div>
-                  <span style={{
-                    fontSize: 9, fontWeight: isCurrent ? 700 : 400,
-                    color: isFuture ? '#9ca3af' : '#1C2832',
-                    marginTop: 4, textAlign: 'center', lineHeight: 1.2,
-                  }}>
-                    {RESULT_STATUS_LABELS[step]}
-                  </span>
+                    position: 'absolute', top: 9, left: '-50%', right: '50%', height: 2,
+                    background: isDone || isCurrent ? '#1C2832' : '#DAD0A1', zIndex: 0,
+                  }} />
+                )}
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: isCurrent ? '#1C2832' : isDone ? '#DAD0A1' : '#F8F3DA',
+                  border: `2px solid ${isCurrent ? '#1C2832' : isDone ? '#1C2832' : '#DAD0A1'}`,
+                  zIndex: 1, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {isDone && <span style={{ fontSize: 9, color: '#1C2832', fontWeight: 700 }}>✓</span>}
                 </div>
-              );
-            })}
-          </div>
+                <span style={{
+                  fontSize: 9, fontWeight: isCurrent ? 700 : 400,
+                  color: isFuture ? '#9ca3af' : '#1C2832',
+                  marginTop: 4, textAlign: 'center', lineHeight: 1.2,
+                }}>
+                  {RESULT_STATUS_LABELS[step]}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* Main interactive content */}
       <ResultReviewClient
@@ -261,10 +258,6 @@ export default async function ResultReviewPage({
         prefetchResultId={prefetchResultId}
         queuePosition={pendingIdx >= 0 ? pendingIdx + 1 : null}
         queueTotal={pendingQueue.length}
-        studentName={result.studentName ?? 'Õpilane'}
-        testTitle={result.test.title}
-        subjectName={result.test.subject?.name ?? ''}
-        grade={result.test.grade ?? ''}
       />
     </div>
   );
