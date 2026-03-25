@@ -740,28 +740,6 @@ export default function ResultReviewClient({
               </button>
             )}
 
-            {/* Training consent toggle */}
-            {!hasTrainingConsent && rawFeedback && (
-              <button
-                onClick={handleTrainingConsent}
-                style={{
-                  background: '#F8F3DA',
-                  color: '#1C2832',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  padding: '10px 14px',
-                  border: '1.5px solid #DAD0A1',
-                  cursor: 'pointer',
-                }}
-              >
-                Luba anonüümseks treeningandmeks
-              </button>
-            )}
-            {hasTrainingConsent && (
-              <span style={{ fontSize: 12, color: '#6b7280' }}>
-                Treeningandmete nõusolek antud ✓
-              </span>
-            )}
           </div>
 
           {/* Next student button — shown whenever there's a next result */}
