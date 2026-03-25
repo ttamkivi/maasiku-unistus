@@ -6,7 +6,7 @@ import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData, FeedbackItem } from '@/lib/types';
 import posthog from 'posthog-js';
 
-type Tab = 'ai' | 'edits' | 'notes';
+type Tab = 'ai' | 'notes';
 
 interface Props {
   testId: string;
@@ -50,7 +50,59 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: string
 
 type View = 'feedback' | 'tasks';
 
-function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
+// Inline-editable text that looks like display text until focused
+function InlineText({ value, onChange, disabled, style, multiline }: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+  multiline?: boolean;
+}) {
+  const baseStyle: React.CSSProperties = {
+    width: '100%', border: 'none', outline: 'none', resize: 'none',
+    background: 'transparent', padding: 0, margin: 0, fontFamily: 'inherit',
+    ...style,
+  };
+
+  if (multiline || value.length > 80) {
+    return (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        rows={Math.max(2, Math.ceil(value.length / 70))}
+        style={{ ...baseStyle, resize: 'vertical' }}
+      />
+    );
+  }
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      style={baseStyle}
+    />
+  );
+}
+
+function InlineFeedback({
+  wentWell, setWentWell,
+  improve, setImprove,
+  pattern, setPattern,
+  suggestions, setSuggestions,
+  outlook, setOutlook,
+  rawFeedback,
+  disabled,
+}: {
+  wentWell: FeedbackItem[]; setWentWell: (v: FeedbackItem[]) => void;
+  improve: FeedbackItem[]; setImprove: (v: FeedbackItem[]) => void;
+  pattern: string; setPattern: (v: string) => void;
+  suggestions: FeedbackItem[]; setSuggestions: (v: FeedbackItem[]) => void;
+  outlook: string; setOutlook: (v: string) => void;
+  rawFeedback: FeedbackData;
+  disabled: boolean;
+}) {
   const [view, setView] = useState<View>('feedback');
 
   const tabs: { key: View; label: string; desc: string }[] = [
@@ -58,11 +110,14 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
     { key: 'tasks', label: 'Ülesannete kaupa', desc: 'Iga ülesanne eraldi' },
   ];
 
-  // Count tasks with issues for the summary view
-  const totalTasks = feedback.tasks?.length ?? 0;
-  const correctTasks = feedback.tasks?.filter(t => t.is_correct === true).length ?? 0;
-  const wrongTasks = feedback.tasks?.filter(t => t.is_correct === false).length ?? 0;
+  const totalTasks = rawFeedback.tasks?.length ?? 0;
+  const correctTasks = rawFeedback.tasks?.filter(t => t.is_correct === true).length ?? 0;
+  const wrongTasks = rawFeedback.tasks?.filter(t => t.is_correct === false).length ?? 0;
   const partialTasks = totalTasks - correctTasks - wrongTasks;
+
+  const updateItem = (list: FeedbackItem[], setter: (v: FeedbackItem[]) => void, index: number, field: 'title' | 'text', value: string) => {
+    setter(list.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+  };
 
   return (
     <div>
@@ -86,16 +141,22 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
         ))}
       </div>
 
-      {/* ── FEEDBACK VIEW: summary + full details combined ── */}
+      {/* ── FEEDBACK VIEW: inline-editable ── */}
       {view === 'feedback' && (
         <div>
-          {/* Overall pattern as hero summary */}
+          {/* Overall pattern as hero summary — editable */}
           <div style={{ background: '#1C2832', color: '#F8F3DA', padding: '16px 18px', marginBottom: 16 }}>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, opacity: 0.7 }}>Kokkuvõte</p>
-            <p style={{ fontSize: 15, lineHeight: 1.7, margin: 0 }}>{feedback.uldine_muster}</p>
+            <InlineText
+              value={pattern}
+              onChange={setPattern}
+              disabled={disabled}
+              multiline
+              style={{ fontSize: 15, lineHeight: 1.7, color: '#F8F3DA' }}
+            />
           </div>
 
-          {/* Quick score overview if tasks exist */}
+          {/* Quick score overview */}
           {totalTasks > 0 && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <div style={{ flex: 1, background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '10px 12px', textAlign: 'center' }}>
@@ -113,54 +174,58 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
             </div>
           )}
 
-          {/* Learning objective if available */}
-          {feedback.opieesmark && (
+          {/* Learning objective */}
+          {rawFeedback.opieesmark && (
             <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '10px 14px', marginBottom: 16 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#0072CE', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Õpieesmärk</p>
-              <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.6, margin: 0 }}>{feedback.opieesmark}</p>
+              <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.6, margin: 0 }}>{rawFeedback.opieesmark}</p>
             </div>
           )}
 
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Mis läks hästi</SectionHeading>
-            {feedback.mis_laks_hasti.map((item, i) => (
+            {wentWell.map((item, i) => (
               <Card key={i} accent="#22c55e">
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
+                <InlineText value={item.title} onChange={(v) => updateItem(wentWell, setWentWell, i, 'title', v)} disabled={disabled} style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }} />
+                <InlineText value={item.text} onChange={(v) => updateItem(wentWell, setWentWell, i, 'text', v)} disabled={disabled} multiline style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }} />
               </Card>
             ))}
           </div>
+
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Mida parandada</SectionHeading>
-            {feedback.mida_parandada.map((item, i) => (
+            {improve.map((item, i) => (
               <Card key={i} accent="#f97316">
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{i + 1}. {item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
+                <InlineText value={item.title} onChange={(v) => updateItem(improve, setImprove, i, 'title', v)} disabled={disabled} style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }} />
+                <InlineText value={item.text} onChange={(v) => updateItem(improve, setImprove, i, 'text', v)} disabled={disabled} multiline style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }} />
               </Card>
             ))}
           </div>
+
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Soovitused edaspidiseks</SectionHeading>
-            {feedback.soovitused.map((item, i) => (
+            {suggestions.map((item, i) => (
               <Card key={i}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
+                <InlineText value={item.title} onChange={(v) => updateItem(suggestions, setSuggestions, i, 'title', v)} disabled={disabled} style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }} />
+                <InlineText value={item.text} onChange={(v) => updateItem(suggestions, setSuggestions, i, 'text', v)} disabled={disabled} multiline style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }} />
               </Card>
             ))}
           </div>
-          {feedback.pilk_ettepoole && (
+
+          {(outlook || rawFeedback.pilk_ettepoole) && (
             <div style={{ marginBottom: 16 }}>
               <SectionHeading>Pilk ettepoole</SectionHeading>
               <Card accent="#8b5cf6">
-                <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.pilk_ettepoole}</p>
+                <InlineText value={outlook} onChange={setOutlook} disabled={disabled} multiline style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }} />
               </Card>
             </div>
           )}
-          {/* Resources appendix */}
-          {feedback.resources && feedback.resources.length > 0 && (
+
+          {/* Resources appendix — read-only */}
+          {rawFeedback.resources && rawFeedback.resources.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <SectionHeading>Kasulikud materjalid</SectionHeading>
-              {feedback.resources.map((r, i) => (
+              {rawFeedback.resources.map((r, i) => (
                 <Card key={i}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                     <span style={{
@@ -177,31 +242,31 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
               ))}
             </div>
           )}
-          {/* Teacher notes */}
-          {feedback.markmed_opetajale && (
+
+          {/* Teacher notes from AI — read-only */}
+          {rawFeedback.markmed_opetajale && (
             <div style={{ marginBottom: 16 }}>
               <SectionHeading>Märkmed õpetajale</SectionHeading>
               <Card accent="#6b7280">
                 <p style={{ fontSize: 12, fontStyle: 'italic', color: '#6b7280', marginBottom: 4 }}>Ainult õpetajale — ei jagata õpilasega</p>
-                <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{feedback.markmed_opetajale}</p>
+                <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{rawFeedback.markmed_opetajale}</p>
               </Card>
             </div>
           )}
         </div>
       )}
 
-      {/* ── TASKS VIEW: per-task breakdown ── */}
+      {/* ── TASKS VIEW: per-task breakdown (read-only) ── */}
       {view === 'tasks' && (
         <div>
-          {!feedback.tasks || feedback.tasks.length === 0 ? (
+          {!rawFeedback.tasks || rawFeedback.tasks.length === 0 ? (
             <div style={{ background: '#F8F3DA', padding: 20, fontSize: 14, color: '#1C2832' }}>
               Ülesannete kaupa vaade pole saadaval — AI ei tuvastanud üksikuid ülesandeid.
             </div>
           ) : (
             <>
-              {/* Quick summary bar */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-                {feedback.tasks.map((task, i) => {
+                {rawFeedback.tasks.map((task, i) => {
                   const bg = task.is_correct === true ? '#22c55e' : task.is_correct === false ? '#ef4444' : '#f97316';
                   return (
                     <div key={i} style={{
@@ -214,7 +279,7 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
                   );
                 })}
               </div>
-              {feedback.tasks.map((task, i) => {
+              {rawFeedback.tasks.map((task, i) => {
                 const isCorrect = task.is_correct === true;
                 const isWrong = task.is_correct === false;
                 const badgeBg = isCorrect ? '#22c55e' : isWrong ? '#ef4444' : '#f97316';
@@ -373,7 +438,6 @@ export default function ResultReviewClient({
       body: JSON.stringify({ resultId: prefetchResultId }),
     }).catch(() => {/* silent — not critical */});
   }, [testId, prefetchResultId]);
-  const [activeTab, setActiveTab] = useState<Tab>('ai');
   const [status, setStatus] = useState<ResultStatus>(initialStatus);
   const [isApprovedOrBeyond, setIsApprovedOrBeyond] = useState(initialIsApprovedOrBeyond);
   const [hasTrainingConsent, setHasTrainingConsent] = useState(initialHasTrainingConsent);
@@ -494,11 +558,7 @@ export default function ResultReviewClient({
     } catch {}
   };
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'ai', label: 'AI tagasiside' },
-    { key: 'edits', label: 'Minu muudatused' },
-    { key: 'notes', label: 'Isiklikud märkmed' },
-  ];
+  const [showNotes, setShowNotes] = useState(false);
 
   return (
     <div>
@@ -509,143 +569,64 @@ export default function ResultReviewClient({
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #DAD0A1', marginBottom: 20 }}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              padding: '10px 18px', fontSize: 14, fontWeight: 700,
-              border: 'none', cursor: 'pointer',
-              background: activeTab === tab.key ? '#1C2832' : '#F8F3DA',
-              color: activeTab === tab.key ? '#fff' : '#1C2832',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Inline-editable feedback — no separate tabs */}
+      <div onBlur={handleFeedbackBlur}>
+        {rawFeedback ? (
+          <InlineFeedback
+            wentWell={editedWentWell} setWentWell={setEditedWentWell}
+            improve={editedImprove} setImprove={setEditedImprove}
+            pattern={editedPattern} setPattern={setEditedPattern}
+            suggestions={editedSuggestions} setSuggestions={setEditedSuggestions}
+            outlook={editedOutlook} setOutlook={setEditedOutlook}
+            rawFeedback={rawFeedback}
+            disabled={isApprovedOrBeyond}
+          />
+        ) : analyzing ? (
+          <div style={{ background: '#F8F3DA', border: '1.5px solid #DAD0A1', padding: '40px 24px', textAlign: 'center', borderRadius: 6 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>&#9881;&#65039;</div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
+              AI analüüsib töid...
+            </p>
+            <p style={{ fontSize: 13, color: '#6b7280' }}>
+              Tavaliselt võtab 15-30 sekundit. Leht uueneb automaatselt.
+            </p>
+            <div style={{ marginTop: 16, height: 4, background: '#DAD0A1', borderRadius: 2, overflow: 'hidden', maxWidth: 240, margin: '16px auto 0' }}>
+              <div style={{
+                height: '100%', background: '#1C2832', borderRadius: 2,
+                animation: 'pulse-bar 1.5s ease-in-out infinite',
+                width: '40%',
+              }} />
+            </div>
+            <style>{`@keyframes pulse-bar { 0%{margin-left:0} 50%{margin-left:60%} 100%{margin-left:0} }`}</style>
+          </div>
+        ) : (
+          <div style={{ background: '#F8F3DA', padding: '28px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.7 }}>
+              AI tagasiside pole veel saadaval. Lisa fotod ja käivita analüüs.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Tab 1: AI feedback (read-only) */}
-      {activeTab === 'ai' && (
-        <div>
-          {rawFeedback ? (
-            <ReadOnlyFeedback feedback={rawFeedback} />
-          ) : analyzing ? (
-            <div style={{ background: '#F8F3DA', border: '1.5px solid #DAD0A1', padding: '40px 24px', textAlign: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>⚙️</div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
-                AI analüüsib töid…
-              </p>
-              <p style={{ fontSize: 13, color: '#6b7280' }}>
-                Tavaliselt võtab 15–30 sekundit. Leht uueneb automaatselt.
-              </p>
-              <div style={{ marginTop: 16, height: 4, background: '#DAD0A1', borderRadius: 2, overflow: 'hidden', maxWidth: 240, margin: '16px auto 0' }}>
-                <div style={{
-                  height: '100%', background: '#1C2832', borderRadius: 2,
-                  animation: 'pulse-bar 1.5s ease-in-out infinite',
-                  width: '40%',
-                }} />
-              </div>
-              <style>{`@keyframes pulse-bar { 0%{margin-left:0} 50%{margin-left:60%} 100%{margin-left:0} }`}</style>
-            </div>
-          ) : (
-            <div style={{ background: '#F8F3DA', padding: '28px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.7 }}>
-                AI tagasiside pole veel saadaval. Lisa fotod ja käivita analüüs.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 2: Editable feedback */}
-      {activeTab === 'edits' && (
-        <div onBlur={handleFeedbackBlur}>
-          {!baseFeedback ? (
-            <div style={{ background: '#F8F3DA', padding: '28px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.7 }}>
-                Tagasiside pole veel saadaval muutmiseks.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div style={{ background: '#fff8e6', border: '1px solid #DAD0A1', padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1C2832' }}>
-                Muudatused salvestatakse automaatselt. Kinnitatud tagasiside lukustatakse.
-              </div>
-
-              <EditableItemList
-                label="Mis läks hästi"
-                items={editedWentWell}
-                onChange={setEditedWentWell}
-                disabled={isApprovedOrBeyond}
-              />
-
-              <EditableItemList
-                label="Mida parandada"
-                items={editedImprove}
-                onChange={setEditedImprove}
-                disabled={isApprovedOrBeyond}
-              />
-
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>Üldine muster</p>
-                <textarea
-                  value={editedPattern}
-                  onChange={(e) => setEditedPattern(e.target.value)}
-                  disabled={isApprovedOrBeyond}
-                  rows={4}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
-                    fontSize: 14, color: '#1C2832', background: isApprovedOrBeyond ? '#f9f9f7' : '#fff',
-                    resize: 'vertical', boxSizing: 'border-box', outline: 'none',
-                  }}
-                />
-              </div>
-
-              <EditableItemList
-                label="Soovitused"
-                items={editedSuggestions}
-                onChange={setEditedSuggestions}
-                disabled={isApprovedOrBeyond}
-              />
-
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>Pilk ettepoole</p>
-                <textarea
-                  value={editedOutlook}
-                  onChange={(e) => setEditedOutlook(e.target.value)}
-                  disabled={isApprovedOrBeyond}
-                  rows={4}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
-                    fontSize: 14, color: '#1C2832', background: isApprovedOrBeyond ? '#f9f9f7' : '#fff',
-                    resize: 'vertical', boxSizing: 'border-box', outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 3: Private notes */}
-      {activeTab === 'notes' && (
-        <div onBlur={handleNotesBlur}>
-          <div style={{ background: '#F8F3DA', padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1C2832', borderLeft: '3px solid #DAD0A1' }}>
-            Isiklikud märkmed ei jagata kunagi õpilasega.
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
-              Õpetaja isiklikud märkmed (ei jagata õpilasega)
-            </label>
+      {/* Collapsible private notes */}
+      <div style={{ marginTop: 20, borderTop: '1px solid #DAD0A1', paddingTop: 12 }} onBlur={handleNotesBlur}>
+        <button
+          onClick={() => setShowNotes(!showNotes)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            fontSize: 13, fontWeight: 700, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span style={{ transform: showNotes ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>&#9654;</span>
+          Isiklikud märkmed
+        </button>
+        {showNotes && (
+          <div style={{ marginTop: 10 }}>
             <textarea
               value={teacherNotes}
               onChange={(e) => setTeacherNotes(e.target.value)}
-              rows={8}
-              placeholder="Kirjuta siia oma mõtted, tähelepanekud või meeldetuletused selle õpilase kohta..."
+              rows={4}
+              placeholder="Kirjuta siia oma mõtted selle õpilase kohta... (ei jagata õpilasega)"
               style={{
                 width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
                 fontSize: 14, color: '#1C2832', background: '#fff',
@@ -653,25 +634,8 @@ export default function ResultReviewClient({
               }}
             />
           </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1C2832', marginBottom: 8 }}>
-              Lühike kommentaar treeningandmete jaoks
-            </label>
-            <textarea
-              value={teacherComment}
-              onChange={(e) => setTeacherComment(e.target.value)}
-              rows={3}
-              placeholder="Lühike kommentaar mudeli täiustamiseks (anonüümiseeritakse enne salvestamist)..."
-              style={{
-                width: '100%', padding: '10px 12px', border: '1.5px solid #DAD0A1',
-                fontSize: 14, color: '#1C2832', background: '#fff',
-                resize: 'vertical', boxSizing: 'border-box', outline: 'none',
-              }}
-            />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Bottom action bar */}
       <div
