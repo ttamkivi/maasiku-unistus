@@ -596,6 +596,35 @@ export default function ResultReviewClient({
   };
 
   const [showNotes, setShowNotes] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadDocx = async () => {
+    const ef = buildEditedFeedback();
+    if (!ef) return;
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/generate-docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ef),
+      });
+      if (!res.ok) throw new Error('Dokumendi genereerimine ebaõnnestus');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tagasiside_${resultId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      posthog.capture('feedback_docx_downloaded', { resultId, testId });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Allalaadimine ebaõnnestus');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div>
@@ -707,9 +736,25 @@ export default function ResultReviewClient({
             </div>
           )}
 
-          {/* Main action: one-click submit or status display */}
+          {/* Download + Main action */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {rawFeedback && (
+              <button
+                type="button"
+                onClick={handleDownloadDocx}
+                disabled={downloading}
+                style={{
+                  background: '#F8F3DA', border: '1.5px solid #DAD0A1', color: '#1C2832',
+                  fontWeight: 700, fontSize: 13, padding: '10px 16px', cursor: downloading ? 'wait' : 'pointer',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {downloading ? '...' : '⬇ DOCX'}
+              </button>
+            )}
+
           {status === 'SHARED' ? (
-            <>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px', textAlign: 'center' }}>
                 Jagatud ✓
               </div>
@@ -736,13 +781,13 @@ export default function ResultReviewClient({
                   ✓ Kõik {queueTotal} õpilast läbi vaadatud — tagasi kontrolltöö lehele
                 </a>
               ) : null}
-            </>
+            </div>
           ) : (
             <button
               onClick={handleSubmitAndNext}
               disabled={actionLoading || !rawFeedback}
               style={{
-                width: '100%',
+                flex: 1,
                 background: actionLoading || !rawFeedback ? '#6b7280' : '#0f766e',
                 color: '#fff', fontWeight: 700, fontSize: 15,
                 padding: '13px 18px', border: 'none',
@@ -755,6 +800,7 @@ export default function ResultReviewClient({
               }
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>
