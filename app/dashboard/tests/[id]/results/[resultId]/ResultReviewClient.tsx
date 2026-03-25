@@ -442,8 +442,8 @@ export default function ResultReviewClient({
   const [isApprovedOrBeyond, setIsApprovedOrBeyond] = useState(initialIsApprovedOrBeyond);
   const [hasTrainingConsent, setHasTrainingConsent] = useState(initialHasTrainingConsent);
 
-  // Editable feedback state — start from editedFeedback if available, else rawFeedback
-  const baseFeedback = editedFeedback ?? rawFeedback;
+  // Editable feedback state — always start from AI-generated rawFeedback so teacher sees the full original
+  const baseFeedback = rawFeedback;
   const [editedWentWell, setEditedWentWell] = useState<FeedbackItem[]>(
     baseFeedback?.mis_laks_hasti ?? []
   );
