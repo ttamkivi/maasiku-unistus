@@ -512,6 +512,15 @@ export default function ResultReviewClient({
     setActionLoading(true);
     setActionError(null);
     try {
+      // Save edits first
+      const ef = buildEditedFeedback();
+      if (ef) {
+        await fetch(`/api/tests/${testId}/results/${resultId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editedFeedback: JSON.stringify(ef) }),
+        });
+      }
       const res = await fetch(`/api/tests/${testId}/results/${resultId}/approve`, {
         method: 'POST',
       });
@@ -519,7 +528,7 @@ export default function ResultReviewClient({
       if (!res.ok) throw new Error(data.error || 'Viga');
       setStatus('APPROVED');
       setIsApprovedOrBeyond(true);
-      router.refresh();
+      posthog.capture('feedback_approved', { resultId, testId });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Viga');
     } finally {
@@ -531,17 +540,22 @@ export default function ResultReviewClient({
     setActionLoading(true);
     setActionError(null);
     try {
+      // Save edits first
+      const ef = buildEditedFeedback();
+      if (ef) {
+        await fetch(`/api/tests/${testId}/results/${resultId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editedFeedback: JSON.stringify(ef) }),
+        });
+      }
       const res = await fetch(`/api/tests/${testId}/results/${resultId}/share`, {
         method: 'POST',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Viga');
       setStatus('SHARED');
-      if (nextResultId) {
-        router.push(`/dashboard/tests/${testId}/results/${nextResultId}`);
-      } else {
-        router.refresh();
-      }
+      posthog.capture('feedback_shared_ekool', { resultId, testId });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Viga');
     } finally {
@@ -598,27 +612,27 @@ export default function ResultReviewClient({
   const [showNotes, setShowNotes] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const handleDownloadDocx = async () => {
+  const handleDownloadPdf = async () => {
     const ef = buildEditedFeedback();
     if (!ef) return;
     setDownloading(true);
     try {
-      const res = await fetch('/api/generate-docx', {
+      const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ef),
       });
-      if (!res.ok) throw new Error('Dokumendi genereerimine ebaõnnestus');
+      if (!res.ok) throw new Error('PDF genereerimine ebaõnnestus');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `tagasiside_${resultId}.docx`;
+      a.download = `tagasiside_${resultId}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      posthog.capture('feedback_docx_downloaded', { resultId, testId });
+      posthog.capture('feedback_pdf_downloaded', { resultId, testId });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Allalaadimine ebaõnnestus');
     } finally {
@@ -626,8 +640,21 @@ export default function ResultReviewClient({
     }
   };
 
+  const handlePrint = () => {
+    posthog.capture('feedback_printed', { resultId, testId });
+    window.print();
+  };
+
   return (
     <div>
+      {/* Print styles — hide nav and bottom bar when printing */}
+      <style>{`
+        @media print {
+          nav, header, [data-print-hide] { display: none !important; }
+          body { font-size: 12pt; }
+        }
+      `}</style>
+
       {/* Auto-save indicator */}
       {saving && (
         <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'right', marginBottom: 8 }}>
@@ -705,6 +732,7 @@ export default function ResultReviewClient({
 
       {/* Bottom action bar */}
       <div
+        data-print-hide
         style={{
           position: 'fixed',
           bottom: 0,
@@ -736,71 +764,114 @@ export default function ResultReviewClient({
             </div>
           )}
 
-          {/* Download + Main action */}
-          <div style={{ display: 'flex', gap: 8 }}>
+          {/* Action buttons row */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* Kinnita — always first */}
+            {status !== 'APPROVED' && status !== 'SHARED' ? (
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading || !rawFeedback}
+                style={{
+                  flex: 1, minWidth: 100,
+                  background: actionLoading || !rawFeedback ? '#6b7280' : '#1C2832',
+                  color: '#fff', fontWeight: 700, fontSize: 14,
+                  padding: '12px 16px', border: 'none',
+                  cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {actionLoading ? 'Palun oota...' : 'Kinnita'}
+              </button>
+            ) : (
+              <div style={{
+                flex: 1, minWidth: 100, background: '#d1fae5', color: '#065f46',
+                fontWeight: 700, fontSize: 14, padding: '12px 16px', textAlign: 'center',
+              }}>
+                Kinnitatud ✓
+              </div>
+            )}
+
+            {/* Salvesta eKooli */}
+            {status !== 'SHARED' ? (
+              <button
+                onClick={handleShare}
+                disabled={actionLoading || !rawFeedback || (status !== 'APPROVED' && status !== 'SHARED')}
+                style={{
+                  flex: 1, minWidth: 120,
+                  background: actionLoading || !rawFeedback || status !== 'APPROVED' ? '#d1d5db' : '#0f766e',
+                  color: actionLoading || !rawFeedback || status !== 'APPROVED' ? '#9ca3af' : '#fff',
+                  fontWeight: 700, fontSize: 14,
+                  padding: '12px 16px', border: 'none',
+                  cursor: status !== 'APPROVED' ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Salvesta eKooli
+              </button>
+            ) : (
+              <div style={{
+                flex: 1, minWidth: 120, background: '#bbf7d0', color: '#15803d',
+                fontWeight: 700, fontSize: 14, padding: '12px 16px', textAlign: 'center',
+              }}>
+                eKoolis ✓
+              </div>
+            )}
+
+            {/* Lae arvutisse (PDF) */}
             {rawFeedback && (
               <button
                 type="button"
-                onClick={handleDownloadDocx}
+                onClick={handleDownloadPdf}
                 disabled={downloading}
                 style={{
                   background: '#F8F3DA', border: '1.5px solid #DAD0A1', color: '#1C2832',
-                  fontWeight: 700, fontSize: 13, padding: '10px 16px', cursor: downloading ? 'wait' : 'pointer',
-                  whiteSpace: 'nowrap', flexShrink: 0,
+                  fontWeight: 700, fontSize: 13, padding: '12px 14px',
+                  cursor: downloading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
                 }}
               >
-                {downloading ? '...' : '⬇ DOCX'}
+                {downloading ? '...' : 'Lae arvutisse'}
               </button>
             )}
 
-          {status === 'SHARED' ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px', textAlign: 'center' }}>
-                Jagatud ✓
-              </div>
-              {nextResultId ? (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
-                  style={{
-                    width: '100%', background: '#1C2832', color: '#F8F3DA',
-                    fontWeight: 700, fontSize: 14, padding: '12px', border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  Järgmine: {nextStudentName || 'õpilane'} →
-                </button>
-              ) : queueTotal > 1 ? (
-                <a
-                  href={`/dashboard/tests/${testId}`}
-                  style={{
-                    display: 'block', width: '100%', background: '#F0FDF4', border: '1.5px solid #86EFAC',
-                    color: '#15803d', fontWeight: 700, fontSize: 14, padding: '11px', textAlign: 'center',
-                    textDecoration: 'none', boxSizing: 'border-box',
-                  }}
-                >
-                  ✓ Kõik {queueTotal} õpilast läbi vaadatud — tagasi kontrolltöö lehele
-                </a>
-              ) : null}
-            </div>
-          ) : (
+            {/* Prindi */}
+            {rawFeedback && (
+              <button
+                type="button"
+                onClick={handlePrint}
+                style={{
+                  background: '#fff', border: '1.5px solid #DAD0A1', color: '#1C2832',
+                  fontWeight: 700, fontSize: 13, padding: '12px 14px',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                Prindi
+              </button>
+            )}
+          </div>
+
+          {/* Next student navigation */}
+          {status === 'SHARED' && nextResultId && (
             <button
-              onClick={handleSubmitAndNext}
-              disabled={actionLoading || !rawFeedback}
+              type="button"
+              onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
               style={{
-                flex: 1,
-                background: actionLoading || !rawFeedback ? '#6b7280' : '#0f766e',
-                color: '#fff', fontWeight: 700, fontSize: 15,
-                padding: '13px 18px', border: 'none',
-                cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
+                width: '100%', background: '#1C2832', color: '#F8F3DA',
+                fontWeight: 700, fontSize: 14, padding: '12px', border: 'none', cursor: 'pointer',
               }}
             >
-              {actionLoading ? 'Palun oota...' : nextResultId
-                ? `Kinnita ja jaga → ${nextStudentName || 'järgmine'}`
-                : 'Kinnita ja jaga'
-              }
+              Järgmine: {nextStudentName || 'õpilane'} →
             </button>
           )}
-          </div>
+          {status === 'SHARED' && !nextResultId && queueTotal > 1 && (
+            <a
+              href={`/dashboard/tests/${testId}`}
+              style={{
+                display: 'block', width: '100%', background: '#F0FDF4', border: '1.5px solid #86EFAC',
+                color: '#15803d', fontWeight: 700, fontSize: 14, padding: '11px', textAlign: 'center',
+                textDecoration: 'none', boxSizing: 'border-box',
+              }}
+            >
+              ✓ Kõik {queueTotal} õpilast läbi vaadatud — tagasi kontrolltöö lehele
+            </a>
+          )}
         </div>
       </div>
     </div>
