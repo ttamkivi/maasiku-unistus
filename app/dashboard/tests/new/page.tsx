@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 interface Subject {
   id: string;
@@ -116,7 +117,7 @@ export default function NewTestPage() {
           />
         </div>
 
-        <div>
+        {!PROTOTYPE_MODE && <div>
           <label style={labelStyle}>Teema</label>
           <input
             type="text"
@@ -125,7 +126,7 @@ export default function NewTestPage() {
             placeholder="nt. Ühtlaselt kiirenev liikumine"
             style={inputStyle}
           />
-        </div>
+        </div>}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div>
@@ -172,7 +173,7 @@ export default function NewTestPage() {
         </div>
 
         {/* Collapsible advanced section */}
-        <div>
+        {!PROTOTYPE_MODE && <div>
           <button
             type="button"
             onClick={() => setShowAdvanced((v) => !v)}
@@ -235,7 +236,7 @@ export default function NewTestPage() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {error && (
           <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '10px 14px', fontSize: 13, color: '#b91c1c' }}>

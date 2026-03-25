@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
 import TestAdvanceButton from './TestAdvanceButton';
 import BulkAnalyzeButton from './BulkAnalyzeButton';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 const TEST_STATUS_LABELS: Record<TestStatus, string> = {
   PREPARING: 'Ettevalmistamine',
@@ -155,7 +156,7 @@ export default async function TestDetailPage({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Lifecycle */}
-          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
+          {!PROTOTYPE_MODE && <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Elutsükkel
             </p>
@@ -188,12 +189,12 @@ export default async function TestDetailPage({
               {test.completedDate && <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6 }}><strong>Lõpetatud:</strong> {formatDate(test.completedDate)}</div>}
             </div>
 
-            {canAdvance && nextStatus && (
+            {!PROTOTYPE_MODE && canAdvance && nextStatus && (
               <div style={{ marginTop: 14, borderTop: '1px solid #DAD0A1', paddingTop: 14 }}>
                 <TestAdvanceButton testId={test.id} nextStatusLabel={TEST_STATUS_LABELS[nextStatus]} />
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Stats card — desktop only meaningful when results exist */}
           {test.results.length > 0 && (
@@ -229,7 +230,7 @@ export default async function TestDetailPage({
           )}
 
           {/* Notes */}
-          {test.notes && (
+          {!PROTOTYPE_MODE && test.notes && (
             <div style={{ background: '#F8F3DA', padding: '14px 16px', borderLeft: '3px solid #DAD0A1' }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.6, marginBottom: 4 }}>MÄRKMED</p>
               <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.6, margin: 0 }}>{test.notes}</p>
@@ -237,7 +238,7 @@ export default async function TestDetailPage({
           )}
 
           {/* Rubric */}
-          {test.rubric && (
+          {!PROTOTYPE_MODE && test.rubric && (
             <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px' }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hindamisjuhend</p>
               <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{test.rubric}</p>
@@ -245,7 +246,7 @@ export default async function TestDetailPage({
           )}
 
           {/* Answer key */}
-          {test.answerKey && (
+          {!PROTOTYPE_MODE && test.answerKey && (
             <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '14px 16px' }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', opacity: 0.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Õiged vastused</p>
               <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{test.answerKey}</p>
@@ -276,12 +277,12 @@ export default async function TestDetailPage({
               >
                 📄 Lae üles skannitud PDF
               </Link>
-              <Link
+              {!PROTOTYPE_MODE && <Link
                 href={`/dashboard/tests/${test.id}/results/new`}
                 style={{ background: '#F8F3DA', color: '#1C2832', fontWeight: 700, fontSize: 13, padding: '9px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', border: '1.5px solid #DAD0A1' }}
               >
                 + Lisa üks tulemus
-              </Link>
+              </Link>}
             </div>
           </div>
 
@@ -294,9 +295,9 @@ export default async function TestDetailPage({
                 <Link href={`/dashboard/tests/${test.id}/batch-import`} style={{ display: 'inline-block', background: '#1C2832', color: '#F8F3DA', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
                   📄 Lae üles skannitud PDF
                 </Link>
-                <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', background: '#fff', color: '#1C2832', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #DAD0A1' }}>
+                {!PROTOTYPE_MODE && <Link href={`/dashboard/tests/${test.id}/results/new`} style={{ display: 'inline-block', background: '#fff', color: '#1C2832', padding: '10px 20px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #DAD0A1' }}>
                   + Lisa üks tulemus käsitsi
-                </Link>
+                </Link>}
               </div>
             </div>
           ) : (

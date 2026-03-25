@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import posthog from 'posthog-js';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 interface RosterStudent {
   id: string;
@@ -579,6 +580,73 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
+          {PROTOTYPE_MODE ? (
+            /* Compact prototype view: one row per student, not per page */
+            (() => {
+              const studentGroups: Record<string, typeof assignments> = {};
+              for (const a of assignments) {
+                const name = a.confirmedName.trim() || a.proposedName || `Leht ${a.index + 1}`;
+                if (!studentGroups[name]) studentGroups[name] = [];
+                studentGroups[name].push(a);
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+                  {Object.entries(studentGroups).map(([name, pages]) => {
+                    const first = pages[0];
+                    const allIncluded = pages.every(p => p.include);
+                    const matchedStudent = first.matchedStudentId ? roster.find(s => s.id === first.matchedStudentId) : null;
+
+                    return (
+                      <div key={name} style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        background: '#fff', border: '1.5px solid #DAD0A1', padding: '12px 16px',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={allIncluded}
+                          onChange={(e) => {
+                            setAssignments(prev => prev.map(a =>
+                              (a.confirmedName.trim() || a.proposedName) === name
+                                ? { ...a, include: e.target.checked }
+                                : a
+                            ));
+                          }}
+                          style={{ width: 18, height: 18 }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>{name}</div>
+                          <div style={{ fontSize: 12, color: '#6b7280' }}>{pages.length} lehte</div>
+                        </div>
+                        {first.confidence && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
+                            ...(first.confidence === 'high'
+                              ? { background: '#dcfce7', color: '#15803d' }
+                              : first.confidence === 'medium'
+                              ? { background: '#fef9c3', color: '#854d0e' }
+                              : { background: '#fee2e2', color: '#991b1b' }),
+                          }}>
+                            {first.confidence === 'high' ? 'Kindel' : first.confidence === 'medium' ? 'Umbkaudne' : 'Kahtlane'}
+                          </span>
+                        )}
+                        {matchedStudent && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
+                            ...(matchedStudent.hasConsent
+                              ? { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }
+                              : { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }),
+                          }}>
+                            {matchedStudent.hasConsent ? '\u2713 N\u00f5usolek' : '\u26a0 Puudub'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
             {assignments.map((a) => (
               <div
@@ -683,6 +751,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
               </div>
             ))}
           </div>
+          )}
 
           {error && (
             <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '10px 14px', fontSize: 13, color: '#b91c1c', marginBottom: 16 }}>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 const STEPS = ['Ained', 'Klassid', 'Õpilased', 'Lõpetamine'] as const;
 
@@ -101,6 +102,15 @@ export function OnboardingWizard() {
   const [academicYear, setAcademicYear] = useState<AcademicYear | null>(null);
   const [classAssignments, setClassAssignments] = useState<ClassAssignment[]>([]);
   const [parallels, setParallels] = useState<string[]>(['A', 'B', 'C']);
+
+  useEffect(() => {
+    if (PROTOTYPE_MODE) {
+      // Auto-complete onboarding in prototype mode — skip all steps
+      fetch('/api/account/onboarding-complete', { method: 'PATCH' })
+        .then(() => router.push('/dashboard/teacher'))
+        .catch(() => {});
+    }
+  }, [router]);
 
   useEffect(() => {
     fetch('/api/subjects')

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 const TEST_STATUS_LABELS: Record<string, string> = {
   PREPARING: 'Ettevalmistamine',
@@ -237,7 +238,7 @@ export default async function TeacherDashboardPage() {
       )}
 
       {/* Task 8c: incomplete onboarding banner */}
-      {!user.onboardingCompleted && (
+      {!user.onboardingCompleted && !PROTOTYPE_MODE && (
         <div style={{
           background: '#fef9c3',
           border: '1px solid #fde047',
@@ -327,7 +328,7 @@ export default async function TeacherDashboardPage() {
       )}
 
       {/* Invite colleague banner */}
-      <div style={{
+      {!PROTOTYPE_MODE && <div style={{
         background: '#F8F3DA',
         border: '1.5px solid #DAD0A1',
         borderRadius: 8,
@@ -358,7 +359,7 @@ export default async function TeacherDashboardPage() {
         >
           Kutsu kolleeg →
         </Link>
-      </div>
+      </div>}
 
       {/* Hero: Scan class papers */}
       <div style={{ ...card, marginBottom: 20, background: '#F8F3DA', border: '2px solid #DAD0A1' }}>
@@ -460,7 +461,7 @@ export default async function TeacherDashboardPage() {
       )}
 
       {/* Pipeline — Tööde seis */}
-      {totalTests > 0 && (
+      {totalTests > 0 && !PROTOTYPE_MODE && (
       <div style={{ ...card, marginBottom: 28 }}>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 18 }}>Tööde seis</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }} className="md:grid-cols-6">
@@ -590,7 +591,7 @@ export default async function TeacherDashboardPage() {
       </div>
 
       {/* Two-column lower section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {!PROTOTYPE_MODE && <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Audit log */}
         <div style={card}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>
@@ -660,7 +661,7 @@ export default async function TeacherDashboardPage() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

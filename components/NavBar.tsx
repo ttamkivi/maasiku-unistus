@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import posthog from 'posthog-js';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 
 interface User {
   id: string;
@@ -72,10 +73,17 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
 
   switch (role) {
     case 'TEACHER': {
+      const baseTabs = PROTOTYPE_MODE
+        ? [
+            { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
+            { href: '/dashboard/tests',    icon: '•', label: 'Kontrolltööd' },
+            { href: '/dashboard/consents', icon: '•', label: 'Load' },
+          ]
+        : TEACHER_TABS;
       const tabs = [
-        ...TEACHER_TABS,
-        ...(exercisesEnabled ? [{ href: '/dashboard/exercises', icon: '📓', label: 'Harjutused' }] : []),
-        ...(assignmentsEnabled ? [{ href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' }] : []),
+        ...baseTabs,
+        ...(exercisesEnabled && !PROTOTYPE_MODE ? [{ href: '/dashboard/exercises', icon: '📓', label: 'Harjutused' }] : []),
+        ...(assignmentsEnabled && !PROTOTYPE_MODE ? [{ href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' }] : []),
       ];
       return tabs;
     }
