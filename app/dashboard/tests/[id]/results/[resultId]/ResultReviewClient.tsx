@@ -612,27 +612,27 @@ export default function ResultReviewClient({
   const [showNotes, setShowNotes] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadDocx = async () => {
     const ef = buildEditedFeedback();
     if (!ef) return;
     setDownloading(true);
     try {
-      const res = await fetch('/api/generate-pdf', {
+      const res = await fetch('/api/generate-docx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ef),
       });
-      if (!res.ok) throw new Error('PDF genereerimine ebaõnnestus');
+      if (!res.ok) throw new Error('Dokumendi genereerimine ebaõnnestus');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `tagasiside_${resultId}.pdf`;
+      a.download = `tagasiside_${resultId}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      posthog.capture('feedback_pdf_downloaded', { resultId, testId });
+      posthog.capture('feedback_downloaded', { resultId, testId });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Allalaadimine ebaõnnestus');
     } finally {
@@ -819,7 +819,7 @@ export default function ResultReviewClient({
             {rawFeedback && (
               <button
                 type="button"
-                onClick={handleDownloadPdf}
+                onClick={handleDownloadDocx}
                 disabled={downloading}
                 style={{
                   background: '#F8F3DA', border: '1.5px solid #DAD0A1', color: '#1C2832',

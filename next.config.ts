@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
     '@libsql/client',
     'prisma',
     '@anthropic-ai/sdk',
-    'jspdf',
   ],
   headers: async () => [
     {
