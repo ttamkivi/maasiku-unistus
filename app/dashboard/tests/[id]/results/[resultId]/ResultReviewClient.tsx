@@ -616,7 +616,7 @@ export default function ResultReviewClient({
             suggestions={editedSuggestions} setSuggestions={setEditedSuggestions}
             outlook={editedOutlook} setOutlook={setEditedOutlook}
             rawFeedback={rawFeedback}
-            disabled={isApprovedOrBeyond}
+            disabled={false}
           />
         ) : analyzing ? (
           <div style={{ background: '#F8F3DA', border: '1.5px solid #DAD0A1', padding: '40px 24px', textAlign: 'center', borderRadius: 6 }}>
