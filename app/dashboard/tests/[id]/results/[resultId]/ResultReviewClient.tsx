@@ -794,7 +794,7 @@ export default function ResultReviewClient({
             {status !== 'SHARED' ? (
               <button
                 onClick={handleShare}
-                disabled={actionLoading || !rawFeedback || (status !== 'APPROVED' && status !== 'SHARED')}
+                disabled={actionLoading || !rawFeedback || status !== 'APPROVED'}
                 style={{
                   flex: 1, minWidth: 120,
                   background: actionLoading || !rawFeedback || status !== 'APPROVED' ? '#d1d5db' : '#0f766e',
