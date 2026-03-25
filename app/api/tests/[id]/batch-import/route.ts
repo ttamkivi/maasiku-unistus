@@ -105,11 +105,13 @@ Return ONLY valid JSON in this exact format, no other text:
     }
 
     // ── CONFIRM: create TestResult records ──
+    // Each assignment = one student. photos = array of base64 JPEGs (one per page).
     if (action === 'confirm') {
       const { assignments } = body as {
         assignments: Array<{
           studentName: string;
-          photo: string; // base64 JPEG for the page
+          studentId?: string | null;
+          photos: string[];
           storageMode?: string;
         }>;
       };
@@ -119,21 +121,29 @@ Return ONLY valid JSON in this exact format, no other text:
       }
 
       const created = await Promise.all(
-        assignments.map(async (a, i) => {
-          const blobResult = await uploadPhotoToBlob(a.photo, `batch-${Date.now()}-${i}.jpg`);
-          const photoData = blobResult
-            ? { storageMode: 'blob', storageKey: blobResult.url, base64Data: null as string | null }
-            : { storageMode: 'local_only', base64Data: a.photo };
+        assignments.map(async (a, studentIdx) => {
+          const photoRecords = await Promise.all(
+            a.photos.map(async (photo, pageIdx) => {
+              const blobResult = await uploadPhotoToBlob(
+                photo,
+                `batch-${Date.now()}-s${studentIdx}-p${pageIdx}.jpg`
+              );
+              return blobResult
+                ? { storageMode: 'blob', storageKey: blobResult.url, base64Data: null as string | null }
+                : { storageMode: 'local_only', base64Data: photo };
+            })
+          );
 
           return db.testResult.create({
             data: {
               testId: id,
               studentName: a.studentName.trim(),
+              studentId: a.studentId || null,
               status: 'UPLOADED',
-              storageMode: blobResult ? 'blob' : (a.storageMode || 'local_only'),
+              storageMode: photoRecords.some(p => p.storageMode === 'blob') ? 'blob' : 'local_only',
               uploadedAt: new Date(),
               photos: {
-                create: [photoData],
+                create: photoRecords,
               },
             },
             select: { id: true, studentName: true },

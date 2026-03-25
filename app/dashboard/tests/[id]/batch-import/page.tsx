@@ -8,6 +8,7 @@ import posthog from 'posthog-js';
 interface RosterStudent {
   id: string;
   name: string;
+  hasConsent?: boolean;
 }
 
 type Confidence = 'high' | 'medium' | 'low' | 'none';
@@ -182,13 +183,17 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   const [testTitle, setTestTitle] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
+  const [consentStats, setConsentStats] = useState<{ total: number; withConsent: number; withoutConsent: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load class roster and test title on mount
   useEffect(() => {
-    fetch(`/api/tests/${testId}/roster`)
-      .then((r) => r.ok ? r.json() : { students: [] })
-      .then((d: { students: RosterStudent[] }) => setRoster(d.students))
+    fetch(`/api/tests/${testId}/roster-with-consent`)
+      .then((r) => r.ok ? r.json() : { students: [], consentStats: null })
+      .then((d: { students: RosterStudent[]; consentStats: { total: number; withConsent: number; withoutConsent: number } | null }) => {
+        setRoster(d.students);
+        if (d.consentStats) setConsentStats(d.consentStats);
+      })
       .catch(() => {});
     fetch(`/api/tests/${testId}`)
       .then((r) => r.ok ? r.json() : {})
@@ -281,10 +286,38 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
   };
 
   const handleConfirm = async () => {
-    const toCreate = assignments.filter((a) => a.include && a.confirmedName.trim());
-    if (toCreate.length === 0) {
+    const included = assignments.filter((a) => a.include && a.confirmedName.trim());
+    if (included.length === 0) {
       setError('Ükski leht pole kaasatud');
       return;
+    }
+
+    // Group pages by student name — merge consecutive pages with the same confirmedName
+    // into one student entry with multiple photos
+    const grouped: Array<{
+      studentName: string;
+      studentId: string | null;
+      photos: string[];
+    }> = [];
+
+    for (const a of included) {
+      const name = a.confirmedName.trim();
+      const lastGroup = grouped[grouped.length - 1];
+
+      if (lastGroup && lastGroup.studentName === name) {
+        lastGroup.photos.push(a.imageB64);
+      } else {
+        const existingGroup = grouped.find(g => g.studentName === name);
+        if (existingGroup) {
+          existingGroup.photos.push(a.imageB64);
+        } else {
+          grouped.push({
+            studentName: name,
+            studentId: a.matchedStudentId,
+            photos: [a.imageB64],
+          });
+        }
+      }
     }
 
     setPhase('confirming');
@@ -296,10 +329,7 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'confirm',
-          assignments: toCreate.map((a) => ({
-            studentName: a.confirmedName.trim(),
-            photo: a.imageB64,
-          })),
+          assignments: grouped,
         }),
       });
 
@@ -330,13 +360,95 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         <span style={{ color: '#1C2832' }}>Sisselugemine</span>
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', marginBottom: 6 }}>
-        Tulemuste sisselugemine ja töötlemine
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', marginBottom: 12 }}>
+        Tulemuste sisselugemine ja valideerimine
       </h1>
-      <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24, marginTop: 0 }}>
-        Lae üles skannitud PDF — AI tuvastab iga lehe õpilase nime automaatselt.
-        {roster.length > 0 && ` Klass: ${roster.length} õpilast registris.`}
-      </p>
+
+      {/* Validation pipeline steps */}
+      <div style={{
+        display: 'flex',
+        gap: 0,
+        marginBottom: 24,
+        background: '#F8F3DA',
+        border: '1.5px solid #DAD0A1',
+        overflow: 'hidden',
+      }}>
+        {/* Step 1: Scan */}
+        <div style={{
+          flex: 1,
+          padding: '12px 16px',
+          borderRight: '1.5px solid #DAD0A1',
+          background: phase === 'rendering' || phase === 'identifying' ? '#1C2832' : phase === 'review' || phase === 'confirming' || phase === 'done' ? '#dcfce7' : '#F8F3DA',
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.05em',
+            color: phase === 'rendering' || phase === 'identifying' ? '#F8F3DA' : phase === 'review' || phase === 'confirming' || phase === 'done' ? '#15803d' : '#6b7280',
+            marginBottom: 4,
+          }}>
+            {(phase === 'review' || phase === 'confirming' || phase === 'done') ? '\u2713 ' : '1. '}Skaneerimine
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: phase === 'rendering' || phase === 'identifying' ? '#DAD0A1' : phase === 'review' || phase === 'confirming' || phase === 'done' ? '#166534' : '#6b7280',
+          }}>
+            PDF &rarr; AI tuvastab nimed
+          </div>
+        </div>
+
+        {/* Step 2: Name matching */}
+        <div style={{
+          flex: 1,
+          padding: '12px 16px',
+          borderRight: '1.5px solid #DAD0A1',
+          background: phase === 'review' ? '#1C2832' : phase === 'confirming' || phase === 'done' ? '#dcfce7' : '#F8F3DA',
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.05em',
+            color: phase === 'review' ? '#F8F3DA' : phase === 'confirming' || phase === 'done' ? '#15803d' : '#6b7280',
+            marginBottom: 4,
+          }}>
+            {(phase === 'confirming' || phase === 'done') ? '\u2713 ' : '2. '}Nimede valideerimine
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: phase === 'review' ? '#DAD0A1' : phase === 'confirming' || phase === 'done' ? '#166534' : '#6b7280',
+          }}>
+            Sobita klassi nimekirjaga
+            {roster.length > 0 && ` (${roster.length} \u00f5pilast)`}
+          </div>
+        </div>
+
+        {/* Step 3: Consent check */}
+        <div style={{
+          flex: 1,
+          padding: '12px 16px',
+          background: phase === 'confirming' ? '#1C2832' : phase === 'done' ? '#dcfce7' : '#F8F3DA',
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.05em',
+            color: phase === 'confirming' ? '#F8F3DA' : phase === 'done' ? '#15803d' : '#6b7280',
+            marginBottom: 4,
+          }}>
+            {phase === 'done' ? '\u2713 ' : '3. '}N\u00f5usoleku kontroll
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: phase === 'confirming' ? '#DAD0A1' : phase === 'done' ? '#166534' : '#6b7280',
+          }}>
+            Lapsevanema n\u00f5usolek
+            {consentStats && ` (${consentStats.withConsent}/${consentStats.total} olemas)`}
+          </div>
+        </div>
+      </div>
 
       {/* Notice when roster is empty */}
       {roster.length === 0 && phase === 'upload' && (
@@ -421,7 +533,10 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <p style={{ fontSize: 14, color: '#1C2832', margin: 0 }}>
-              <strong>{assignments.length}</strong> lehte · {includedCount} kaasatakse
+              <strong>{assignments.length}</strong> lehte &middot; {includedCount} kaasatakse &middot; <strong>{(() => {
+                const names = new Set(assignments.filter(a => a.include && a.confirmedName.trim()).map(a => a.confirmedName.trim()));
+                return names.size;
+              })()}</strong> &#245;pilast
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {highConfidenceCount > 0 && roster.length > 0 && (
@@ -510,6 +625,22 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                       {CONFIDENCE_LABELS[a.confidence]}
                     </span>
                   )}
+                  {/* Consent badge */}
+                  {a.matchedStudentId && (() => {
+                    const student = roster.find(s => s.id === a.matchedStudentId);
+                    if (!student) return null;
+                    return (
+                      <span style={{
+                        position: 'absolute', bottom: 6, right: 6,
+                        fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 8,
+                        ...(student.hasConsent
+                          ? { background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }
+                          : { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }),
+                      }}>
+                        {student.hasConsent ? '\u2713 N\u00f5usolek' : '\u26a0 N\u00f5usolek puudub'}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div style={{ padding: '8px 10px' }}>
                   {a.proposedName && (
@@ -571,6 +702,23 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                 <span>Leidmata: <strong>{assignments.filter((a) => a.include && a.confidence === 'none').length}</strong></span>
                 <span>Välja jäetud: <strong>{assignments.filter((a) => !a.include).length}</strong></span>
               </div>
+              {consentStats && (
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: '#15803d', marginTop: 8 }}>
+                  <span style={{ fontWeight: 600 }}>N&#245;usolek:</span>
+                  <span style={{ color: '#15803d' }}>Olemas: <strong>{(() => {
+                    const matched = assignments.filter(a => a.include && a.matchedStudentId);
+                    return matched.filter(a => roster.find(s => s.id === a.matchedStudentId)?.hasConsent).length;
+                  })()}</strong></span>
+                  <span style={{ color: '#92400e' }}>Puudub: <strong>{(() => {
+                    const matched = assignments.filter(a => a.include && a.matchedStudentId);
+                    return matched.filter(a => {
+                      const student = roster.find(s => s.id === a.matchedStudentId);
+                      return student && !student.hasConsent;
+                    }).length;
+                  })()}</strong></span>
+                  <span style={{ color: '#6b7280' }}>Sobitamata: <strong>{assignments.filter(a => a.include && !a.matchedStudentId).length}</strong></span>
+                </div>
+              )}
             </div>
           )}
 
@@ -591,7 +739,10 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
                 borderRadius: 4,
               }}
             >
-              Kinnita ja loo {includedCount} tulemust
+              Kinnita ja loo {(() => {
+                const names = new Set(assignments.filter(a => a.include && a.confirmedName.trim()).map(a => a.confirmedName.trim()));
+                return names.size;
+              })()} &#245;pilase tulemused ({includedCount} lehte)
             </button>
             <button
               type="button"
