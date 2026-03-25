@@ -253,11 +253,28 @@ Return ONLY valid JSON in this exact format, no other text:
       }
     }
 
-    // ── Step 4: Identify issues ──
-    const issues: string[] = [];
-    const lowConfidence = grouped.filter(g => g.confidence === 'low' || g.confidence === 'none');
-    const noConsent = grouped.filter(g => !g.hasConsent);
+    // ── Step 4: Deduplicate — skip students that already have a result in this test ──
+    const existingResults = await db.testResult.findMany({
+      where: { testId: id },
+      select: { studentName: true },
+    });
+    const existingNames = new Set(
+      existingResults.map((r) => (r.studentName ?? '').trim().toLowerCase())
+    );
 
+    const newGrouped = grouped.filter(
+      (g) => !existingNames.has(g.studentName.trim().toLowerCase())
+    );
+    const skippedDuplicates = grouped.length - newGrouped.length;
+
+    // ── Step 5: Identify issues ──
+    const issues: string[] = [];
+    const lowConfidence = newGrouped.filter(g => g.confidence === 'low' || g.confidence === 'none');
+    const noConsent = newGrouped.filter(g => !g.hasConsent);
+
+    if (skippedDuplicates > 0) {
+      issues.push(`${skippedDuplicates} õpilast juba olemas — jäetud vahele`);
+    }
     if (lowConfidence.length > 0) {
       issues.push(`${lowConfidence.length} õpilast, keda ei suudetud kindlalt tuvastada: ${lowConfidence.map(g => g.studentName).join(', ')}`);
     }
@@ -265,9 +282,9 @@ Return ONLY valid JSON in this exact format, no other text:
       issues.push(`${noConsent.length} õpilasel puudub lapsevanema nõusolek: ${noConsent.map(g => g.studentName).join(', ')}`);
     }
 
-    // ── Step 5: Create TestResult records (for all matched, including low confidence) ──
+    // ── Step 6: Create TestResult records (for new students only) ──
     const created = await Promise.all(
-      grouped.map(async (g, studentIdx) => {
+      newGrouped.map(async (g, studentIdx) => {
         const photoRecords = await Promise.all(
           g.photos.map(async (photo, pageIdx) => {
             const blobResult = await uploadPhotoToBlob(
