@@ -145,14 +145,14 @@ function InlineFeedback({
       {view === 'feedback' && (
         <div>
           {/* Overall pattern as hero summary — editable */}
-          <div style={{ background: '#1C2832', color: '#F8F3DA', padding: '16px 18px', marginBottom: 16 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, opacity: 0.7 }}>Kokkuvõte</p>
+          <div style={{ background: '#eff6ff', borderLeft: '4px solid #0072CE', padding: '16px 18px', marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, color: '#0072CE' }}>Kokkuvõte</p>
             <InlineText
               value={pattern}
               onChange={setPattern}
               disabled={disabled}
               multiline
-              style={{ fontSize: 15, lineHeight: 1.7, color: '#F8F3DA' }}
+              style={{ fontSize: 15, lineHeight: 1.7, color: '#1C2832' }}
             />
           </div>
 
