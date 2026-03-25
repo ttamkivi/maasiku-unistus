@@ -177,7 +177,7 @@ export function generatePdf(feedback: FeedbackData): Buffer {
         ? ` (${task.points_earned}/${task.points_possible}p)`
         : '';
 
-      addText(`Ülesanne ${task.number} — ${statusLabel}${points}`, margin, 12, statusColor as number[], { bold: true });
+      addText(`Ülesanne ${task.number} — ${statusLabel}${points}`, margin, 12, statusColor, { bold: true });
       y += 1;
       if (task.question_summary) {
         addText(task.question_summary, margin + 4, 9, GRAY, { italic: true });
