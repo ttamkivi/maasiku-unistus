@@ -847,8 +847,8 @@ export default function ResultReviewClient({
             )}
           </div>
 
-          {/* Next student navigation */}
-          {status === 'SHARED' && nextResultId && (
+          {/* Next student navigation — always visible */}
+          {nextResultId && (
             <button
               type="button"
               onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
@@ -860,7 +860,7 @@ export default function ResultReviewClient({
               Järgmine: {nextStudentName || 'õpilane'} →
             </button>
           )}
-          {status === 'SHARED' && !nextResultId && queueTotal > 1 && (
+          {!nextResultId && queueTotal > 1 && (
             <a
               href={`/dashboard/tests/${testId}`}
               style={{
