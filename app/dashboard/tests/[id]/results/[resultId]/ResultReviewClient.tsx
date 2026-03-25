@@ -53,14 +53,13 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: string
   );
 }
 
-type View = 'short' | 'long' | 'tasks';
+type View = 'feedback' | 'tasks';
 
 function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
-  const [view, setView] = useState<View>('short');
+  const [view, setView] = useState<View>('feedback');
 
   const tabs: { key: View; label: string; desc: string }[] = [
-    { key: 'short', label: 'Lühike', desc: 'Kokkuvõte' },
-    { key: 'long', label: 'Põhjalik', desc: 'Täisversioon' },
+    { key: 'feedback', label: 'Tagasiside', desc: 'Kokkuvõte ja soovitused' },
     { key: 'tasks', label: 'Ülesannete kaupa', desc: 'Iga ülesanne eraldi' },
   ];
 
@@ -92,8 +91,8 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
         ))}
       </div>
 
-      {/* ── SHORT VIEW: compact summary card ── */}
-      {view === 'short' && (
+      {/* ── FEEDBACK VIEW: summary + full details combined ── */}
+      {view === 'feedback' && (
         <div>
           {/* Overall pattern as hero summary */}
           <div style={{ background: '#1C2832', color: '#F8F3DA', padding: '16px 18px', marginBottom: 16 }}>
@@ -119,43 +118,6 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
             </div>
           )}
 
-          {/* Top strength */}
-          {feedback.mis_laks_hasti.length > 0 && (
-            <Card accent="#22c55e">
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tugevus</p>
-              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mis_laks_hasti[0].title}</p>
-              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.mis_laks_hasti[0].text}</p>
-            </Card>
-          )}
-
-          {/* Top improvement area */}
-          {feedback.mida_parandada.length > 0 && (
-            <Card accent="#f97316">
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Fookus</p>
-              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mida_parandada[0].title}</p>
-              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{feedback.mida_parandada[0].text}</p>
-            </Card>
-          )}
-
-          {/* Top recommendation */}
-          {feedback.soovitused.length > 0 && (
-            <Card accent="#0072CE">
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#0072CE', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Järgmine samm</p>
-              <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>{feedback.soovitused[0].title}</p>
-              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.soovitused[0].text}</p>
-            </Card>
-          )}
-
-          {/* Hint to see more */}
-          <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 12, color: '#6b7280' }}>
-            Vajuta <strong>Põhjalik</strong> täisversiooni nägemiseks
-          </div>
-        </div>
-      )}
-
-      {/* ── LONG VIEW: full detailed feedback ── */}
-      {view === 'long' && (
-        <div>
           {/* Learning objective if available */}
           {feedback.opieesmark && (
             <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '10px 14px', marginBottom: 16 }}>
@@ -181,10 +143,6 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
                 <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
               </Card>
             ))}
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Üldine muster</SectionHeading>
-            <Card><p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.uldine_muster}</p></Card>
           </div>
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Soovitused edaspidiseks</SectionHeading>
