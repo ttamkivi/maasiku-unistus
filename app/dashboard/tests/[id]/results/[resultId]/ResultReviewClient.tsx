@@ -53,11 +53,17 @@ type View = 'short' | 'long' | 'tasks';
 function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
   const [view, setView] = useState<View>('short');
 
-  const tabs: { key: View; label: string }[] = [
-    { key: 'short', label: 'Lühike' },
-    { key: 'long', label: 'Põhjalik' },
-    { key: 'tasks', label: 'Ülesannete kaupa' },
+  const tabs: { key: View; label: string; desc: string }[] = [
+    { key: 'short', label: 'Lühike', desc: 'Kokkuvõte' },
+    { key: 'long', label: 'Põhjalik', desc: 'Täisversioon' },
+    { key: 'tasks', label: 'Ülesannete kaupa', desc: 'Iga ülesanne eraldi' },
   ];
+
+  // Count tasks with issues for the summary view
+  const totalTasks = feedback.tasks?.length ?? 0;
+  const correctTasks = feedback.tasks?.filter(t => t.is_correct === true).length ?? 0;
+  const wrongTasks = feedback.tasks?.filter(t => t.is_correct === false).length ?? 0;
+  const partialTasks = totalTasks - correctTasks - wrongTasks;
 
   return (
     <div>
@@ -71,51 +77,88 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
               border: 'none', cursor: 'pointer',
               background: view === tab.key ? '#1C2832' : '#F8F3DA',
               color: view === tab.key ? '#fff' : '#1C2832',
+              borderBottom: view === tab.key ? '3px solid #0072CE' : '3px solid transparent',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
             }}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.7 }}>{tab.desc}</span>
           </button>
         ))}
       </div>
 
+      {/* ── SHORT VIEW: compact summary card ── */}
       {view === 'short' && (
         <div>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Mis läks hästi</SectionHeading>
-            {feedback.mis_laks_hasti.slice(0, 2).map((item, i) => (
-              <Card key={i} accent="#22c55e">
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
-              </Card>
-            ))}
+          {/* Overall pattern as hero summary */}
+          <div style={{ background: '#1C2832', color: '#F8F3DA', padding: '16px 18px', marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, opacity: 0.7 }}>Kokkuvõte</p>
+            <p style={{ fontSize: 15, lineHeight: 1.7, margin: 0 }}>{feedback.uldine_muster}</p>
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Mida parandada</SectionHeading>
-            {feedback.mida_parandada.slice(0, 2).map((item, i) => (
-              <Card key={i} accent="#f97316">
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
-              </Card>
-            ))}
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Üldine muster</SectionHeading>
-            <Card><p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.uldine_muster}</p></Card>
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <SectionHeading>Soovitused</SectionHeading>
-            {feedback.soovitused.slice(0, 2).map((item, i) => (
-              <Card key={i}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>→ {item.title}</p>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
-              </Card>
-            ))}
+
+          {/* Quick score overview if tasks exist */}
+          {totalTasks > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <div style={{ flex: 1, background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '10px 12px', textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: '#166534', margin: 0 }}>{correctTasks}</p>
+                <p style={{ fontSize: 11, color: '#166534', margin: 0 }}>Õige</p>
+              </div>
+              <div style={{ flex: 1, background: '#fff7ed', borderLeft: '3px solid #f97316', padding: '10px 12px', textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: '#9a3412', margin: 0 }}>{partialTasks}</p>
+                <p style={{ fontSize: 11, color: '#9a3412', margin: 0 }}>Osaline</p>
+              </div>
+              <div style={{ flex: 1, background: '#fef2f2', borderLeft: '3px solid #ef4444', padding: '10px 12px', textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: '#b91c1c', margin: 0 }}>{wrongTasks}</p>
+                <p style={{ fontSize: 11, color: '#b91c1c', margin: 0 }}>Vale</p>
+              </div>
+            </div>
+          )}
+
+          {/* Top strength */}
+          {feedback.mis_laks_hasti.length > 0 && (
+            <Card accent="#22c55e">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tugevus</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mis_laks_hasti[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.mis_laks_hasti[0].text}</p>
+            </Card>
+          )}
+
+          {/* Top improvement area */}
+          {feedback.mida_parandada.length > 0 && (
+            <Card accent="#f97316">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Fookus</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mida_parandada[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{feedback.mida_parandada[0].text}</p>
+            </Card>
+          )}
+
+          {/* Top recommendation */}
+          {feedback.soovitused.length > 0 && (
+            <Card accent="#0072CE">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#0072CE', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Järgmine samm</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>{feedback.soovitused[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.soovitused[0].text}</p>
+            </Card>
+          )}
+
+          {/* Hint to see more */}
+          <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 12, color: '#6b7280' }}>
+            Vajuta <strong>Põhjalik</strong> täisversiooni nägemiseks
           </div>
         </div>
       )}
 
+      {/* ── LONG VIEW: full detailed feedback ── */}
       {view === 'long' && (
         <div>
+          {/* Learning objective if available */}
+          {feedback.opieesmark && (
+            <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '10px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#0072CE', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Õpieesmärk</p>
+              <p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.6, margin: 0 }}>{feedback.opieesmark}</p>
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Mis läks hästi</SectionHeading>
             {feedback.mis_laks_hasti.map((item, i) => (
@@ -142,7 +185,7 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
             <SectionHeading>Soovitused edaspidiseks</SectionHeading>
             {feedback.soovitused.map((item, i) => (
               <Card key={i}>
-                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>→ {item.title}</p>
+                <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>{item.title}</p>
                 <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{item.text}</p>
               </Card>
             ))}
@@ -155,54 +198,103 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
               </Card>
             </div>
           )}
+          {/* Resources appendix */}
+          {feedback.resources && feedback.resources.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <SectionHeading>Kasulikud materjalid</SectionHeading>
+              {feedback.resources.map((r, i) => (
+                <Card key={i}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                      background: r.type === 'video' ? '#fef2f2' : r.type === 'exercise' ? '#f0fdf4' : '#eff6ff',
+                      color: r.type === 'video' ? '#b91c1c' : r.type === 'exercise' ? '#166534' : '#1e3a8a',
+                    }}>
+                      {r.type === 'video' ? 'VIDEO' : r.type === 'exercise' ? 'HARJUTUS' : 'LUGEMINE'}
+                    </span>
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 700, color: '#0072CE' }}>{r.title}</a>
+                  </div>
+                  <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>{r.description}</p>
+                </Card>
+              ))}
+            </div>
+          )}
+          {/* Teacher notes */}
+          {feedback.markmed_opetajale && (
+            <div style={{ marginBottom: 16 }}>
+              <SectionHeading>Märkmed õpetajale</SectionHeading>
+              <Card accent="#6b7280">
+                <p style={{ fontSize: 12, fontStyle: 'italic', color: '#6b7280', marginBottom: 4 }}>Ainult õpetajale — ei jagata õpilasega</p>
+                <p style={{ fontSize: 13, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{feedback.markmed_opetajale}</p>
+              </Card>
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── TASKS VIEW: per-task breakdown ── */}
       {view === 'tasks' && (
         <div>
           {!feedback.tasks || feedback.tasks.length === 0 ? (
             <div style={{ background: '#F8F3DA', padding: 20, fontSize: 14, color: '#1C2832' }}>
-              Ülesannete kaupa vaade pole saadaval.
+              Ülesannete kaupa vaade pole saadaval — AI ei tuvastanud üksikuid ülesandeid.
             </div>
           ) : (
-            feedback.tasks.map((task, i) => {
-              const isCorrect = task.is_correct === true;
-              const isWrong = task.is_correct === false;
-              const badgeBg = isCorrect ? '#22c55e' : isWrong ? '#ef4444' : '#f97316';
-              const badgeLabel = isCorrect ? 'Õige' : isWrong ? 'Vale' : 'Osaline';
-              return (
-                <div key={i} style={{ marginBottom: 14, borderBottom: '2px solid #DAD0A1' }}>
-                  <div style={{ background: '#1C2832', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>Ülesanne {task.number}</span>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {task.points_earned != null && task.points_possible != null && (
-                        <span style={{ color: '#DAD0A1', fontSize: 12 }}>{task.points_earned}/{task.points_possible} p</span>
+            <>
+              {/* Quick summary bar */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+                {feedback.tasks.map((task, i) => {
+                  const bg = task.is_correct === true ? '#22c55e' : task.is_correct === false ? '#ef4444' : '#f97316';
+                  return (
+                    <div key={i} style={{
+                      width: 32, height: 32, background: bg, color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700,
+                    }}>
+                      {task.number}
+                    </div>
+                  );
+                })}
+              </div>
+              {feedback.tasks.map((task, i) => {
+                const isCorrect = task.is_correct === true;
+                const isWrong = task.is_correct === false;
+                const badgeBg = isCorrect ? '#22c55e' : isWrong ? '#ef4444' : '#f97316';
+                const badgeLabel = isCorrect ? 'Õige' : isWrong ? 'Vale' : 'Osaline';
+                return (
+                  <div key={i} style={{ marginBottom: 14, borderBottom: '2px solid #DAD0A1' }}>
+                    <div style={{ background: '#1C2832', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>Ülesanne {task.number}</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {task.points_earned != null && task.points_possible != null && (
+                          <span style={{ color: '#DAD0A1', fontSize: 12 }}>{task.points_earned}/{task.points_possible} p</span>
+                        )}
+                        <span style={{ background: badgeBg, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>{badgeLabel}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#fff' }}>
+                      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>{task.question_summary}</p>
+                      <p style={{ fontSize: 13, color: '#1C2832', marginBottom: 8 }}><strong>Õpilase vastus:</strong> {task.student_answer}</p>
+                      {task.what_went_right && (
+                        <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '6px 10px', marginBottom: 6 }}>
+                          <p style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}><strong>✓</strong> {task.what_went_right}</p>
+                        </div>
                       )}
-                      <span style={{ background: badgeBg, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>{badgeLabel}</span>
+                      {task.what_went_wrong && (
+                        <div style={{ background: '#fff7ed', borderLeft: '3px solid #f97316', padding: '6px 10px', marginBottom: 6 }}>
+                          <p style={{ fontSize: 13, color: '#9a3412', lineHeight: 1.6 }}>{task.what_went_wrong}</p>
+                        </div>
+                      )}
+                      {task.advice && (
+                        <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '6px 10px' }}>
+                          <p style={{ fontSize: 13, color: '#1e3a8a', lineHeight: 1.6 }}><strong>Soovitus:</strong> {task.advice}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div style={{ padding: '10px 14px', background: '#fff' }}>
-                    <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>{task.question_summary}</p>
-                    <p style={{ fontSize: 13, color: '#1C2832', marginBottom: 8 }}><strong>Õpilase vastus:</strong> {task.student_answer}</p>
-                    {task.what_went_right && (
-                      <div style={{ background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '6px 10px', marginBottom: 6 }}>
-                        <p style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}><strong>✓</strong> {task.what_went_right}</p>
-                      </div>
-                    )}
-                    {task.what_went_wrong && (
-                      <div style={{ background: '#fff7ed', borderLeft: '3px solid #f97316', padding: '6px 10px', marginBottom: 6 }}>
-                        <p style={{ fontSize: 13, color: '#9a3412', lineHeight: 1.6 }}><strong>⚡</strong> {task.what_went_wrong}</p>
-                      </div>
-                    )}
-                    {task.advice && (
-                      <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '6px 10px' }}>
-                        <p style={{ fontSize: 13, color: '#1e3a8a', lineHeight: 1.6 }}><strong>Soovitus:</strong> {task.advice}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </>
           )}
         </div>
       )}
