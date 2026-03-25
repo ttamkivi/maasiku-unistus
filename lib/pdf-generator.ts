@@ -1,11 +1,11 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { FeedbackData } from './types';
 
-const DARK_BLUE = [28, 40, 50]; // #1C2832
-const ACCENT_BLUE = [0, 114, 206]; // #0072CE
-const GRAY = [107, 114, 128];
-const GREEN = [22, 101, 52];
-const ORANGE = [154, 52, 18];
+const DARK_BLUE: [number, number, number] = [28, 40, 50]; // #1C2832
+const ACCENT_BLUE: [number, number, number] = [0, 114, 206]; // #0072CE
+const GRAY: [number, number, number] = [107, 114, 128];
+const GREEN: [number, number, number] = [22, 101, 52];
+const ORANGE: [number, number, number] = [154, 52, 18];
 
 export function generatePdf(feedback: FeedbackData): Buffer {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -21,7 +21,7 @@ export function generatePdf(feedback: FeedbackData): Buffer {
     }
   };
 
-  const addText = (text: string, x: number, fontSize: number, color: number[], opts?: { bold?: boolean; italic?: boolean; maxWidth?: number }) => {
+  const addText = (text: string, x: number, fontSize: number, color: [number, number, number], opts?: { bold?: boolean; italic?: boolean; maxWidth?: number }) => {
     doc.setFontSize(fontSize);
     doc.setTextColor(color[0], color[1], color[2]);
     if (opts?.bold && opts?.italic) doc.setFont('helvetica', 'bolditalic');
@@ -171,7 +171,7 @@ export function generatePdf(feedback: FeedbackData): Buffer {
 
     for (const task of feedback.tasks) {
       checkPageBreak(30);
-      const statusColor = task.is_correct === true ? GREEN : task.is_correct === false ? [185, 28, 28] : ORANGE;
+      const statusColor: [number, number, number] = task.is_correct === true ? GREEN : task.is_correct === false ? [185, 28, 28] : ORANGE;
       const statusLabel = task.is_correct === true ? 'Õige' : task.is_correct === false ? 'Vale' : 'Osaline';
       const points = task.points_earned != null && task.points_possible != null
         ? ` (${task.points_earned}/${task.points_possible}p)`
