@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData, FeedbackItem } from '@/lib/types';
-import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 import posthog from 'posthog-js';
 
 type Tab = 'ai' | 'edits' | 'notes';
@@ -23,10 +22,6 @@ interface Props {
   prefetchResultId: string | null;
   queuePosition: number | null;
   queueTotal: number;
-  studentName: string;
-  testTitle: string;
-  subjectName: string;
-  grade: string;
 }
 
 // ─── Read-only AI feedback renderer ───────────────────────────────────────────
@@ -53,13 +48,14 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: string
   );
 }
 
-type View = 'feedback' | 'tasks';
+type View = 'short' | 'long' | 'tasks';
 
 function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
-  const [view, setView] = useState<View>('feedback');
+  const [view, setView] = useState<View>('short');
 
   const tabs: { key: View; label: string; desc: string }[] = [
-    { key: 'feedback', label: 'Tagasiside', desc: 'Kokkuvõte ja soovitused' },
+    { key: 'short', label: 'Lühike', desc: 'Kokkuvõte' },
+    { key: 'long', label: 'Põhjalik', desc: 'Täisversioon' },
     { key: 'tasks', label: 'Ülesannete kaupa', desc: 'Iga ülesanne eraldi' },
   ];
 
@@ -91,8 +87,8 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
         ))}
       </div>
 
-      {/* ── FEEDBACK VIEW: summary + full details combined ── */}
-      {view === 'feedback' && (
+      {/* ── SHORT VIEW: compact summary card ── */}
+      {view === 'short' && (
         <div>
           {/* Overall pattern as hero summary */}
           <div style={{ background: '#1C2832', color: '#F8F3DA', padding: '16px 18px', marginBottom: 16 }}>
@@ -118,6 +114,43 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
             </div>
           )}
 
+          {/* Top strength */}
+          {feedback.mis_laks_hasti.length > 0 && (
+            <Card accent="#22c55e">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tugevus</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mis_laks_hasti[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.mis_laks_hasti[0].text}</p>
+            </Card>
+          )}
+
+          {/* Top improvement area */}
+          {feedback.mida_parandada.length > 0 && (
+            <Card accent="#f97316">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Fookus</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#1C2832', marginBottom: 4 }}>{feedback.mida_parandada[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{feedback.mida_parandada[0].text}</p>
+            </Card>
+          )}
+
+          {/* Top recommendation */}
+          {feedback.soovitused.length > 0 && (
+            <Card accent="#0072CE">
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#0072CE', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Järgmine samm</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: '#0072CE' }}>{feedback.soovitused[0].title}</p>
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6 }}>{feedback.soovitused[0].text}</p>
+            </Card>
+          )}
+
+          {/* Hint to see more */}
+          <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 12, color: '#6b7280' }}>
+            Vajuta <strong>Põhjalik</strong> täisversiooni nägemiseks
+          </div>
+        </div>
+      )}
+
+      {/* ── LONG VIEW: full detailed feedback ── */}
+      {view === 'long' && (
+        <div>
           {/* Learning objective if available */}
           {feedback.opieesmark && (
             <div style={{ background: '#eff6ff', borderLeft: '3px solid #0072CE', padding: '10px 14px', marginBottom: 16 }}>
@@ -143,6 +176,10 @@ function ReadOnlyFeedback({ feedback }: { feedback: FeedbackData }) {
                 <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{item.text}</p>
               </Card>
             ))}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <SectionHeading>Üldine muster</SectionHeading>
+            <Card><p style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7 }}>{feedback.uldine_muster}</p></Card>
           </div>
           <div style={{ marginBottom: 16 }}>
             <SectionHeading>Soovitused edaspidiseks</SectionHeading>
@@ -334,10 +371,6 @@ export default function ResultReviewClient({
   prefetchResultId,
   queuePosition,
   queueTotal,
-  studentName,
-  testTitle,
-  subjectName,
-  grade,
 }: Props) {
   const router = useRouter();
   const [analyzing, setAnalyzing] = useState(initialStatus === 'UPLOADED');
@@ -490,76 +523,6 @@ export default function ResultReviewClient({
     } finally {
       setActionLoading(false);
     }
-  };
-
-  // Prototype mode: approve + share in one click, then auto-advance
-  const handleApproveAndShare = async () => {
-    setActionLoading(true);
-    setActionError(null);
-    try {
-      // Step 1: approve
-      const approveRes = await fetch(`/api/tests/${testId}/results/${resultId}/approve`, {
-        method: 'POST',
-      });
-      const approveData = await approveRes.json();
-      if (!approveRes.ok) throw new Error(approveData.error || 'Kinnitamine ebaõnnestus');
-
-      // Step 2: share
-      const shareRes = await fetch(`/api/tests/${testId}/results/${resultId}/share`, {
-        method: 'POST',
-      });
-      const shareData = await shareRes.json();
-      if (!shareRes.ok) throw new Error(shareData.error || 'Jagamine ebaõnnestus');
-
-      setStatus('SHARED');
-      setIsApprovedOrBeyond(true);
-      posthog.capture('feedback_approved_and_shared', { resultId, testId });
-
-      // Auto-advance to next unreviewed student
-      if (nextResultId) {
-        router.push(`/dashboard/tests/${testId}/results/${nextResultId}`);
-      } else {
-        // All done — go back to test page
-        router.push(`/dashboard/tests/${testId}`);
-      }
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Viga');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Download DOCX with teacher corrections merged
-  const handleDownloadDocx = async () => {
-    const finalFeedback = buildEditedFeedback() ?? rawFeedback;
-    if (!finalFeedback) return;
-    try {
-      const res = await fetch('/api/generate-docx', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalFeedback),
-      });
-      if (!res.ok) throw new Error('Allalaadimine ebaõnnestus');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tagasiside_${studentName.replace(/\s+/g, '_')}.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      posthog.capture('feedback_downloaded', { resultId, testId, format: 'docx' });
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Allalaadimine ebaõnnestus');
-    }
-  };
-
-  // eKool push — placeholder, logs to audit
-  const [ekoolSent, setEkoolSent] = useState(false);
-  const handlePushToEkool = async () => {
-    try {
-      posthog.capture('ekool_push_attempted', { resultId, testId, studentName });
-      setEkoolSent(true);
-    } catch {}
   };
 
   const handleTrainingConsent = async () => {
@@ -785,163 +748,110 @@ export default function ResultReviewClient({
             </div>
           )}
 
-          {/* ── PROTOTYPE MODE: simplified one-click flow ── */}
-          {PROTOTYPE_MODE ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {status === 'SHARED' ? (
-                <>
-                  <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>
-                    Jagatud ✓
-                  </div>
-                  <button
-                    onClick={handleDownloadDocx}
-                    disabled={!rawFeedback}
-                    style={{
-                      background: '#F8F3DA', color: '#1C2832', fontWeight: 600, fontSize: 13,
-                      padding: '10px 14px', border: '1.5px solid #DAD0A1', cursor: 'pointer',
-                    }}
-                  >
-                    Lae alla DOCX
-                  </button>
-                  <button
-                    onClick={handlePushToEkool}
-                    disabled={ekoolSent}
-                    style={{
-                      background: ekoolSent ? '#e5e7eb' : '#F8F3DA', color: ekoolSent ? '#6b7280' : '#1C2832',
-                      fontWeight: 600, fontSize: 13,
-                      padding: '10px 14px', border: '1.5px solid #DAD0A1', cursor: ekoolSent ? 'default' : 'pointer',
-                    }}
-                  >
-                    {ekoolSent ? 'eKool — tulemas peagi' : 'Saada eKooli'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleApproveAndShare}
-                  disabled={actionLoading || !rawFeedback}
-                  style={{
-                    flex: 1,
-                    background: actionLoading || !rawFeedback ? '#6b7280' : '#1C2832',
-                    color: '#F8F3DA', fontWeight: 700, fontSize: 14,
-                    padding: '12px 18px', border: 'none',
-                    cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {actionLoading
-                    ? 'Palun oota...'
-                    : nextResultId
-                      ? `Kinnita ja jaga → ${queuePosition != null ? `(${queuePosition}/${queueTotal})` : ''}`
-                      : 'Kinnita ja jaga'
-                  }
-                </button>
-              )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Approve / Share / Shared */}
+            {status === 'SHARED' ? (
+              <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>
+                Jagatud ✓
+              </div>
+            ) : status === 'APPROVED' ? (
+              <button
+                onClick={handleShare}
+                disabled={actionLoading}
+                style={{
+                  background: actionLoading ? '#6b7280' : '#0f766e',
+                  color: '#fff', fontWeight: 700, fontSize: 14,
+                  padding: '10px 18px', border: 'none',
+                  cursor: actionLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {actionLoading ? 'Palun oota...' : 'Jaga õpilasega'}
+              </button>
+            ) : (
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading || !rawFeedback}
+                style={{
+                  background: actionLoading || !rawFeedback ? '#6b7280' : '#1C2832',
+                  color: '#F8F3DA', fontWeight: 700, fontSize: 14,
+                  padding: '10px 18px', border: 'none',
+                  cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {actionLoading ? 'Palun oota...' : 'Kinnita tagasiside'}
+              </button>
+            )}
 
-              {/* Next student button — only shown when already shared */}
-              {status === 'SHARED' && nextResultId && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
-                  style={{
-                    background: '#1C2832', color: '#F8F3DA', fontWeight: 700, fontSize: 14,
-                    padding: '10px 18px', border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  Järgmine →
-                </button>
+            {/* Training consent toggle */}
+            {!hasTrainingConsent && rawFeedback && (
+              <button
+                onClick={handleTrainingConsent}
+                style={{
+                  background: '#F8F3DA',
+                  color: '#1C2832',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  padding: '10px 14px',
+                  border: '1.5px solid #DAD0A1',
+                  cursor: 'pointer',
+                }}
+              >
+                Luba anonüümseks treeningandmeks
+              </button>
+            )}
+            {hasTrainingConsent && (
+              <span style={{ fontSize: 12, color: '#6b7280' }}>
+                Treeningandmete nõusolek antud ✓
+              </span>
+            )}
+          </div>
+
+          {/* Next student button — shown whenever there's a next result */}
+          {nextResultId ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
+              style={{
+                width: '100%',
+                background: '#F8F3DA',
+                border: '1.5px solid #DAD0A1',
+                color: '#1C2832',
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '11px',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              Järgmine õpilane →
+              {prefetchResultId && (
+                <span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280', marginLeft: 10 }}>
+                  (järgmine analüüsitakse taustal)
+                </span>
               )}
-              {status === 'SHARED' && !nextResultId && queueTotal > 1 && (
+            </button>
+          ) : queueTotal > 1 && (
+            <div style={{
+              width: '100%',
+              background: '#F0FDF4',
+              border: '1.5px solid #86EFAC',
+              color: '#15803d',
+              fontWeight: 700,
+              fontSize: 14,
+              padding: '11px',
+              textAlign: 'center',
+              borderRadius: 4,
+            }}>
+              ✓ Kõik {queueTotal} õpilast läbi vaadatud
+              <div style={{ fontWeight: 400, fontSize: 12, color: '#166534', marginTop: 3 }}>
                 <a
                   href={`/dashboard/tests/${testId}`}
-                  style={{
-                    background: '#f0fdf4', color: '#15803d', fontWeight: 700, fontSize: 14,
-                    padding: '10px 18px', textDecoration: 'none', border: '1.5px solid #86efac',
-                  }}
+                  style={{ color: '#166534', textDecoration: 'underline' }}
                 >
-                  ✓ Kõik läbi — tagasi
+                  Tagasi kontrolltöö lehele →
                 </a>
-              )}
-            </div>
-          ) : (
-            /* ── FULL MODE: original multi-step flow ── */
-            <>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                {status === 'SHARED' ? (
-                  <div style={{ background: '#bbf7d0', color: '#15803d', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>
-                    Jagatud ✓
-                  </div>
-                ) : status === 'APPROVED' ? (
-                  <button
-                    onClick={handleShare}
-                    disabled={actionLoading}
-                    style={{
-                      background: actionLoading ? '#6b7280' : '#0f766e',
-                      color: '#fff', fontWeight: 700, fontSize: 14,
-                      padding: '10px 18px', border: 'none',
-                      cursor: actionLoading ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {actionLoading ? 'Palun oota...' : 'Jaga õpilasega'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleApprove}
-                    disabled={actionLoading || !rawFeedback}
-                    style={{
-                      background: actionLoading || !rawFeedback ? '#6b7280' : '#1C2832',
-                      color: '#F8F3DA', fontWeight: 700, fontSize: 14,
-                      padding: '10px 18px', border: 'none',
-                      cursor: actionLoading || !rawFeedback ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {actionLoading ? 'Palun oota...' : 'Kinnita tagasiside'}
-                  </button>
-                )}
-
-                {!hasTrainingConsent && rawFeedback && (
-                  <button
-                    onClick={handleTrainingConsent}
-                    style={{
-                      background: '#F8F3DA', color: '#1C2832', fontWeight: 600, fontSize: 13,
-                      padding: '10px 14px', border: '1.5px solid #DAD0A1', cursor: 'pointer',
-                    }}
-                  >
-                    Luba anonüümseks treeningandmeks
-                  </button>
-                )}
-                {hasTrainingConsent && (
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>
-                    Treeningandmete nõusolek antud ✓
-                  </span>
-                )}
               </div>
-
-              {nextResultId ? (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/tests/${testId}/results/${nextResultId}`)}
-                  style={{
-                    width: '100%', background: '#F8F3DA', border: '1.5px solid #DAD0A1',
-                    color: '#1C2832', fontWeight: 700, fontSize: 14, padding: '11px',
-                    cursor: 'pointer', textAlign: 'center',
-                  }}
-                >
-                  Järgmine õpilane →
-                </button>
-              ) : queueTotal > 1 && (
-                <div style={{
-                  width: '100%', background: '#F0FDF4', border: '1.5px solid #86EFAC',
-                  color: '#15803d', fontWeight: 700, fontSize: 14, padding: '11px',
-                  textAlign: 'center', borderRadius: 4,
-                }}>
-                  ✓ Kõik {queueTotal} õpilast läbi vaadatud
-                  <div style={{ fontWeight: 400, fontSize: 12, color: '#166534', marginTop: 3 }}>
-                    <a href={`/dashboard/tests/${testId}`} style={{ color: '#166534', textDecoration: 'underline' }}>
-                      Tagasi kontrolltöö lehele →
-                    </a>
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </div>
