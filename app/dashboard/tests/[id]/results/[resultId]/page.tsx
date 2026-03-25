@@ -139,6 +139,7 @@ export default async function ResultReviewPage({
       : null;
 
   const nextResultId = nextResult?.id ?? null;
+  const nextStudentName = nextResult?.studentName ?? null;
   const prefetchResultId = prefetchResult?.id ?? null;
 
   // Queue progress: position among not-yet-shared consented results
@@ -255,6 +256,7 @@ export default async function ResultReviewPage({
         hasTrainingConsent={hasTrainingConsent}
         isApprovedOrBeyond={isApprovedOrBeyond}
         nextResultId={nextResultId}
+        nextStudentName={nextStudentName}
         prefetchResultId={prefetchResultId}
         queuePosition={pendingIdx >= 0 ? pendingIdx + 1 : null}
         queueTotal={pendingQueue.length}
