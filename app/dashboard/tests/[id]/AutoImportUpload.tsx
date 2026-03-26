@@ -16,7 +16,7 @@ interface AutoImportResult {
 
 const STATUS_MESSAGES: Record<Status, string> = {
   idle: '',
-  rendering: 'PDF-i töötlemine...',
+  rendering: 'Failide töötlemine...',
   uploading: 'Nimede tuvastamine ja tulemuste loomine...',
   done: 'Valmis!',
   error: 'Viga',
@@ -54,6 +54,38 @@ async function renderPdfPages(
   return pages;
 }
 
+async function imageFileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1.0, 800 / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas context failed')); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        resolve(dataUrl.split(',')[1]);
+      };
+      img.onerror = () => reject(new Error('Pildi laadimine ebaõnnestus'));
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function isPdf(file: File): boolean {
+  return file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+}
+
+function isImage(file: File): boolean {
+  return file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|heif|webp|bmp|tiff|tif)$/i.test(file.name);
+}
+
 export default function AutoImportUpload({ testId }: { testId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>('idle');
@@ -63,34 +95,59 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = useCallback(async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Palun vali PDF-fail');
+  const processFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) {
+      setError('Faile ei valitud');
       return;
     }
-    if (file.size > 100 * 1024 * 1024) {
-      setError('Fail on liiga suur (max 100 MB)');
+
+    // Validate all files
+    const invalidFiles = files.filter(f => !isPdf(f) && !isImage(f));
+    if (invalidFiles.length > 0) {
+      setError(`Toetamata failiformaat: ${invalidFiles.map(f => f.name).join(', ')}. Lae üles PDF, JPG, PNG või HEIC failid.`);
+      return;
+    }
+
+    const totalSize = files.reduce((s, f) => s + f.size, 0);
+    if (totalSize > 100 * 1024 * 1024) {
+      setError('Failide kogumaht on liiga suur (max 100 MB)');
       return;
     }
 
     setError(null);
     setStatus('rendering');
-    setProgress('PDF-i lehekülgede renderdamine...');
+    setProgress(`${files.length} faili töötlemine...`);
 
     try {
-      const pages = await renderPdfPages(file, (done, total) => {
-        setProgress(`Renderdamine: ${done}/${total} lehte`);
-      });
+      const allPages: string[] = [];
+      let processed = 0;
 
-      if (pages.length === 0) throw new Error('PDF-ist ei saanud ühtegi lehte');
+      for (const file of files) {
+        if (isPdf(file)) {
+          const pdfPages = await renderPdfPages(file, (done, total) => {
+            setProgress(`${file.name}: ${done}/${total} lehte`);
+          });
+          allPages.push(...pdfPages);
+        } else if (isImage(file)) {
+          setProgress(`${file.name} töötlemine...`);
+          const base64 = await imageFileToBase64(file);
+          allPages.push(base64);
+        }
+        processed++;
+        if (files.length > 1) {
+          setProgress(`${processed}/${files.length} faili töödeldud (${allPages.length} lehte kokku)`);
+        }
+      }
+
+      if (allPages.length === 0) throw new Error('Failidest ei saanud ühtegi lehte');
 
       setStatus('uploading');
-      setProgress(`${pages.length} lehte leitud. Nimede tuvastamine...`);
+      setProgress(`${allPages.length} lehte leitud. Nimede tuvastamine...`);
 
       const res = await fetch(`/api/tests/${testId}/auto-import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages }),
+        body: JSON.stringify({ pages: allPages }),
       });
 
       if (!res.ok) {
@@ -112,17 +169,21 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
   }, [testId, router]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  }, [processFile]);
+    const fileList = e.target.files;
+    if (fileList && fileList.length > 0) {
+      processFiles(Array.from(fileList));
+    }
+  }, [processFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  }, [processFile]);
+    const fileList = e.dataTransfer.files;
+    if (fileList && fileList.length > 0) {
+      processFiles(Array.from(fileList));
+    }
+  }, [processFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -236,18 +297,21 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
           {dragging ? '📥' : '📄'}
         </div>
         <p style={{ fontSize: 15, fontWeight: 600, color: '#1C2832' }}>
-          {dragging ? 'Lase lahti, et laadida' : 'Lohista skannitud PDF siia'}
+          {dragging ? 'Lase lahti, et laadida' : 'Lohista failid siia'}
         </p>
         <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
-          või klõpsa, et valida fail
+          või klõpsa, et valida failid
         </p>
-        <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 10 }}>
+        <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 10, lineHeight: 1.5 }}>
+          PDF, JPG, PNG, HEIC · mitu faili korraga · max 100 MB
+          <br />
           AI tuvastab nimed, sobitab klassinimekirjaga ja loob tulemused automaatselt
         </p>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.bmp,.tiff,.tif,application/pdf,image/*"
+          multiple
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
