@@ -496,6 +496,23 @@ model TestResult {
   trainingConsent TrainingConsent?
 }
 
+// ─── AI Learning: accumulated QA patterns that improve pass 1 over time ────────
+
+model FeedbackPattern {
+  id          String   @id @default(cuid())
+  dimension   String   // accuracy, classification, scoring, curriculum, tone, completeness
+  pattern     String   // what the AI keeps getting wrong (e.g., "Ohmi seadus formula inverted")
+  correction  String   // what the correct approach should be
+  example     String?  // concrete before/after example
+  topic       String?  // physics topic this applies to (null = all topics)
+  grade       String?  // class level (null = all levels)
+  frequency   Int      @default(1) // how many times this pattern has been seen
+  severity    String   @default("important") // critical, important, minor
+  active      Boolean  @default(true)  // can be disabled if no longer relevant
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // ─── Assignment (teacher-issued homework, student submits digitally) ───────────
 
 model Assignment {

@@ -3,6 +3,7 @@ import { jsonrepair } from 'jsonrepair';
 import { CURRICULUM } from './curriculum';
 import { ASSESSMENT_RULES } from './assessment-rules';
 import { FeedbackData } from './types';
+import { getLearnedRules } from './ai-learning';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -13,7 +14,7 @@ const client = new Anthropic({
 // rather than the student's real name. The actual name is stored only in our DB.
 const AI_STUDENT_PLACEHOLDER = 'Õpilane';
 
-export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null): string {
+export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string): string {
   // _opilane param kept for API compatibility but NOT forwarded to Anthropic
   return `You are an expert Estonian physics teacher and educational assessment specialist. You receive photos of a completed student test paper from an Estonian school. Your feedback must follow evidence-based assessment science — not just "what's right and wrong" but a full learning-journey response.
 
@@ -119,7 +120,7 @@ RESOURCES GUIDELINES:
 - International: khanacademy.org, physicsclassroom.com, YouTube
 - Each resource must directly address one of the identified error types
 - Include the specific URL path, not just the homepage
-- Mark resource type clearly: type "video" for YouTube, "reading" for articles/textbooks, "exercise" for practice sets`;
+- Mark resource type clearly: type "video" for YouTube, "reading" for articles/textbooks, "exercise" for practice sets${learnedRules || ''}`;
 }
 
 export async function analyzeTest(
@@ -139,13 +140,22 @@ export async function analyzeTest(
     },
   }));
 
+  // Load accumulated QA patterns — the system's "brain" gets smarter over time
+  let learnedRules = '';
+  try {
+    learnedRules = await getLearnedRules(teema, klass);
+  } catch (err) {
+    // Non-blocking: if pattern loading fails, proceed without them
+    console.error('Failed to load learned rules:', err);
+  }
+
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 16000,
     // Anthropic API does not use API data for model training by default.
     // We additionally pass metadata with no PII for our own audit purposes.
     metadata: { user_id: 'pseudonymised' },
-    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey),
+    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules),
     messages: [
       {
         role: 'user',

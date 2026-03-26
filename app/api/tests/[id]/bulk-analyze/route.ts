@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { analyzeTest } from '@/lib/claude';
 import { validateFeedback } from '@/lib/qa-validator';
+import { recordPatterns } from '@/lib/ai-learning';
 import { hasAIConsentByName } from '@/lib/consent';
 import { audit } from '@/lib/audit';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -216,6 +217,24 @@ export async function POST(
         hadCorrections: qaResult.hadCorrections,
         corrections: qaResult.log.filter((e) => e.correction !== null).length,
       });
+
+      // Record QA corrections as learned patterns — makes pass 1 smarter over time
+      if (qaResult.hadCorrections) {
+        try {
+          const { newPatterns, updatedPatterns } = await recordPatterns(
+            qaResult.log,
+            test.topic || test.title,
+            test.grade || null,
+          );
+          if (newPatterns > 0 || updatedPatterns > 0) {
+            captureServerEvent(session.user.id, 'ai_learning_recorded', {
+              resultId, testId: id, newPatterns, updatedPatterns,
+            });
+          }
+        } catch (learnErr) {
+          console.error('Failed to record QA patterns:', learnErr);
+        }
+      }
     } catch (qaError) {
       // QA failure is non-blocking — teacher gets the raw feedback
       console.error(`QA validation failed for result ${resultId}:`, qaError);
