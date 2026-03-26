@@ -106,7 +106,35 @@ export default async function MaterialsPage({
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      {/* Library sub-navigation */}
+      {/* Header */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', margin: 0 }}>
+            Raamatukogu
+          </h1>
+          {isTeacherOrAdmin && (
+            <Link
+              href="/dashboard/materials/add"
+              style={{
+                background: '#1C2832',
+                color: '#F8F3DA',
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '10px 18px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              + Lisa uus materjal
+            </Link>
+          )}
+        </div>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+          Kureeritud videod, harjutused, artiklid ja kursused — organiseeritud ainekava järgi. AI kasutab neid tagasiside andmisel.
+        </p>
+      </div>
+
+      {/* Sub-navigation */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DAD0A1' }}>
         <Link
           href="/dashboard/library"
@@ -134,34 +162,6 @@ export default async function MaterialsPage({
         >
           Õppematerjalid
         </span>
-      </div>
-
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', margin: 0 }}>
-            Raamatukogu
-          </h1>
-          {isTeacherOrAdmin && (
-            <Link
-              href="/dashboard/materials/add"
-              style={{
-                background: '#1C2832',
-                color: '#F8F3DA',
-                fontWeight: 700,
-                fontSize: 14,
-                padding: '10px 18px',
-                textDecoration: 'none',
-                display: 'inline-block',
-              }}
-            >
-              + Lisa uus materjal
-            </Link>
-          )}
-        </div>
-        <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
-          Kureeritud videod, harjutused, artiklid ja kursused — organiseeritud ainekava järgi. AI kasutab neid tagasiside andmisel.
-        </p>
       </div>
 
       {/* Filters row */}
