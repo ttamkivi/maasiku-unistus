@@ -144,6 +144,7 @@ model User {
   adminProfile   AdminProfile?
   sessions       Session[]
   auditLogs      AuditLog[]
+  feedbacks      UserFeedback[]
 }
 
 model Session {
@@ -820,6 +821,24 @@ model FeatureFlag {
   description String
   updatedAt   DateTime @updatedAt
   updatedBy   String?  // userId who last changed it
+}
+
+model UserFeedback {
+  id            String   @id @default(cuid())
+  userId        String?
+  type          String   // bug | suggestion | praise
+  message       String
+  page          String?
+  screenshotUrl String?  // base64 data URL stored as text
+  status        String   @default("NEW") // NEW | READ | RESOLVED
+  adminNote     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CookieConsent {
