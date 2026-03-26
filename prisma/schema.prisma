@@ -429,6 +429,7 @@ model Test {
   grade           String?             // "9" — kept for display / legacy
   rubric          String?             // grading criteria for AI
   answerKey       String?             // correct answers for AI
+  content         String?             // printable test questions/tasks for students
   blankTestNotes  String?
   notes           String?
   status          TestStatus          @default(PREPARING)

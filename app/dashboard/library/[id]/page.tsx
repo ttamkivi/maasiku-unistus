@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import CloneButton from './CloneButton';
+import PrintButton from './PrintButton';
 
 export default async function LibraryTestDetailPage({
   params,
@@ -83,6 +84,26 @@ export default async function LibraryTestDetailPage({
 
       {/* Content sections */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Test content / questions */}
+        {test.content && (
+          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1C2832', opacity: 0.6, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Kontrolltöö ülesanded
+              </h2>
+              <PrintButton
+                title={test.title}
+                subject={test.subject?.name || ''}
+                grade={test.grade || ''}
+                content={test.content}
+              />
+            </div>
+            <div style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {test.content}
+            </div>
+          </div>
+        )}
+
         {/* Rubric */}
         {test.rubric && (
           <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
