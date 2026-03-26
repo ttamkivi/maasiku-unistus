@@ -113,20 +113,40 @@ export default async function MaterialsPage({
             Raamatukogu
           </h1>
           {isTeacherOrAdmin && (
-            <Link
-              href="/dashboard/materials/add"
-              style={{
-                background: '#1C2832',
-                color: '#F8F3DA',
-                fontWeight: 700,
-                fontSize: 14,
-                padding: '10px 18px',
-                textDecoration: 'none',
-                display: 'inline-block',
-              }}
-            >
-              + Lisa uus materjal
-            </Link>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link
+                href="/dashboard/materials/add"
+                style={{
+                  background: '#1C2832',
+                  color: '#F8F3DA',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  padding: '10px 16px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                ⬆ Lae üles
+              </Link>
+              <Link
+                href="/dashboard/materials/generate"
+                style={{
+                  background: 'linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  padding: '10px 16px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                ✦ Genereeri AI-ga
+              </Link>
+            </div>
           )}
         </div>
         <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
