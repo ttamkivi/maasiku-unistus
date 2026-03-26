@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -9,31 +9,49 @@ interface Subject {
   name: string;
 }
 
-const CURRICULUM_CODES = [
-  { code: 'F9.1.1', label: 'Aine ehituse mudel ja agregaatolekud' },
-  { code: 'F9.1.2', label: 'Aineosakeste liikumine ja temperatuur' },
-  { code: 'F9.1.3', label: 'Soojuspaisumine ja difusioon' },
-  { code: 'F9.1.4', label: 'Soojushulk ja erisoojus (Q = cm∆t)' },
-  { code: 'F9.1.5', label: 'Soojusülekande liigid igapäevaelus' },
-  { code: 'F9.1.6', label: 'Soojusjuhtivus, konvektsioon, soojuskiirgus' },
-  { code: 'F9.1.7', label: 'Siseenergia ja soojushulk' },
-  { code: 'F9.1.8', label: 'Soojushulga arvutamine Q = cm∆t' },
-  { code: 'F9.1.9', label: 'Energia jäävuse seadus soojusprotsessides' },
-  { code: 'F9.1.10', label: 'Sulamine ja tahkumine, sulamissoojus Q = λm' },
-  { code: 'F9.1.11', label: 'Aurumine, keemine, keemissoojus Q = Lm' },
-  { code: 'F9.1.12', label: 'Aine oleku muutuste graafik' },
-  { code: 'F9.1.13', label: 'Sublimatsioon ja härmatumine looduses' },
-  { code: 'F9.2.1', label: 'Elektrilaeng ja elektriväli' },
-  { code: 'F9.2.2', label: 'Elektrivool metallides ja vooluringi osad' },
-  { code: 'F9.2.3', label: 'Ohmi seadus I = U/R' },
-  { code: 'F9.2.4', label: 'Elektriskeemid ja mõõtmine' },
-  { code: 'F9.2.5', label: 'Elektriohutus, lühis, kaitse' },
-  { code: 'F9.2.6', label: 'Jadaühenduse omadused' },
-  { code: 'F9.2.7', label: 'Rööpühenduse omadused' },
-  { code: 'F9.2.8', label: 'Elektrivoolu töö A = IUt ja võimsus N = IU' },
-  { code: 'F9.2.9', label: 'Joule-Lenzi seadus Q = I²Rt' },
-  { code: 'F9.2.10', label: 'Koguvõimsus, kaitse, energiamaksumus' },
-];
+interface TopicGroup {
+  group: string;
+  topics: { code: string; label: string }[];
+}
+
+// Topics by subject name — physics is detailed, others use free-text
+const SUBJECT_TOPICS: Record<string, TopicGroup[]> = {
+  'Füüsika': [
+    {
+      group: 'Soojusõpetus',
+      topics: [
+        { code: 'F9.1.1', label: 'Aine ehituse mudel ja agregaatolekud' },
+        { code: 'F9.1.2', label: 'Aineosakeste liikumine ja temperatuur' },
+        { code: 'F9.1.3', label: 'Soojuspaisumine ja difusioon' },
+        { code: 'F9.1.4', label: 'Soojushulk ja erisoojus (Q = cm∆t)' },
+        { code: 'F9.1.5', label: 'Soojusülekande liigid igapäevaelus' },
+        { code: 'F9.1.6', label: 'Soojusjuhtivus, konvektsioon, soojuskiirgus' },
+        { code: 'F9.1.7', label: 'Siseenergia ja soojushulk' },
+        { code: 'F9.1.8', label: 'Soojushulga arvutamine Q = cm∆t' },
+        { code: 'F9.1.9', label: 'Energia jäävuse seadus soojusprotsessides' },
+        { code: 'F9.1.10', label: 'Sulamine ja tahkumine, sulamissoojus Q = λm' },
+        { code: 'F9.1.11', label: 'Aurumine, keemine, keemissoojus Q = Lm' },
+        { code: 'F9.1.12', label: 'Aine oleku muutuste graafik' },
+        { code: 'F9.1.13', label: 'Sublimatsioon ja härmatumine looduses' },
+      ],
+    },
+    {
+      group: 'Elektriõpetus',
+      topics: [
+        { code: 'F9.2.1', label: 'Elektrilaeng ja elektriväli' },
+        { code: 'F9.2.2', label: 'Elektrivool metallides ja vooluringi osad' },
+        { code: 'F9.2.3', label: 'Ohmi seadus I = U/R' },
+        { code: 'F9.2.4', label: 'Elektriskeemid ja mõõtmine' },
+        { code: 'F9.2.5', label: 'Elektriohutus, lühis, kaitse' },
+        { code: 'F9.2.6', label: 'Jadaühenduse omadused' },
+        { code: 'F9.2.7', label: 'Rööpühenduse omadused' },
+        { code: 'F9.2.8', label: 'Elektrivoolu töö A = IUt ja võimsus N = IU' },
+        { code: 'F9.2.9', label: 'Joule-Lenzi seadus Q = I²Rt' },
+        { code: 'F9.2.10', label: 'Koguvõimsus, kaitse, energiamaksumus' },
+      ],
+    },
+  ],
+};
 
 const DIFFICULTY_LEVELS = [
   { value: 'basic', label: 'Baastase — lihtsad ülesanded' },
@@ -69,6 +87,7 @@ export default function GenerateTestPage() {
 
   const [form, setForm] = useState({
     curriculumCode: '',
+    topicFreeText: '',
     grade: '9',
     subjectId: '',
     difficulty: 'standard',
@@ -76,6 +95,50 @@ export default function GenerateTestPage() {
     duration: '45',
     prompt: '',
   });
+
+  // File uploads for AI context
+  const [attachedFiles, setAttachedFiles] = useState<{ name: string; type: string; base64: string; size: number }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Extract the base64 part after the data URL prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFileAttach(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024; // 10 MB per file
+
+    for (const file of files) {
+      if (file.size > maxSize) {
+        setError(`Fail "${file.name}" on liiga suur (max 10 MB)`);
+        continue;
+      }
+      const base64 = await fileToBase64(file);
+      setAttachedFiles((prev) => [...prev, { name: file.name, type: file.type, base64, size: file.size }]);
+    }
+    // Reset input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removeFile(index: number) {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
 
   useEffect(() => {
     fetch('/api/subjects')
@@ -85,35 +148,46 @@ export default function GenerateTestPage() {
   }, []);
 
   function update(field: string, value: string) {
-    setForm((f) => ({ ...f, [field]: value }));
+    if (field === 'subjectId') {
+      // Reset topic when subject changes
+      setForm((f) => ({ ...f, subjectId: value, curriculumCode: '', topicFreeText: '' }));
+    } else {
+      setForm((f) => ({ ...f, [field]: value }));
+    }
   }
 
-  const selectedTopic = CURRICULUM_CODES.find((c) => c.code === form.curriculumCode);
+  // Get the selected subject name to look up its topics
+  const selectedSubjectName = subjects.find((s) => s.id === form.subjectId)?.name || '';
+  const topicGroups = SUBJECT_TOPICS[selectedSubjectName] || [];
+  const hasStructuredTopics = topicGroups.length > 0;
+  const allTopics = topicGroups.flatMap((g) => g.topics);
+  const selectedTopic = allTopics.find((c) => c.code === form.curriculumCode);
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.curriculumCode) {
-      setError('Vali ainekava teema');
-      return;
-    }
     setLoading(true);
     setError(null);
     setGeneratedQuestions('');
     setGeneratedAnswerKey('');
     setGeneratedRubric('');
 
+    // Build topic string from structured selection or free text
+    const topicLabel = selectedTopic?.label || form.topicFreeText.trim() || '';
+
     try {
       const res = await fetch('/api/tests/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          curriculumCode: form.curriculumCode,
-          topic: selectedTopic?.label || '',
+          curriculumCode: form.curriculumCode || undefined,
+          topic: topicLabel || undefined,
+          subject: selectedSubjectName || undefined,
           grade: form.grade,
           difficulty: form.difficulty,
           questionCount: form.questionCount,
           duration: form.duration,
           prompt: form.prompt.trim(),
+          files: attachedFiles.length > 0 ? attachedFiles.map((f) => ({ name: f.name, type: f.type, base64: f.base64 })) : undefined,
         }),
       });
 
@@ -123,7 +197,7 @@ export default function GenerateTestPage() {
         return;
       }
 
-      setGeneratedTitle(data.title || `${selectedTopic?.label || form.curriculumCode} — kontrolltöö`);
+      setGeneratedTitle(data.title || `${topicLabel || selectedSubjectName || 'Kontrolltöö'} — kontrolltöö`);
       setGeneratedQuestions(data.questions);
       setGeneratedAnswerKey(data.answerKey);
       setGeneratedRubric(data.rubric);
@@ -146,7 +220,7 @@ export default function GenerateTestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: generatedTitle,
-          topic: selectedTopic?.label || form.curriculumCode,
+          topic: selectedTopic?.label || form.topicFreeText.trim() || undefined,
           grade: form.grade,
           subjectId: form.subjectId || undefined,
           plannedDate: todayStr,
@@ -219,35 +293,20 @@ export default function GenerateTestPage() {
 
       {!showGenerated ? (
         <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Curriculum code */}
-          <div>
-            <label style={labelStyle}>Ainekava teema *</label>
-            <select
-              value={form.curriculumCode}
-              onChange={(e) => update('curriculumCode', e.target.value)}
-              required
-              style={inputStyle}
-            >
-              <option value="">— Vali teema —</option>
-              <optgroup label="Soojusõpetus">
-                {CURRICULUM_CODES.filter((c) => c.code.startsWith('F9.1')).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} — {c.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Elektriõpetus">
-                {CURRICULUM_CODES.filter((c) => c.code.startsWith('F9.2')).map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} — {c.label}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
-          {/* Grade + Subject */}
+          {/* Subject + Class */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>
+                Aine{' '}
+                <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 12 }}>(valikuline)</span>
+              </label>
+              <select value={form.subjectId} onChange={(e) => update('subjectId', e.target.value)} style={inputStyle}>
+                <option value="">— Määramata —</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label style={labelStyle}>Klass</label>
               <select value={form.grade} onChange={(e) => update('grade', e.target.value)} style={inputStyle}>
@@ -256,15 +315,40 @@ export default function GenerateTestPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label style={labelStyle}>Aine</label>
-              <select value={form.subjectId} onChange={(e) => update('subjectId', e.target.value)} style={inputStyle}>
-                <option value="">Vali aine</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+          </div>
+
+          {/* Topic — structured dropdown for subjects with curriculum codes, free text for others */}
+          <div>
+            <label style={labelStyle}>
+              Teema{' '}
+              <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 12 }}>(valikuline)</span>
+            </label>
+            {hasStructuredTopics ? (
+              <select
+                value={form.curriculumCode}
+                onChange={(e) => update('curriculumCode', e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">— Määramata —</option>
+                {topicGroups.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.topics.map((t) => (
+                      <option key={t.code} value={t.code}>
+                        {t.code} — {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
-            </div>
+            ) : (
+              <input
+                type="text"
+                value={form.topicFreeText}
+                onChange={(e) => update('topicFreeText', e.target.value)}
+                placeholder={form.subjectId ? 'nt: Trigonomeetria, Taimerakk, Eesti Vabadussõda...' : 'Vali esmalt aine või kirjuta teema siia'}
+                style={inputStyle}
+              />
+            )}
           </div>
 
           {/* Difficulty + Question count */}
@@ -312,7 +396,72 @@ export default function GenerateTestPage() {
             />
           </div>
 
-          {selectedTopic && (
+          {/* File attachments */}
+          <div>
+            <label style={labelStyle}>
+              Lisamaterjalid{' '}
+              <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 12 }}>(valikuline — PDF, pildid, dokumendid)</span>
+            </label>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: '1.5px dashed #DAD0A1',
+                padding: '14px 16px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#6b7280',
+                background: '#fefdf5',
+              }}
+            >
+              Klõpsa failide lisamiseks (PDF, JPG, PNG, DOCX, XLSX...)
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.doc,.docx,.pptx,.xlsx,.txt,.csv,image/*,application/pdf"
+              onChange={handleFileAttach}
+              style={{ display: 'none' }}
+            />
+            {attachedFiles.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {attachedFiles.map((f, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    background: '#f5f3ff',
+                    border: '1px solid #e5e7eb',
+                    fontSize: 12,
+                  }}>
+                    <span style={{ color: '#1C2832' }}>
+                      {f.name} <span style={{ color: '#9ca3af' }}>({formatFileSize(f.size)})</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#9ca3af',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        padding: '0 4px',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#9ca3af')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {(selectedTopic || form.topicFreeText.trim()) && (
             <div style={{
               background: '#f5f3ff',
               border: '1.5px solid #c4b5fd',
@@ -320,10 +469,11 @@ export default function GenerateTestPage() {
               fontSize: 13,
               color: '#4c1d95',
             }}>
-              <strong>Ainekava teema:</strong> {selectedTopic.code} — {selectedTopic.label}
+              <strong>Teema:</strong> {selectedTopic ? `${selectedTopic.code} — ${selectedTopic.label}` : form.topicFreeText.trim()}
+              {selectedSubjectName && <> · <strong>Aine:</strong> {selectedSubjectName}</>}
               <br />
               <span style={{ fontSize: 12, opacity: 0.8 }}>
-                AI järgib Eesti riikliku õppekava nõudeid ja koostab ülesanded koos hindamisjuhendiga.
+                AI koostab ülesanded koos hindamisjuhendiga{selectedTopic ? ' vastavalt Eesti riiklikule õppekavale' : ''}.
               </span>
             </div>
           )}
@@ -374,12 +524,19 @@ export default function GenerateTestPage() {
 
           {/* Info badges */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ background: '#f5f3ff', color: '#6d28d9', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
-              {form.curriculumCode}
-            </span>
+            {selectedSubjectName && (
+              <span style={{ background: '#f5f3ff', color: '#6d28d9', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
+                {selectedSubjectName}
+              </span>
+            )}
             <span style={{ background: '#f5f3ff', color: '#6d28d9', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
               {form.grade}. klass
             </span>
+            {(form.curriculumCode || form.topicFreeText.trim()) && (
+              <span style={{ background: '#f5f3ff', color: '#6d28d9', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
+                {form.curriculumCode || form.topicFreeText.trim()}
+              </span>
+            )}
             <span style={{ background: '#f5f3ff', color: '#6d28d9', padding: '4px 10px', fontSize: 12, fontWeight: 600 }}>
               {DIFFICULTY_LEVELS.find(d => d.value === form.difficulty)?.label || form.difficulty}
             </span>

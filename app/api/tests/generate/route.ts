@@ -32,11 +32,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { curriculumCode, topic, grade, difficulty, questionCount, duration, prompt } = body;
-
-  if (!curriculumCode) {
-    return NextResponse.json({ error: 'Ainekava teema on kohustuslik' }, { status: 400 });
-  }
+  const { curriculumCode, topic, subject, grade, difficulty, questionCount, duration, prompt, files } = body as {
+    curriculumCode?: string;
+    topic?: string;
+    subject?: string;
+    grade: string;
+    difficulty: string;
+    questionCount: string;
+    duration: string;
+    prompt?: string;
+    files?: { name: string; type: string; base64: string }[];
+  };
 
   const difficultyText: Record<string, string> = {
     basic: 'Basic level — straightforward recall and simple application. Most students should be able to score well.',
@@ -44,13 +50,24 @@ export async function POST(req: NextRequest) {
     advanced: 'Advanced level — requires deeper reasoning, multi-step problem solving, and connections between concepts.',
   };
 
-  const systemPrompt = `You are an expert Estonian physics teacher who creates high-quality tests (kontrolltöö) for students. You follow the Estonian national curriculum (Eesti riiklik õppekava) precisely.
+  // Build topic description from available info
+  const topicDesc = [curriculumCode, topic].filter(Boolean).join(' — ') || subject || 'Üldine kontrolltöö';
+  const subjectName = subject || 'aineõpetaja';
 
-CURRICULUM REFERENCE:
-${CURRICULUM}
+  // Include curriculum reference only for physics (where we have structured data)
+  const isPhysics = subject === 'Füüsika' || (curriculumCode && curriculumCode.startsWith('F'));
+  const curriculumBlock = isPhysics
+    ? `\nCURRICULUM REFERENCE (Estonian national physics curriculum):\n${CURRICULUM}\n`
+    : '';
+  const curriculumRule = curriculumCode
+    ? `Follow the curriculum requirements for ${curriculumCode} precisely.`
+    : 'Follow the Estonian national curriculum for this subject and grade level.';
 
+  const systemPrompt = `You are an expert Estonian ${subjectName} who creates high-quality tests (kontrolltöö) for students. You follow the Estonian national curriculum (Eesti riiklik õppekava).
+${curriculumBlock}
 YOUR TASK: Create a complete test (kontrolltöö) for the following parameters:
-- Topic: ${curriculumCode} — ${topic}
+- Topic: ${topicDesc}
+${subject ? `- Subject: ${subject}` : ''}
 - Grade: ${grade}. klass
 - Number of questions: ${questionCount}
 - Duration: ${duration} minutes
@@ -58,31 +75,87 @@ YOUR TASK: Create a complete test (kontrolltöö) for the following parameters:
 
 OUTPUT FORMAT: You must respond in valid JSON with exactly this structure:
 {
-  "title": "Test title in Estonian (e.g. 'Soojusõpetus — kontrolltöö nr 1')",
-  "questions": "Full test text in Estonian, formatted for printing. Include:\n- Test header with title and space for name/date\n- Numbered questions (1, 2, 3...)\n- Point values for each question shown as (Xp)\n- Clear instructions for each question type\n- Space indicators like [Joonis] or [Graafik] where students need to draw\n- Total points at the end",
+  "title": "Test title in Estonian",
+  "questions": "Full test text in Estonian, formatted for printing. Include:\n- Test header with title and space for name/date\n- Numbered questions (1, 2, 3...)\n- Point values for each question shown as (Xp)\n- Clear instructions for each question type\n- Total points at the end",
   "answerKey": "Complete answer key in Estonian:\n- Each question numbered to match\n- Full worked solutions with intermediate steps\n- Final answers clearly marked\n- Alternative acceptable answers noted where applicable",
   "rubric": "Detailed rubric in Estonian:\n- Point breakdown for each question\n- Partial credit criteria\n- Common mistakes to watch for\n- What earns full marks vs partial marks"
 }
 
 CRITICAL RULES:
 1. Write ALL content in Estonian
-2. Follow the curriculum requirements for ${curriculumCode} precisely
-3. Use correct physics notation and SI units
-4. Include a mix of question types:
-   - Conceptual/explain questions (seleta, põhjenda)
-   - Calculation questions with given values (arvuta)
-   - Graph/diagram interpretation (graafik, joonis)
-   - At least one real-world application (igapäevaelu)
+2. ${curriculumRule}
+3. Use correct notation and units appropriate to the subject
+4. Include a mix of question types appropriate to the subject (conceptual, applied, analytical)
 5. Scale difficulty and depth to ${duration} minutes
 6. Point values must be realistic and total to a round number (e.g. 40, 50, or 60 points)
 7. The answer key must show FULL worked solutions, not just final answers
 8. The rubric must specify partial credit rules clearly
-9. Questions should scaffold from easier to harder
-10. Include formula reminders at the top of the test if relevant`;
+9. Questions should scaffold from easier to harder`;
 
-  const userMessage = prompt
+  const userTextMessage = prompt
     ? `Generate the test with these additional instructions from the teacher: ${prompt}`
-    : `Generate a complete ${duration}-minute test for ${grade}. klass on topic ${curriculumCode} — ${topic} with ${questionCount} questions.`;
+    : `Generate a complete ${duration}-minute test for ${grade}. klass on ${topicDesc} with ${questionCount} questions.`;
+
+  // Build multimodal message content: text + any attached files
+  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const userContent: Anthropic.MessageCreateParams['messages'][0]['content'] = [];
+
+  // Add file attachments first so AI sees the reference material before the instruction
+  if (files && files.length > 0) {
+    for (const file of files) {
+      if (imageTypes.includes(file.type)) {
+        // Image files — send as image blocks
+        userContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: file.type as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+            data: file.base64,
+          },
+        });
+        userContent.push({
+          type: 'text',
+          text: `[Uploaded image: ${file.name}]`,
+        });
+      } else if (file.type === 'application/pdf') {
+        // PDF files — send as document blocks
+        userContent.push({
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: file.base64,
+          },
+        } as Anthropic.DocumentBlockParam);
+        userContent.push({
+          type: 'text',
+          text: `[Uploaded PDF: ${file.name}]`,
+        });
+      } else {
+        // Other files — try to decode as text
+        try {
+          const decoded = Buffer.from(file.base64, 'base64').toString('utf-8');
+          userContent.push({
+            type: 'text',
+            text: `[Content from uploaded file "${file.name}"]:\n${decoded.slice(0, 50000)}`,
+          });
+        } catch {
+          userContent.push({
+            type: 'text',
+            text: `[File "${file.name}" uploaded but could not be read as text]`,
+          });
+        }
+      }
+    }
+
+    userContent.push({
+      type: 'text',
+      text: `\nThe teacher has uploaded ${files.length} reference file(s) above. Use them as background material when creating the test. Now:\n\n${userTextMessage}`,
+    });
+  }
+
+  // If no files, just use the text message
+  const messageContent = userContent.length > 0 ? userContent : userTextMessage;
 
   try {
     const response = await client.messages.create({
@@ -90,7 +163,7 @@ CRITICAL RULES:
       max_tokens: 12000,
       metadata: { user_id: 'pseudonymised' },
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: messageContent }],
     });
 
     const content = response.content[0];

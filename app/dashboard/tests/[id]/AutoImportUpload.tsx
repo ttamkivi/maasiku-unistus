@@ -86,6 +86,18 @@ function isImage(file: File): boolean {
   return file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|heif|webp|bmp|tiff|tif)$/i.test(file.name);
 }
 
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function formatDuration(ms: number): string {
+  const secs = Math.round(ms / 1000);
+  if (secs < 60) return `${secs} sek`;
+  const mins = Math.floor(secs / 60);
+  const remainSecs = secs % 60;
+  return `${mins} min ${remainSecs} sek`;
+}
+
 export default function AutoImportUpload({ testId }: { testId: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<Status>('idle');
@@ -93,6 +105,7 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
   const [result, setResult] = useState<AutoImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [uploadMeta, setUploadMeta] = useState<{ startTime: Date; endTime: Date | null; pageCount: number; fileCount: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = useCallback(async (files: File[]) => {
@@ -117,6 +130,8 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
     setError(null);
     setStatus('rendering');
     setProgress(`${files.length} faili töötlemine...`);
+    const startTime = new Date();
+    setUploadMeta({ startTime, endTime: null, pageCount: 0, fileCount: files.length });
 
     try {
       const allPages: string[] = [];
@@ -156,8 +171,10 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
       }
 
       const data = await res.json() as AutoImportResult;
+      const endTime = new Date();
       setResult(data);
       setStatus('done');
+      setUploadMeta({ startTime, endTime, pageCount: allPages.length, fileCount: files.length });
       setProgress(`${data.summary.studentsCreated} õpilast loodud ${data.summary.pagesProcessed} lehelt`);
 
       // Refresh the page after a short delay to show the new results
@@ -246,8 +263,16 @@ export default function AutoImportUpload({ testId }: { testId: string }) {
                 {result.summary.studentsCreated} õpilase tulemused loodud
               </p>
               <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>
-                {result.summary.pagesProcessed} lehte töödeldud. Leht uueneb automaatselt.
+                {result.summary.pagesProcessed} lehte töödeldud{uploadMeta ? ` (${uploadMeta.pageCount} lehte ${uploadMeta.fileCount} failist)` : ''}. Leht uueneb automaatselt.
               </p>
+              {uploadMeta && (
+                <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 0' }}>
+                  Alustatud: {formatTime(uploadMeta.startTime)}
+                  {uploadMeta.endTime && (
+                    <> · Lõpetatud: {formatTime(uploadMeta.endTime)} · Kestus: {formatDuration(uploadMeta.endTime.getTime() - uploadMeta.startTime.getTime())}</>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
