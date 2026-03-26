@@ -1,13 +1,15 @@
 /**
  * QA Validator — Pass 2 of the feedback pipeline.
  *
- * Takes the raw AI feedback (pass 1) + original test images and validates:
- * 1. Task count — does the number of tasks match what's visible in the photos?
- * 2. Factual accuracy — are physics explanations correct?
- * 3. Scoring consistency — do points add up, does is_correct match the explanation?
- * 4. Curriculum alignment — does feedback reference the right curriculum objectives?
- * 5. Tone & assessment science — follows the 12 rules from ASSESSMENT_RULES?
- * 6. Completeness — are all required fields filled (uldine_muster, tasks, etc.)?
+ * TEXT-ONLY — does NOT re-read the test photos. Trusts pass 1's reading of
+ * the paper. Instead validates the educational quality of the feedback:
+ *
+ * 1. Physics accuracy — are explanations, formulas, units correct?
+ * 2. Error classification — do väärarusaam/arvutusviga/etc labels match?
+ * 3. Scoring consistency — do points, is_correct, and narrative agree?
+ * 4. Curriculum alignment — right objectives for this class/topic?
+ * 5. Tone & assessment science — mastery framing, no self-level, "Sa" etc.
+ * 6. Completeness — no empty fields, real resources, actionable advice?
  *
  * Returns: corrected feedback JSON + QA audit log.
  */
@@ -16,6 +18,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
 import { FeedbackData } from './types';
 import { CURRICULUM } from './curriculum';
+import { ASSESSMENT_RULES } from './assessment-rules';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -33,18 +36,16 @@ export interface QAResult {
 }
 
 export interface QALogEntry {
-  dimension: 'task_count' | 'accuracy' | 'scoring' | 'curriculum' | 'tone' | 'completeness';
+  dimension: 'accuracy' | 'classification' | 'scoring' | 'curriculum' | 'tone' | 'completeness';
   severity: 'critical' | 'important' | 'minor' | 'ok';
   finding: string;
   correction: string | null;
 }
 
 function buildQAPrompt(klass: string, teema: string): string {
-  return `You are a senior QA reviewer for an Estonian physics education feedback system. You receive:
-1. The original test paper photos (same images the AI analysed)
-2. The AI-generated feedback JSON from pass 1
+  return `You are a senior educational QA reviewer for an Estonian physics feedback system. You receive the AI-generated feedback JSON from pass 1 (which read a student's test paper).
 
-Your job: validate, correct, and improve the feedback BEFORE a teacher sees it.
+You do NOT have the original test photos. Trust that pass 1 correctly read the student's answers. Your job is to validate the EDUCATIONAL QUALITY of the feedback — are the physics explanations correct? Are the conclusions sound? Is the tone appropriate?
 
 Context:
 - Class: ${klass}
@@ -53,44 +54,51 @@ Context:
 CURRICULUM REFERENCE:
 ${CURRICULUM}
 
+ASSESSMENT SCIENCE RULES:
+${ASSESSMENT_RULES}
+
 ## What to check and fix:
 
-### 1. TASK COUNT (critical)
-- Count the numbered tasks/questions visible in the test paper photos
-- Compare to tasks[] array length in the feedback
-- If tasks are MISSING: add them with what you can determine from the photos
-- If extra tasks exist that aren't in the photos: remove them
+### 1. PHYSICS ACCURACY (critical)
+- Are the physics explanations in mis_laks_hasti and mida_parandada factually correct?
+- Are formulas, units, and physical relationships described correctly?
+- If the feedback says "Ohmi seadus: U = I/R" — that's WRONG (should be U = IR). Fix it.
+- If the feedback says gravitational acceleration is 10 m/s² — acceptable for school level
+- Check that "what_went_right" and "what_went_wrong" in tasks[] contain correct physics
 
-### 2. FACTUAL ACCURACY (critical)
-- Verify physics explanations are correct
-- Check formulas, units, and calculations mentioned in the feedback
-- Fix any incorrect physics claims
-- Verify error classifications (väärarusaam, arvutusviga, etc.) match the actual error
+### 2. ERROR CLASSIFICATION (important)
+- Each error in mida_parandada should be classified: väärarusaam (misconception), valemisegadus (formula mix-up), arvutusviga (calculation), ühikuviga (units), poolik arutlus (incomplete reasoning), ülesande vääritimõistmine (misread task)
+- Verify the classification matches the described error
+- A calculation mistake labelled as "väärarusaam" is wrong — fix the label
 
 ### 3. SCORING CONSISTENCY (important)
-- Check that is_correct matches what_went_right / what_went_wrong
-- Verify points_earned vs points_possible make sense
-- Check that task assessments align with uldine_muster (summary)
+- Does is_correct in each task match the what_went_right / what_went_wrong content?
+- If all tasks are correct but uldine_muster sounds negative — fix the tone
+- If most tasks are wrong but feedback is overly positive — balance it
+- Do points_earned / points_possible make sense for the described performance?
 
 ### 4. CURRICULUM ALIGNMENT (important)
-- Verify the feedback references curriculum objectives appropriate for the class level
-- Check that pilk_ettepoole correctly describes what comes next in the curriculum
-- Verify opieesmark matches the actual learning objectives for this topic
+- Does opieesmark match the actual learning objectives for ${teema} in class ${klass}?
+- Does pilk_ettepoole correctly describe what follows in the curriculum?
+- Are curriculum references accurate for the school level (põhikool III kooliaste)?
+- Fix any misaligned curriculum references
 
 ### 5. TONE & ASSESSMENT SCIENCE (important)
-- Must use "Sa" (capitalised) when addressing student
-- Must be mastery-framed, never performance-framed
-- Must use task/process level feedback, never self-level ("Tubli!" is banned)
+- Must use "Sa" (capitalised) when addressing student — fix lowercase "sa"
+- Must be mastery-framed ("Sa oled õppimas..."), NEVER performance-framed
+- Must use task/process level feedback, NEVER self-level ("Tubli!" → remove)
 - Must use informational language ("Pane tähele...", "Proovi...")
-- Must never compare to other students
+- Must NEVER compare to other students or class averages
+- Must NOT repeat the grade/score in narrative text (it belongs in test_info only)
 - Fix any violations
 
 ### 6. COMPLETENESS (important)
-- uldine_muster must not be empty
+- uldine_muster must not be empty — if it is, write a proper summary from the tasks
 - tasks[] must have at least 1 entry
-- mis_laks_hasti must have at least 1 entry (find genuine strength even in weak work)
-- soovitused must have concrete, actionable steps
-- resources should have real URLs (flag any that look fabricated)
+- mis_laks_hasti must have at least 1 genuine strength (not empty praise)
+- soovitused must have concrete, actionable steps (not "study more")
+- resources[] URLs — flag any that look fabricated (e.g. made-up paths on real domains)
+- markmed_opetajale should contain diagnostic teacher notes, not repeat student feedback
 
 ## OUTPUT FORMAT
 
@@ -100,7 +108,7 @@ Return valid JSON with exactly this structure:
   "score": <0-100 overall quality score>,
   "log": [
     {
-      "dimension": "task_count|accuracy|scoring|curriculum|tone|completeness",
+      "dimension": "accuracy|classification|scoring|curriculum|tone|completeness",
       "severity": "critical|important|minor|ok",
       "finding": "What was found (in Estonian)",
       "correction": "What was changed, or null if OK"
@@ -114,24 +122,15 @@ RULES:
 - Fix issues in-place — the corrected version should be ready for the teacher
 - All feedback text must remain in Estonian
 - Be conservative: only change things you're confident are wrong
-- Log EVERYTHING you checked, even if it was fine (severity "ok")`;
+- Log EVERYTHING you checked, even if it was fine (severity "ok")
+- Do NOT invent new tasks or change the student's answers — those come from pass 1`;
 }
 
 export async function validateFeedback(
   rawFeedback: FeedbackData,
-  images: string[],
   klass: string,
   teema: string
 ): Promise<QAResult> {
-  const imageBlocks = images.map((base64) => ({
-    type: 'image' as const,
-    source: {
-      type: 'base64' as const,
-      media_type: 'image/jpeg' as const,
-      data: base64,
-    },
-  }));
-
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 16000,
@@ -140,13 +139,7 @@ export async function validateFeedback(
     messages: [
       {
         role: 'user',
-        content: [
-          ...imageBlocks,
-          {
-            type: 'text',
-            text: `Here is the AI-generated feedback from pass 1. Please validate and correct it:\n\n${JSON.stringify(rawFeedback, null, 2)}`,
-          },
-        ],
+        content: `Here is the AI-generated feedback from pass 1. Please validate the educational quality and correct any issues:\n\n${JSON.stringify(rawFeedback, null, 2)}`,
       },
     ],
   });

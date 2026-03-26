@@ -201,7 +201,6 @@ export async function POST(
       captureServerEvent(session.user.id, 'qa_validation_started', { resultId, testId: id });
       const qaResult = await validateFeedback(
         rawFeedback,
-        images,
         test.grade || '9',
         test.topic || test.title,
       );
