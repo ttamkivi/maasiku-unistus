@@ -397,30 +397,66 @@ export default async function TeacherDashboardPage() {
                       const total = t.results.length;
                       if (total === 0) return `${TEST_STATUS_LABELS[t.status] ?? t.status} · 0 tulemust`;
                       const uploaded = t.results.filter((r: { status: string }) => r.status === 'UPLOADED').length;
+                      const analyzing = t.results.filter((r: { status: string }) => r.status === 'ANALYZING').length;
                       const drafts = t.results.filter((r: { status: string }) => r.status === 'DRAFT').length;
-                      const approved = t.results.filter((r: { status: string }) => ['APPROVED', 'SHARED'].includes(r.status)).length;
+                      const reviewed = t.results.filter((r: { status: string }) => ['REVIEWED', 'EDITED'].includes(r.status)).length;
+                      const approved = t.results.filter((r: { status: string }) => r.status === 'APPROVED').length;
+                      const shared = t.results.filter((r: { status: string }) => r.status === 'SHARED').length;
+                      const archived = t.results.filter((r: { status: string }) => r.status === 'ARCHIVED').length;
                       const parts: string[] = [];
                       if (uploaded > 0) parts.push(`${uploaded} ootab hindamist`);
+                      if (analyzing > 0) parts.push(`${analyzing} hindamisel`);
                       if (drafts > 0) parts.push(`${drafts} mustand`);
-                      if (approved > 0) parts.push(`${approved} valmis`);
+                      if (reviewed > 0) parts.push(`${reviewed} ülevaadatud`);
+                      if (approved > 0) parts.push(`${approved} kinnitatud`);
+                      if (shared > 0) parts.push(`${shared} jagatud`);
+                      if (archived > 0) parts.push(`${archived} arhiveeritud`);
                       return parts.length > 0 ? `${total} tulemust · ${parts.join(', ')}` : `${total} tulemust`;
                     })()}
                   </div>
                 </div>
                 {(() => {
+                  const total = t.results.length;
                   const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
+                  const hasAnalyzing = t.results.some((r: { status: string }) => r.status === 'ANALYZING');
                   const hasDrafts = t.results.some((r: { status: string }) => r.status === 'DRAFT');
-                  const href = hasDrafts
-                    ? `/dashboard/tests/${t.id}`
-                    : hasUploaded
-                      ? `/dashboard/tests/${t.id}`
-                      : `/dashboard/tests/${t.id}/batch-import`;
-                  const label = hasDrafts ? 'Vaata' : hasUploaded ? 'Hinda' : 'Skaneeri';
-                  const bg = hasUploaded && !hasDrafts ? '#c2410c' : '#1C2832';
+                  const hasApproved = t.results.some((r: { status: string }) => r.status === 'APPROVED');
+                  const allSharedOrArchived = total > 0 && t.results.every((r: { status: string }) => ['SHARED', 'ARCHIVED'].includes(r.status));
+
+                  let href: string;
+                  let label: string;
+                  let bg: string;
+
+                  if (allSharedOrArchived) {
+                    href = `/dashboard/tests/${t.id}`;
+                    label = 'Lõpetatud';
+                    bg = '#166534'; // green
+                  } else if (hasApproved) {
+                    href = `/dashboard/tests/${t.id}`;
+                    label = 'Jaga';
+                    bg = '#7c3aed'; // purple
+                  } else if (hasDrafts) {
+                    href = `/dashboard/tests/${t.id}`;
+                    label = 'Vaata';
+                    bg = '#1C2832';
+                  } else if (hasAnalyzing) {
+                    href = `/dashboard/tests/${t.id}`;
+                    label = 'Hindamisel...';
+                    bg = '#6b7280'; // gray
+                  } else if (hasUploaded) {
+                    href = `/dashboard/tests/${t.id}`;
+                    label = 'Hinda';
+                    bg = '#c2410c'; // orange
+                  } else {
+                    href = `/dashboard/tests/${t.id}/batch-import`;
+                    label = 'Skaneeri';
+                    bg = '#1C2832';
+                  }
+
                   return (
                     <Link
                       href={href}
-                      style={{ background: bg, color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+                      style={{ background: bg, color: allSharedOrArchived ? '#fff' : '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
                     >
                       {label}
                     </Link>
