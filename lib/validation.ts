@@ -72,7 +72,7 @@ export const CreateExerciseSchema = z.object({
 
 // User feedback to devs
 export const UserFeedbackSchema = z.object({
-  type: z.enum(['bug', 'feature', 'other']),
+  type: z.enum(['bug', 'suggestion', 'praise']),
   message: z.string().trim().min(1, 'Sõnum on kohustuslik').max(2000),
   email: z.string().trim().toLowerCase().email().max(254).optional().or(z.literal('')),
 });
