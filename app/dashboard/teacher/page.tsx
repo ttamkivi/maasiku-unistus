@@ -197,34 +197,9 @@ export default async function TeacherDashboardPage() {
     padding: '20px 22px',
   };
 
-  // Compute happy-path stage
+  // Compute if there's draft or approved work needing attention
   const hasDraft = allResults.some((r) => (r.status as ResultStatus) === 'DRAFT');
   const hasApproved = allResults.some((r) => (r.status as ResultStatus) === 'APPROVED');
-
-  type HappyStep = { n: number; label: string; cta: string; href: string; active: boolean };
-  const happySteps: HappyStep[] = [
-    {
-      n: 1, label: 'Loo kontrolltöö', cta: 'Loo kontrolltöö',
-      href: '/dashboard/tests/new',
-      active: totalTests === 0,
-    },
-    {
-      n: 2, label: 'Skaneeri tööd', cta: 'Skaneeri',
-      href: totalTests > 0 ? `/dashboard/tests/${allTests[0]?.id}/batch-import` : '/dashboard/tests',
-      active: totalTests > 0 && allResults.length === 0,
-    },
-    {
-      n: 3, label: 'Vaata tagasisidet', cta: 'Vaata mustandeid',
-      href: '/dashboard/tests',
-      active: hasDraft,
-    },
-    {
-      n: 4, label: 'Jaga õpilastega', cta: 'Jaga',
-      href: '/dashboard/tests',
-      active: hasApproved && !hasDraft,
-    },
-  ];
-  const activeStep = happySteps.find((s) => s.active);
 
   // Split tests into active vs archived
   const activeTests = allTests.filter((t) => !(['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status));
@@ -313,56 +288,6 @@ export default async function TeacherDashboardPage() {
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Õpetaja töölaud</p>
       </div>
 
-      {/* Happy path guidance banner */}
-      {activeStep && (
-        <div style={{
-          background: '#1C2832',
-          color: '#F8F3DA',
-          borderRadius: 8,
-          padding: '16px 20px',
-          marginBottom: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.6, marginBottom: 4 }}>
-              Järgmine samm
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {activeStep.n}. {activeStep.label}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-            {/* step indicators */}
-            {happySteps.map((s) => (
-              <div
-                key={s.n}
-                style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  background: s.n < activeStep.n ? '#22c55e' : s.n === activeStep.n ? '#F8F3DA' : 'rgba(255,255,255,0.15)',
-                  color: s.n === activeStep.n ? '#1C2832' : s.n < activeStep.n ? '#fff' : 'rgba(255,255,255,0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700,
-                }}
-              >
-                {s.n < activeStep.n ? '✓' : s.n}
-              </div>
-            ))}
-            <Link
-              href={activeStep.href}
-              style={{
-                background: '#F8F3DA', color: '#1C2832',
-                fontSize: 13, fontWeight: 700, padding: '8px 16px',
-                textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap',
-              }}
-            >
-              {activeStep.cta} →
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* Invite colleague banner */}
       {!PROTOTYPE_MODE && <div style={{
