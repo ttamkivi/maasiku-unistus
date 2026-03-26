@@ -8,7 +8,6 @@ import BulkAnalyzeButton from './BulkAnalyzeButton';
 import AutoImportUpload from './AutoImportUpload';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 import { FeedbackData } from '@/lib/types';
-import PublishButton from './PublishButton';
 
 /**
  * Extract total points earned and possible from AI feedback JSON.
@@ -280,9 +279,6 @@ export default async function TestDetailPage({
               </div>
             </div>
           )}
-
-          {/* Publish to library */}
-          <PublishButton testId={test.id} currentVisibility={test.visibility} />
 
           {/* Notes */}
           {!PROTOTYPE_MODE && test.notes && (
