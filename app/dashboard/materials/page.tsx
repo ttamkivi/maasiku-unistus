@@ -136,12 +136,33 @@ export default async function MaterialsPage({
         </span>
       </div>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C2832', margin: '0 0 4px' }}>
-        Õppematerjalid
-      </h1>
-      <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
-        Kureeritud videod, harjutused, artiklid ja kursused — organiseeritud ainekava järgi. AI kasutab neid tagasiside andmisel.
-      </p>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', margin: 0 }}>
+            Raamatukogu
+          </h1>
+          {isTeacherOrAdmin && (
+            <Link
+              href="/dashboard/materials/add"
+              style={{
+                background: '#1C2832',
+                color: '#F8F3DA',
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '10px 18px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              + Lisa uus materjal
+            </Link>
+          )}
+        </div>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+          Kureeritud videod, harjutused, artiklid ja kursused — organiseeritud ainekava järgi. AI kasutab neid tagasiside andmisel.
+        </p>
+      </div>
 
       {/* Filters row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
@@ -255,27 +276,6 @@ export default async function MaterialsPage({
           </button>
         </div>
       </form>
-
-      {/* Add button */}
-      {isTeacherOrAdmin && (
-        <div style={{ marginBottom: 24 }}>
-          <Link
-            href="/dashboard/materials/add"
-            style={{
-              display: 'inline-block',
-              padding: '10px 20px',
-              fontSize: 14,
-              fontWeight: 700,
-              background: '#F8F3DA',
-              color: '#1C2832',
-              border: '2px solid #DAD0A1',
-              textDecoration: 'none',
-            }}
-          >
-            + Lisa uus materjal
-          </Link>
-        </div>
-      )}
 
       {/* Stats */}
       <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
