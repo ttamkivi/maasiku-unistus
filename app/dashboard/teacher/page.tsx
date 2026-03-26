@@ -410,22 +410,22 @@ export default async function TeacherDashboardPage() {
 
       {/* Top stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
-        <div style={{ ...card, borderTop: '3px solid #1C2832' }}>
+        <Link href="/dashboard/tests" style={{ ...card, borderTop: '3px solid #1C2832', textDecoration: 'none', cursor: 'pointer' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{totalTests}</div>
           <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Kontrolltööd</div>
-        </div>
-        <div style={{ ...card, borderTop: '3px solid #DAD0A1' }}>
+        </Link>
+        <Link href="/dashboard/tests?results=analyzed" style={{ ...card, borderTop: '3px solid #DAD0A1', textDecoration: 'none', cursor: 'pointer' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{totalAnalyzed}</div>
           <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Analüüsitud</div>
-        </div>
-        <div style={{ ...card, borderTop: '3px solid #f97316' }}>
+        </Link>
+        <Link href="/dashboard/tests?results=pending" style={{ ...card, borderTop: '3px solid #f97316', textDecoration: 'none', cursor: 'pointer' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{pendingReview}</div>
           <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Ülevaatust ootab</div>
-        </div>
-        <div style={{ ...card, borderTop: '3px solid #22c55e' }}>
+        </Link>
+        <Link href="/dashboard/tests?results=shared" style={{ ...card, borderTop: '3px solid #22c55e', textDecoration: 'none', cursor: 'pointer' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1C2832' }}>{sharedCount}</div>
           <div style={{ fontSize: 13, color: '#1C2832', opacity: 0.7, marginTop: 4 }}>Jagatud</div>
-        </div>
+        </Link>
       </div>
 
       {/* Task 6a: Empty state when no tests yet */}
