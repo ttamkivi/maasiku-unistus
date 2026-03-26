@@ -76,6 +76,17 @@ function formatTimestamp(d: Date | string): string {
 function timeAgo(d: Date | string | null | undefined): string {
   if (!d) return '';
   const diff = Date.now() - new Date(d).getTime();
+  if (diff < 0) {
+    // Future date — show as upcoming
+    const minutes = Math.floor(-diff / 60000);
+    if (minutes < 60) return `${minutes} min pärast`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} tunni pärast`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} päeva pärast`;
+    const months = Math.floor(days / 30);
+    return `${months} kuu pärast`;
+  }
   const minutes = Math.floor(diff / 60000);
   if (minutes < 60) return `${minutes} minutit tagasi`;
   const hours = Math.floor(minutes / 60);
@@ -221,10 +232,12 @@ export default async function TeacherDashboardPage() {
   };
   activeTests.sort((a, b) => testUrgency(a) - testUrgency(b));
 
-  // Helper: get the most recent activity date for a test
+  // Helper: get the most recent activity date for a test (excludes future plannedDate)
   const lastActivity = (t: typeof allTests[number]): Date => {
+    const now = Date.now();
     const dates = [t.updatedAt, t.createdAt];
-    if (t.plannedDate) dates.push(t.plannedDate);
+    // Only include plannedDate if it's in the past (i.e., the test already happened)
+    if (t.plannedDate && new Date(t.plannedDate).getTime() <= now) dates.push(t.plannedDate);
     if (t.distributedDate) dates.push(t.distributedDate);
     if (t.completedDate) dates.push(t.completedDate);
     for (const r of t.results) {

@@ -24,6 +24,47 @@ const STATUS_COLORS: Record<TestStatus, { bg: string; color: string }> = {
   ARCHIVED: { bg: '#f3f4f6', color: '#9ca3af' },
 };
 
+/** Compute a smart status badge based on result-level statuses (matches dashboard logic) */
+function smartStatus(test: { status: string; results: { id: string; status: string }[] }): { label: string; bg: string; color: string } {
+  const results = test.results;
+  if (results.length === 0) {
+    const ts = test.status as TestStatus;
+    return { label: STATUS_LABELS[ts] ?? ts, ...(STATUS_COLORS[ts] ?? { bg: '#e5e7eb', color: '#374151' }) };
+  }
+  const hasUploaded = results.some(r => r.status === 'UPLOADED');
+  const hasAnalyzing = results.some(r => r.status === 'ANALYZING');
+  const hasDraft = results.some(r => r.status === 'DRAFT');
+  const hasApproved = results.some(r => r.status === 'APPROVED');
+  const allSharedOrArchived = results.every(r => ['SHARED', 'ARCHIVED'].includes(r.status));
+
+  if (allSharedOrArchived) return { label: 'Jagatud', bg: '#99f6e4', color: '#0f766e' };
+  if (hasDraft) return { label: 'Vaata üle', bg: '#fef08a', color: '#854d0e' };
+  if (hasApproved) return { label: 'Jaga', bg: '#e9d5ff', color: '#6d28d9' };
+  if (hasAnalyzing) return { label: 'Hindamisel', bg: '#e9d5ff', color: '#6d28d9' };
+  if (hasUploaded) return { label: 'Analüüsi', bg: '#fed7aa', color: '#c2410c' };
+  const ts = test.status as TestStatus;
+  return { label: STATUS_LABELS[ts] ?? ts, ...(STATUS_COLORS[ts] ?? { bg: '#e5e7eb', color: '#374151' }) };
+}
+
+/** Build a result summary line like "4 tulemust: 2 mustand, 2 ootab" */
+function resultSummary(results: { id: string; status: string }[]): string {
+  if (results.length === 0) return '';
+  const uploaded = results.filter(r => r.status === 'UPLOADED').length;
+  const analyzing = results.filter(r => r.status === 'ANALYZING').length;
+  const drafts = results.filter(r => r.status === 'DRAFT').length;
+  const reviewed = results.filter(r => ['REVIEWED', 'EDITED'].includes(r.status)).length;
+  const approved = results.filter(r => r.status === 'APPROVED').length;
+  const shared = results.filter(r => r.status === 'SHARED').length;
+  const parts: string[] = [];
+  if (uploaded > 0) parts.push(`${uploaded} ootab`);
+  if (analyzing > 0) parts.push(`${analyzing} hindamisel`);
+  if (drafts > 0) parts.push(`${drafts} mustand`);
+  if (reviewed > 0) parts.push(`${reviewed} ülevaadatud`);
+  if (approved > 0) parts.push(`${approved} kinnitatud`);
+  if (shared > 0) parts.push(`${shared} jagatud`);
+  return parts.length > 0 ? `${results.length} tulemust: ${parts.join(', ')}` : `${results.length} tulemust`;
+}
+
 // Map query param to result statuses and display label
 const RESULT_FILTERS: Record<string, { statuses: ResultStatus[]; label: string; color: string }> = {
   analyzed: {
@@ -193,8 +234,9 @@ export default async function TestsPage({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filteredTests.map((test) => {
-            const statusColor = STATUS_COLORS[test.status as TestStatus];
+            const badge = smartStatus(test);
             const count = matchingResultCount(test);
+            const summary = resultSummary(test.results);
             return (
               <Link
                 key={test.id}
@@ -225,15 +267,22 @@ export default async function TestsPage({
                           {new Date(test.plannedDate).toLocaleDateString('et-EE')}
                         </span>
                       )}
-                      <span style={{ fontSize: 12, color: filterDef ? filterDef.color : '#1C2832', opacity: filterDef ? 1 : 0.5, fontWeight: filterDef ? 700 : 400 }}>
-                        {count} {filterDef ? filterDef.label.toLowerCase() : 'tulemust'}
-                      </span>
                     </div>
+                    {summary && !filterDef && (
+                      <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.6, marginTop: 4 }}>
+                        {summary}
+                      </div>
+                    )}
+                    {filterDef && (
+                      <div style={{ fontSize: 11, color: filterDef.color, fontWeight: 700, marginTop: 4 }}>
+                        {count} {filterDef.label.toLowerCase()}
+                      </div>
+                    )}
                   </div>
                   <span
                     style={{
-                      background: statusColor.bg,
-                      color: statusColor.color,
+                      background: badge.bg,
+                      color: badge.color,
                       fontSize: 12,
                       fontWeight: 700,
                       padding: '3px 10px',
@@ -241,7 +290,7 @@ export default async function TestsPage({
                       flexShrink: 0,
                     }}
                   >
-                    {STATUS_LABELS[test.status as TestStatus]}
+                    {badge.label}
                   </span>
                 </div>
               </Link>
