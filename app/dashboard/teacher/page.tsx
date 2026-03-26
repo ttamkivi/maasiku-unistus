@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { TestStatus, ResultStatus } from '@/lib/generated/prisma/client';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
+import ArchivedSection from './ArchivedSection';
 
 const TEST_STATUS_LABELS: Record<string, string> = {
   PREPARING: 'Ettevalmistamine',
@@ -116,6 +117,7 @@ export default async function TeacherDashboardPage() {
         where: { teacherId: user.teacherProfile.id, deletedAt: null },
         include: {
           subject: true,
+          class: { select: { name: true } },
           results: {
             select: {
               id: true,
@@ -131,7 +133,7 @@ export default async function TeacherDashboardPage() {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
       })
     : [];
 
@@ -224,10 +226,48 @@ export default async function TeacherDashboardPage() {
   ];
   const activeStep = happySteps.find((s) => s.active);
 
-  // Recent scannable tests (not COMPLETE / ARCHIVED)
-  const scannableTests = allTests
-    .filter((t) => !(['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status))
-    .slice(0, 5);
+  // Split tests into active vs archived
+  const activeTests = allTests.filter((t) => !(['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status));
+  const completedTests = allTests.filter((t) => (['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status));
+
+  // Sort active tests by urgency: tests needing action first
+  const testUrgency = (t: typeof allTests[number]) => {
+    const hasDraftsLocal = t.results.some((r: { status: string }) => r.status === 'DRAFT');
+    const hasApprovedLocal = t.results.some((r: { status: string }) => r.status === 'APPROVED');
+    const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
+    const hasAnalyzing = t.results.some((r: { status: string }) => r.status === 'ANALYZING');
+    if (hasDraftsLocal) return 0; // most urgent: review needed
+    if (hasApprovedLocal) return 1; // share needed
+    if (hasUploaded) return 2; // analysis needed
+    if (hasAnalyzing) return 3; // waiting
+    if (t.results.length === 0 && t.status === 'READY') return 4; // ready to scan
+    if (t.status === 'PREPARING') return 5; // still preparing
+    return 6;
+  };
+  activeTests.sort((a, b) => testUrgency(a) - testUrgency(b));
+
+  // Helper: get the most recent activity date for a test
+  const lastActivity = (t: typeof allTests[number]): Date => {
+    const dates = [t.updatedAt, t.createdAt];
+    if (t.plannedDate) dates.push(t.plannedDate);
+    if (t.distributedDate) dates.push(t.distributedDate);
+    if (t.completedDate) dates.push(t.completedDate);
+    for (const r of t.results) {
+      if (r.analyzedAt) dates.push(r.analyzedAt);
+      if (r.approvedAt) dates.push(r.approvedAt);
+      if (r.sharedAt) dates.push(r.sharedAt);
+    }
+    return new Date(Math.max(...dates.map(d => new Date(d).getTime())));
+  };
+
+  // Helper: short date like "25. märts" or "25.03"
+  const shortDate = (d: Date | string | null | undefined): string => {
+    if (!d) return '';
+    const date = new Date(d);
+    const day = date.getDate();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}.${month}`;
+  };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
@@ -358,112 +398,126 @@ export default async function TeacherDashboardPage() {
         </Link>
       </div>}
 
-      {/* Hero: Scan class papers */}
-      <div style={{ ...card, marginBottom: 20, background: '#F8F3DA', border: '2px solid #DAD0A1' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: scannableTests.length > 0 ? 14 : 0, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6b7280', marginBottom: 4 }}>
-              Peamine töövoog
+      {/* Active work section */}
+      {activeTests.length > 0 && (
+        <div style={{ ...card, marginBottom: 20, background: '#F8F3DA', border: '2px solid #DAD0A1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', margin: 0 }}>
+                Pooleliolevad tööd
+              </h2>
+              <p style={{ fontSize: 12, color: '#6b7280', marginTop: 2, marginBottom: 0 }}>
+                {activeTests.length} aktiivne{activeTests.length !== 1 ? 't' : ''} kontrolltöö{activeTests.length !== 1 ? 'd' : ''}
+              </p>
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', margin: 0 }}>
-              📄 Skaneeri klassi tööd
-            </h2>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 0 }}>
-              Lae üles PDF → AI tuvastab nimesid → kontrolli → loo kõik tulemused korraga
-            </p>
-          </div>
-          {totalTests === 0 && (
             <Link
               href="/dashboard/tests/new"
-              style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 13, fontWeight: 700, padding: '10px 18px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+              style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '8px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
-              Loo kontrolltöö esmalt
+              + Uus kontrolltöö
             </Link>
-          )}
-        </div>
-        {scannableTests.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {scannableTests.map((t) => (
-              <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: '1px solid #DAD0A1', borderRadius: 6, padding: '10px 14px', gap: 12 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.title}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                    {(() => {
-                      const total = t.results.length;
-                      if (total === 0) return `${TEST_STATUS_LABELS[t.status] ?? t.status} · Lae üles õpilaste tööd →`;
-                      const uploaded = t.results.filter((r: { status: string }) => r.status === 'UPLOADED').length;
-                      const analyzing = t.results.filter((r: { status: string }) => r.status === 'ANALYZING').length;
-                      const drafts = t.results.filter((r: { status: string }) => r.status === 'DRAFT').length;
-                      const reviewed = t.results.filter((r: { status: string }) => ['REVIEWED', 'EDITED'].includes(r.status)).length;
-                      const approved = t.results.filter((r: { status: string }) => r.status === 'APPROVED').length;
-                      const shared = t.results.filter((r: { status: string }) => r.status === 'SHARED').length;
-                      const archived = t.results.filter((r: { status: string }) => r.status === 'ARCHIVED').length;
-                      const parts: string[] = [];
-                      if (uploaded > 0) parts.push(`${uploaded} ootab hindamist`);
-                      if (analyzing > 0) parts.push(`${analyzing} hindamisel`);
-                      if (drafts > 0) parts.push(`${drafts} mustand`);
-                      if (reviewed > 0) parts.push(`${reviewed} ülevaadatud`);
-                      if (approved > 0) parts.push(`${approved} kinnitatud`);
-                      if (shared > 0) parts.push(`${shared} jagatud`);
-                      if (archived > 0) parts.push(`${archived} arhiveeritud`);
-                      return parts.length > 0 ? `${total} tulemust · ${parts.join(', ')}` : `${total} tulemust`;
-                    })()}
-                  </div>
-                </div>
-                {(() => {
-                  const total = t.results.length;
-                  const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
-                  const hasAnalyzing = t.results.some((r: { status: string }) => r.status === 'ANALYZING');
-                  const hasDrafts = t.results.some((r: { status: string }) => r.status === 'DRAFT');
-                  const hasApproved = t.results.some((r: { status: string }) => r.status === 'APPROVED');
-                  const allSharedOrArchived = total > 0 && t.results.every((r: { status: string }) => ['SHARED', 'ARCHIVED'].includes(r.status));
-
-                  let href: string;
-                  let label: string;
-                  let bg: string;
-
-                  if (allSharedOrArchived) {
-                    href = `/dashboard/tests/${t.id}`;
-                    label = 'Lõpetatud';
-                    bg = '#166534'; // green
-                  } else if (hasApproved) {
-                    href = `/dashboard/tests/${t.id}`;
-                    label = 'Jaga';
-                    bg = '#7c3aed'; // purple
-                  } else if (hasDrafts) {
-                    href = `/dashboard/tests/${t.id}`;
-                    label = 'Vaata';
-                    bg = '#1C2832';
-                  } else if (hasAnalyzing) {
-                    href = `/dashboard/tests/${t.id}`;
-                    label = 'Hindamisel...';
-                    bg = '#6b7280'; // gray
-                  } else if (hasUploaded) {
-                    href = `/dashboard/tests/${t.id}`;
-                    label = 'Hinda';
-                    bg = '#c2410c'; // orange
-                  } else {
-                    href = `/dashboard/tests/${t.id}/batch-import`;
-                    label = 'Skaneeri';
-                    bg = '#1C2832';
-                  }
-
-                  return (
-                    <Link
-                      href={href}
-                      style={{ background: bg, color: allSharedOrArchived ? '#fff' : '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
-                    >
-                      {label}
-                    </Link>
-                  );
-                })()}
-              </div>
-            ))}
           </div>
-        )}
-      </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {activeTests.map((t) => {
+              const total = t.results.length;
+              const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
+              const hasAnalyzing = t.results.some((r: { status: string }) => r.status === 'ANALYZING');
+              const hasDraftsLocal = t.results.some((r: { status: string }) => r.status === 'DRAFT');
+              const hasApprovedLocal = t.results.some((r: { status: string }) => r.status === 'APPROVED');
+              const allSharedOrArchived = total > 0 && t.results.every((r: { status: string }) => ['SHARED', 'ARCHIVED'].includes(r.status));
+
+              // Status description
+              let statusLine = '';
+              if (total === 0) {
+                statusLine = TEST_STATUS_LABELS[t.status] ?? t.status;
+              } else {
+                const uploaded = t.results.filter((r: { status: string }) => r.status === 'UPLOADED').length;
+                const analyzing = t.results.filter((r: { status: string }) => r.status === 'ANALYZING').length;
+                const drafts = t.results.filter((r: { status: string }) => r.status === 'DRAFT').length;
+                const reviewed = t.results.filter((r: { status: string }) => ['REVIEWED', 'EDITED'].includes(r.status)).length;
+                const approved = t.results.filter((r: { status: string }) => r.status === 'APPROVED').length;
+                const shared = t.results.filter((r: { status: string }) => r.status === 'SHARED').length;
+                const parts: string[] = [];
+                if (uploaded > 0) parts.push(`${uploaded} ootab`);
+                if (analyzing > 0) parts.push(`${analyzing} hindamisel`);
+                if (drafts > 0) parts.push(`${drafts} mustand`);
+                if (reviewed > 0) parts.push(`${reviewed} ülevaadatud`);
+                if (approved > 0) parts.push(`${approved} kinnitatud`);
+                if (shared > 0) parts.push(`${shared} jagatud`);
+                statusLine = parts.length > 0 ? `${total} tulemust: ${parts.join(', ')}` : `${total} tulemust`;
+              }
+
+              // Action button
+              let href: string;
+              let label: string;
+              let bg: string;
+              if (allSharedOrArchived) {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Lõpetatud';
+                bg = '#166534';
+              } else if (hasApprovedLocal) {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Jaga';
+                bg = '#7c3aed';
+              } else if (hasDraftsLocal) {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Vaata';
+                bg = '#1C2832';
+              } else if (hasAnalyzing) {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Hindamisel...';
+                bg = '#6b7280';
+              } else if (hasUploaded) {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Hinda';
+                bg = '#c2410c';
+              } else if (t.status === 'READY' || t.status === 'DISTRIBUTED' || t.status === 'COLLECTING') {
+                href = `/dashboard/tests/${t.id}/batch-import`;
+                label = 'Lae üles';
+                bg = '#c2410c';
+              } else {
+                href = `/dashboard/tests/${t.id}`;
+                label = 'Ettevalmistus';
+                bg = '#6b7280';
+              }
+
+              // Timestamp line
+              const activity = lastActivity(t);
+              const timeLabel = timeAgo(activity);
+              const className = t.class?.name;
+              const metaParts: string[] = [];
+              if (className) metaParts.push(className);
+              if (t.subject?.name) metaParts.push(t.subject.name);
+              if (t.plannedDate && t.status === 'PREPARING') metaParts.push(`planeeritud ${shortDate(t.plannedDate)}`);
+              if (timeLabel) metaParts.push(timeLabel);
+
+              return (
+                <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', border: '1px solid #DAD0A1', borderRadius: 6, padding: '12px 14px', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#1C2832', opacity: 0.7, marginTop: 2 }}>
+                      {statusLine}
+                    </div>
+                    {metaParts.length > 0 && (
+                      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+                        {metaParts.join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  <Link
+                    href={href}
+                    style={{ background: bg, color: bg === '#166534' ? '#fff' : '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    {label}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Top stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
@@ -646,6 +700,65 @@ export default async function TeacherDashboardPage() {
           </div>
         </Link>
       </div>
+
+      {/* Completed / Archived tests — collapsed */}
+      {completedTests.length > 0 && (
+        <ArchivedSection count={completedTests.length}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {completedTests.map((t) => {
+              const total = t.results.length;
+              const shared = t.results.filter((r: { status: string }) => r.status === 'SHARED').length;
+              const className = t.class?.name;
+              const metaParts: string[] = [];
+              if (className) metaParts.push(className);
+              if (t.subject?.name) metaParts.push(t.subject.name);
+              if (t.completedDate) metaParts.push(`lõpetatud ${shortDate(t.completedDate)}`);
+              else metaParts.push(timeAgo(t.updatedAt));
+
+              return (
+                <Link
+                  key={t.id}
+                  href={`/dashboard/tests/${t.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    padding: '10px 14px',
+                    gap: 12,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1C2832', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.title}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>
+                      {total > 0 ? `${total} tulemust` : 'Tulemusteta'}
+                      {shared > 0 ? ` · ${shared} jagatud` : ''}
+                      {metaParts.length > 0 ? ` · ${metaParts.join(' · ')}` : ''}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: t.status === 'ARCHIVED' ? '#6b7280' : '#166534',
+                    background: t.status === 'ARCHIVED' ? '#f3f4f6' : '#dcfce7',
+                    padding: '4px 10px',
+                    borderRadius: 3,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    {t.status === 'ARCHIVED' ? 'Arhiveeritud' : 'Lõpetatud'}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </ArchivedSection>
+      )}
 
       {/* Two-column lower section */}
       {!PROTOTYPE_MODE && <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
