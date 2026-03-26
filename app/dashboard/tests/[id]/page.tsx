@@ -8,6 +8,7 @@ import BulkAnalyzeButton from './BulkAnalyzeButton';
 import AutoImportUpload from './AutoImportUpload';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 import { FeedbackData } from '@/lib/types';
+import DeleteResultButton from './DeleteResultButton';
 
 /**
  * Extract total points earned and possible from AI feedback JSON.
@@ -369,12 +370,13 @@ export default async function TestDetailPage({
               `}</style>
               <div className="hidden md:block" style={{ border: '1.5px solid #DAD0A1', borderRadius: 6, overflow: 'hidden' }}>
                 {/* Header */}
-                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px 70px 110px', background: '#F8F3DA', borderBottom: '2px solid #DAD0A1', fontSize: 12, fontWeight: 700, color: '#1C2832' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px 70px 110px 40px', background: '#F8F3DA', borderBottom: '2px solid #DAD0A1', fontSize: 12, fontWeight: 700, color: '#1C2832' }}>
                   <span style={{ padding: '10px 14px' }}>#</span>
                   <span style={{ padding: '10px 14px' }}>Õpilane</span>
                   <span style={{ padding: '10px 14px', textAlign: 'center' }}>Punktid</span>
                   <span style={{ padding: '10px 14px', textAlign: 'center' }}>%</span>
                   <span style={{ padding: '10px 14px' }}>Staatus</span>
+                  <span></span>
                 </div>
                 {/* Rows */}
                 {test.results.map((result, i) => {
@@ -389,37 +391,37 @@ export default async function TestDetailPage({
                     ? Math.round((displayScore / displayMax) * 100) : null;
                   const pctColor = pct == null ? '#9ca3af' : pct >= 70 ? '#16a34a' : pct >= 50 ? '#f97316' : '#dc2626';
                   return (
-                    <Link
+                    <div
                       key={result.id}
-                      href={`/dashboard/tests/${test.id}/results/${result.id}`}
                       className="result-row"
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '40px 1fr 120px 70px 110px',
+                        gridTemplateColumns: '40px 1fr 120px 70px 110px 40px',
                         alignItems: 'center',
-                        textDecoration: 'none',
                         fontSize: 14,
                         borderBottom: i < test.results.length - 1 ? '1px solid #F0EDD6' : 'none',
                         background: i % 2 === 0 ? '#fff' : '#FDFAF0',
-                        cursor: 'pointer',
                       }}
                     >
-                      <span style={{ padding: '11px 14px', color: '#9ca3af', fontSize: 12 }}>{i + 1}</span>
-                      <span style={{ padding: '11px 14px', fontWeight: 600, color: '#1C2832' }}>
+                      <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ padding: '11px 14px', color: '#9ca3af', fontSize: 12, textDecoration: 'none' }}>{i + 1}</Link>
+                      <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ padding: '11px 14px', fontWeight: 600, color: '#1C2832', textDecoration: 'none' }}>
                         {result.studentName || 'Nimetu õpilane'}
-                      </span>
-                      <span style={{ padding: '11px 14px', textAlign: 'center', color: '#1C2832', fontSize: 13 }}>
+                      </Link>
+                      <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ padding: '11px 14px', textAlign: 'center', color: '#1C2832', fontSize: 13, textDecoration: 'none' }}>
                         {displayScore != null ? `${displayScore}${displayMax != null ? ` / ${displayMax}` : ''}` : '—'}
-                      </span>
-                      <span style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 700, color: pctColor }}>
+                      </Link>
+                      <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 700, color: pctColor, textDecoration: 'none' }}>
                         {pct != null ? `${pct}%` : '—'}
-                      </span>
-                      <span style={{ padding: '11px 14px' }}>
+                      </Link>
+                      <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ padding: '11px 14px', textDecoration: 'none' }}>
                         <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 10, whiteSpace: 'nowrap' }}>
                           {RESULT_STATUS_LABELS[result.status as ResultStatus]}
                         </span>
+                      </Link>
+                      <span style={{ padding: '4px', textAlign: 'center' }}>
+                        <DeleteResultButton testId={test.id} resultId={result.id} studentName={result.studentName || 'Nimetu'} />
                       </span>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -435,23 +437,26 @@ export default async function TestDetailPage({
                   const mobileEarned = result.score ?? mobileScores?.earned ?? null;
                   const mobileMax = result.maxScore ?? mobileScores?.possible ?? null;
                   return (
-                    <Link
+                    <div
                       key={result.id}
-                      href={`/dashboard/tests/${test.id}/results/${result.id}`}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', textDecoration: 'none', borderBottom: i < test.results.length - 1 ? '1px solid #DAD0A1' : 'none', gap: 12 }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 16px', borderBottom: i < test.results.length - 1 ? '1px solid #DAD0A1' : 'none', gap: 8 }}
                     >
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <Link
+                        href={`/dashboard/tests/${test.id}/results/${result.id}`}
+                        style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
+                      >
                         <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', margin: 0 }}>{result.studentName || 'Nimetu õpilane'}</p>
                         {mobileEarned != null && (
                           <p style={{ fontSize: 12, color: '#1C2832', opacity: 0.6, marginTop: 2 }}>
                             {mobileEarned}{mobileMax != null ? ` / ${mobileMax} punkti` : ' punkti'}
                           </p>
                         )}
-                      </div>
+                      </Link>
                       <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {RESULT_STATUS_LABELS[result.status as ResultStatus]}
                       </span>
-                    </Link>
+                      <DeleteResultButton testId={test.id} resultId={result.id} studentName={result.studentName || 'Nimetu'} />
+                    </div>
                   );
                 })}
               </div>
