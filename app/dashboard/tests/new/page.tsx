@@ -210,6 +210,24 @@ export default function NewTestPage() {
           </p>
         </div>
 
+        {/* AI prompt — always visible */}
+        <div>
+          <label style={labelStyle}>
+            Juhised AI-le{' '}
+            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(valikuline)</span>
+          </label>
+          <textarea
+            value={rubric}
+            onChange={(e) => setRubric(e.target.value)}
+            rows={3}
+            placeholder="nt. Ülesanne 1 (4p): valem 1p, asendus 1p, arvutus 1p, ühik 1p. Teema on Ohmi seadus. Hinda rangelt ühikute kasutamist."
+            style={{ ...inputStyle, resize: 'vertical' }}
+          />
+          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+            Kirjelda hindamisjuhendit, õigeid vastuseid või muid juhiseid — AI kasutab neid tagasiside andmisel
+          </p>
+        </div>
+
         {/* Collapsible advanced section */}
         {!PROTOTYPE_MODE && <div>
           <button
