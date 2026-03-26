@@ -393,15 +393,39 @@ export default async function TeacherDashboardPage() {
                     {t.title}
                   </div>
                   <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                    {TEST_STATUS_LABELS[t.status] ?? t.status} · {t.results.length} tulemust
+                    {(() => {
+                      const total = t.results.length;
+                      if (total === 0) return `${TEST_STATUS_LABELS[t.status] ?? t.status} · 0 tulemust`;
+                      const uploaded = t.results.filter((r: { status: string }) => r.status === 'UPLOADED').length;
+                      const drafts = t.results.filter((r: { status: string }) => r.status === 'DRAFT').length;
+                      const approved = t.results.filter((r: { status: string }) => ['APPROVED', 'SHARED'].includes(r.status)).length;
+                      const parts: string[] = [];
+                      if (uploaded > 0) parts.push(`${uploaded} ootab hindamist`);
+                      if (drafts > 0) parts.push(`${drafts} mustand`);
+                      if (approved > 0) parts.push(`${approved} valmis`);
+                      return parts.length > 0 ? `${total} tulemust · ${parts.join(', ')}` : `${total} tulemust`;
+                    })()}
                   </div>
                 </div>
-                <Link
-                  href={`/dashboard/tests/${t.id}/batch-import`}
-                  style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  Skaneeri
-                </Link>
+                {(() => {
+                  const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
+                  const hasDrafts = t.results.some((r: { status: string }) => r.status === 'DRAFT');
+                  const href = hasDrafts
+                    ? `/dashboard/tests/${t.id}`
+                    : hasUploaded
+                      ? `/dashboard/tests/${t.id}`
+                      : `/dashboard/tests/${t.id}/batch-import`;
+                  const label = hasDrafts ? 'Vaata' : hasUploaded ? 'Hinda' : 'Skaneeri';
+                  const bg = hasUploaded && !hasDrafts ? '#c2410c' : '#1C2832';
+                  return (
+                    <Link
+                      href={href}
+                      style={{ background: bg, color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '7px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })()}
               </div>
             ))}
           </div>
