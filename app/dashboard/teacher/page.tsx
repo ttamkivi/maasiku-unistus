@@ -216,21 +216,8 @@ export default async function TeacherDashboardPage() {
   const activeTests = allTests.filter((t) => !(['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status));
   const completedTests = allTests.filter((t) => (['COMPLETE', 'ARCHIVED'] as string[]).includes(t.status));
 
-  // Sort active tests by urgency: tests needing action first
-  const testUrgency = (t: typeof allTests[number]) => {
-    const hasDraftsLocal = t.results.some((r: { status: string }) => r.status === 'DRAFT');
-    const hasApprovedLocal = t.results.some((r: { status: string }) => r.status === 'APPROVED');
-    const hasUploaded = t.results.some((r: { status: string }) => r.status === 'UPLOADED');
-    const hasAnalyzing = t.results.some((r: { status: string }) => r.status === 'ANALYZING');
-    if (hasDraftsLocal) return 0; // most urgent: review needed
-    if (hasApprovedLocal) return 1; // share needed
-    if (hasUploaded) return 2; // analysis needed
-    if (hasAnalyzing) return 3; // waiting
-    if (t.results.length === 0 && t.status === 'READY') return 4; // ready to scan
-    if (t.status === 'PREPARING') return 5; // still preparing
-    return 6;
-  };
-  activeTests.sort((a, b) => testUrgency(a) - testUrgency(b));
+  // Sort active tests: newest first (by creation date)
+  activeTests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Helper: get the most recent activity date for a test (excludes future plannedDate)
   const lastActivity = (t: typeof allTests[number]): Date => {
