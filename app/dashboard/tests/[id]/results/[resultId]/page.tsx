@@ -162,13 +162,19 @@ export default async function ResultReviewPage({
   const pendingIdx = pendingQueue.findIndex((r) => r.id === resultId);
   // ──────────────────────────────────────────────────────────────────────────
 
-  const rawFeedback: FeedbackData | null = result.rawFeedback
-    ? (() => { try { return JSON.parse(result.rawFeedback); } catch { return null; } })()
+  // Feedback priority: editedFeedback > qaFeedback > rawFeedback
+  // qaFeedback = QA-validated & improved version (pass 2)
+  // rawFeedback = original AI output (pass 1, kept for audit)
+  const qaFeedbackStr = (result as Record<string, unknown>).qaFeedback as string | null;
+  const rawFeedback: FeedbackData | null = (qaFeedbackStr || result.rawFeedback)
+    ? (() => { try { return JSON.parse(qaFeedbackStr || result.rawFeedback!); } catch { return null; } })()
     : null;
 
   const editedFeedback: FeedbackData | null = result.editedFeedback
     ? (() => { try { return JSON.parse(result.editedFeedback); } catch { return null; } })()
     : null;
+
+  const qaScore = (result as Record<string, unknown>).qaScore as number | null;
 
   const statusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
   const currentStatusIndex = LIFECYCLE.indexOf(result.status as ResultStatus);

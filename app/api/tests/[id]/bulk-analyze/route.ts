@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { analyzeTest } from '@/lib/claude';
+import { validateFeedback } from '@/lib/qa-validator';
 import { hasAIConsentByName } from '@/lib/consent';
 import { audit } from '@/lib/audit';
 import { captureServerEvent } from '@/lib/posthog-server';
@@ -179,8 +180,9 @@ export async function POST(
       return NextResponse.json({ error: 'Fotode laadimine ebaõnnestus' }, { status: 500 });
     }
 
+    // ── Pass 1: AI Analysis ──
     captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id, photoCount: images.length });
-    const feedback = await analyzeTest(
+    const rawFeedback = await analyzeTest(
       test.grade || '9',
       test.topic || test.title,
       result.studentName || 'Õpilane',
@@ -189,17 +191,53 @@ export async function POST(
       test.answerKey,
     );
 
+    // ── Pass 2: QA Validation & Correction ──
+    let qaFeedback = rawFeedback;
+    let qaLog: string | null = null;
+    let qaScore: number | null = null;
+    let qaCompletedAt: Date | null = null;
+
+    try {
+      captureServerEvent(session.user.id, 'qa_validation_started', { resultId, testId: id });
+      const qaResult = await validateFeedback(
+        rawFeedback,
+        images,
+        test.grade || '9',
+        test.topic || test.title,
+      );
+      qaFeedback = qaResult.correctedFeedback;
+      qaLog = JSON.stringify(qaResult.log);
+      qaScore = qaResult.score;
+      qaCompletedAt = new Date();
+
+      captureServerEvent(session.user.id, 'qa_validation_completed', {
+        resultId,
+        testId: id,
+        qaScore: qaResult.score,
+        hadCorrections: qaResult.hadCorrections,
+        corrections: qaResult.log.filter((e) => e.correction !== null).length,
+      });
+    } catch (qaError) {
+      // QA failure is non-blocking — teacher gets the raw feedback
+      console.error(`QA validation failed for result ${resultId}:`, qaError);
+      captureServerEvent(session.user.id, 'qa_validation_failed', { resultId, testId: id });
+    }
+
     await db.testResult.update({
       where: { id: resultId },
       data: {
-        rawFeedback: JSON.stringify(feedback),
+        rawFeedback: JSON.stringify(rawFeedback),
+        qaFeedback: JSON.stringify(qaFeedback),
+        qaLog,
+        qaScore,
+        qaCompletedAt,
         status: 'DRAFT',
         analyzedAt: new Date(),
       },
     });
 
     captureServerEvent(session.user.id, 'ai_analysis_completed', { resultId, testId: id });
-    return NextResponse.json({ ok: true, resultId });
+    return NextResponse.json({ ok: true, resultId, qaScore });
   } catch (error) {
     console.error('POST /api/tests/[id]/bulk-analyze error:', error);
     return NextResponse.json({ error: 'Serveriviga' }, { status: 500 });

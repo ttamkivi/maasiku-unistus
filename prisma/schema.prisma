@@ -467,8 +467,11 @@ model TestResult {
   studentId      String?      // null until scanned name is matched to a profile
   studentName    String?      // fallback display name until matched
   status         ResultStatus @default(PENDING)
-  rawFeedback    String?      // original AI JSON (pass 1)
-  editedFeedback String?      // fact-checked / teacher-modified JSON (pass 2+)
+  rawFeedback    String?      // original AI JSON (pass 1, before QA)
+  qaFeedback     String?      // QA-validated & improved JSON (pass 2) — shown to teacher
+  editedFeedback String?      // teacher-modified JSON (pass 3+)
+  qaLog          String?      // QA audit log: what was checked, changed, and why (JSON)
+  qaScore        Float?       // overall QA confidence 0-100
   teacherNotes   String?      // private, never shown to student
   teacherComment String?      // brief note for training records
   score          Float?
@@ -476,6 +479,7 @@ model TestResult {
   storageMode    String       @default("local_only")
   uploadedAt     DateTime?
   analyzedAt     DateTime?
+  qaCompletedAt  DateTime?    // when QA pass finished
   reviewedAt     DateTime?
   approvedAt     DateTime?
   sharedAt       DateTime?
