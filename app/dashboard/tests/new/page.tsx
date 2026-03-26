@@ -37,7 +37,9 @@ export default function NewTestPage() {
   const [topic, setTopic] = useState('');
   const [grade, setGrade] = useState('');
   const [subjectId, setSubjectId] = useState('');
-  const [plannedDate, setPlannedDate] = useState('');
+  // Default to today's date in YYYY-MM-DD format
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [plannedDate, setPlannedDate] = useState(todayStr);
   const [notes, setNotes] = useState('');
   const [rubric, setRubric] = useState('');
   const [answerKey, setAnswerKey] = useState('');
@@ -163,13 +165,49 @@ export default function NewTestPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>Planeeritud kuupäev</label>
+          <label style={labelStyle}>Kontrolltöö kuupäev</label>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            {[
+              { label: 'Eile', offset: -1 },
+              { label: 'Täna', offset: 0 },
+              { label: 'Homme', offset: 1 },
+            ].map(({ label, offset }) => {
+              const d = new Date();
+              d.setDate(d.getDate() + offset);
+              const val = d.toISOString().slice(0, 10);
+              const isActive = plannedDate === val;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setPlannedDate(val)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: isActive ? '2px solid #1C2832' : '1.5px solid #DAD0A1',
+                    background: isActive ? '#1C2832' : '#fff',
+                    color: isActive ? '#F8F3DA' : '#1C2832',
+                    cursor: 'pointer',
+                    borderRadius: 4,
+                    transition: 'all 0.1s',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <input
             type="date"
             value={plannedDate}
             onChange={(e) => setPlannedDate(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, cursor: 'pointer' }}
           />
+          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+            Või vali mõni muu kuupäev kalendrist
+          </p>
         </div>
 
         {/* Collapsible advanced section */}
