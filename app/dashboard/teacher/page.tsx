@@ -350,9 +350,9 @@ export default async function TeacherDashboardPage() {
             </div>
             <Link
               href="/dashboard/tests/new"
-              style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 12, fontWeight: 700, padding: '8px 14px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
+              style={{ background: '#1C2832', color: '#F8F3DA', fontSize: 13, fontWeight: 700, padding: '10px 18px', textDecoration: 'none', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
-              + Uus kontrolltöö
+              + Lisa uus
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -623,21 +623,27 @@ export default async function TeacherDashboardPage() {
         )}
       </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 mb-7">
-        <Link href="/dashboard/tests/new" style={{ textDecoration: 'none' }}>
-          <div style={{ background: '#1C2832', color: '#F8F3DA', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>➕</div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Uus kontrolltöö</div>
+      {/* Primary CTA — big and visible */}
+      <Link href="/dashboard/tests/new" style={{ textDecoration: 'none', display: 'block', marginBottom: 20 }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #1C2832 0%, #2d3e4e 100%)',
+          color: '#F8F3DA',
+          borderRadius: 12,
+          padding: '22px 24px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          boxShadow: '0 4px 12px rgba(28, 40, 50, 0.25)',
+          transition: 'transform 0.1s, box-shadow 0.1s',
+        }}>
+          <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>+</div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em' }}>Lisa uus kontrolltöö</div>
+            <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2 }}>Loo töö, lae pildid, saa AI tagasiside</div>
           </div>
-        </Link>
-        <Link href="/dashboard/tests" style={{ textDecoration: 'none' }}>
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#1C2832', borderRadius: 8, padding: '14px 16px', cursor: 'pointer' }}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>📋</div>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>Kontrolltööd</div>
-          </div>
-        </Link>
-      </div>
+        </div>
+      </Link>
 
       {/* Completed / Archived tests — collapsed */}
       {completedTests.length > 0 && (

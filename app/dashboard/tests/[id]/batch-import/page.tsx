@@ -224,13 +224,46 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
     }));
   }, [roster]);
 
-  const processFile = useCallback(async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Palun vali PDF-fail');
+  // Convert a single image file to base64 JPEG (resized to max 800px width)
+  const imageFileToBase64 = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1.0, 800 / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Canvas context failed')); return; }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          resolve(dataUrl.split(',')[1]);
+        };
+        img.onerror = () => reject(new Error('Pildi laadimine ebaõnnestus'));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error('Faili lugemine ebaõnnestus'));
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp', '.bmp', '.tiff', '.tif'];
+  const isImageFile = (name: string) => IMAGE_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
+  const isPdfFile = (name: string) => name.toLowerCase().endsWith('.pdf');
+
+  const processFiles = useCallback(async (files: File[]) => {
+    // Validate: all must be PDF or image
+    const validFiles = files.filter(f => isPdfFile(f.name) || isImageFile(f.name));
+    if (validFiles.length === 0) {
+      setError('Palun vali PDF- või pildifailid (JPG, PNG, HEIC jne)');
       return;
     }
-    if (file.size > 100 * 1024 * 1024) {
-      setError('Fail on liiga suur (max 100 MB)');
+
+    const totalSize = validFiles.reduce((s, f) => s + f.size, 0);
+    if (totalSize > 100 * 1024 * 1024) {
+      setError('Failid on liiga suured (kokku max 100 MB)');
       return;
     }
 
@@ -239,11 +272,33 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
     setRenderProgress(null);
 
     try {
-      const pages = await renderPdfPages(file, (done, total) => {
-        setRenderProgress({ done, total });
-      });
+      let pages: string[] = [];
 
-      if (pages.length === 0) throw new Error('PDF-ist ei saanud ühtegi lehte');
+      // If the first file is a PDF, process it as before (single PDF)
+      const pdfFiles = validFiles.filter(f => isPdfFile(f.name));
+      const imageFiles = validFiles.filter(f => isImageFile(f.name));
+
+      if (pdfFiles.length > 0) {
+        // Process PDF pages
+        for (const pdf of pdfFiles) {
+          const pdfPages = await renderPdfPages(pdf, (done, total) => {
+            setRenderProgress({ done: pages.length + done, total: pages.length + total + imageFiles.length });
+          });
+          pages.push(...pdfPages);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        // Process image files — each image = one page
+        const totalAll = pages.length + imageFiles.length;
+        for (let i = 0; i < imageFiles.length; i++) {
+          const b64 = await imageFileToBase64(imageFiles[i]);
+          pages.push(b64);
+          setRenderProgress({ done: pages.length, total: totalAll });
+        }
+      }
+
+      if (pages.length === 0) throw new Error('Failidest ei saanud ühtegi pilti');
 
       setPhase('identifying');
 
@@ -294,20 +349,20 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
       setError(err instanceof Error ? err.message : 'Viga töötlemisel');
       setPhase('upload');
     }
-  }, [testId, roster]);
+  }, [testId, roster, imageFileToBase64]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  }, [processFile]);
+    const files = e.target.files;
+    if (files && files.length > 0) processFiles(Array.from(files));
+  }, [processFiles]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  }, [processFile]);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) processFiles(Array.from(files));
+  }, [processFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -539,15 +594,16 @@ export default function BatchImportPage({ params }: { params: Promise<{ id: stri
         >
           <div style={{ fontSize: 48, marginBottom: 12 }}>{dragging ? '📥' : '📄'}</div>
           <p style={{ fontSize: 16, fontWeight: 700, color: '#1C2832', margin: 0 }}>
-            {dragging ? 'Lase lahti, et laadida' : 'Lohista PDF siia või klõpsa'}
+            {dragging ? 'Lase lahti, et laadida' : 'Lohista failid siia või klõpsa'}
           </p>
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 6 }}>
-            Üks PDF kõigi õpilaste töödega · max 100 MB
+            PDF, JPG, PNG või HEIC · mitu faili korraga · max 100 MB
           </p>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,application/pdf"
+            accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.bmp,.tiff,.tif,application/pdf,image/*"
+            multiple
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
