@@ -163,6 +163,51 @@ function generateTestPhoto(studentName: string, testTitle: string, answers: stri
   return `data:image/svg+xml;base64,${base64}`;
 }
 
+function generateFeedback(testTitle: string, sa: StudentAnswer): string {
+  const pct = Math.round((sa.score / sa.maxScore) * 100);
+  const grade = pct >= 90 ? 'suurepärane' : pct >= 70 ? 'hea' : pct >= 50 ? 'rahuldav' : 'nõrk';
+  const taskBlocks = sa.answers.split(/\n(?=\d+\.)/).filter(b => b.trim());
+  const tasks = taskBlocks.map((block, i) => {
+    const lines = block.trim().split('\n');
+    const header = lines[0] || '';
+    const pointsMatch = header.match(/\((\d+)\/(\d+)p?\)/);
+    const earned = pointsMatch ? pointsMatch[1] : null;
+    const possible = pointsMatch ? pointsMatch[2] : null;
+    const earnedNum = earned ? parseInt(earned) : 0;
+    const possibleNum = possible ? parseInt(possible) : 1;
+    const isCorrect = earnedNum >= possibleNum ? true : earnedNum === 0 ? false : null;
+    const body = lines.slice(1).join(' ').trim();
+    return {
+      number: i + 1,
+      question_summary: header.replace(/\(\d+\/\d+p?\)/, '').replace(/^\d+\.\s*/, '').trim(),
+      student_answer: body.substring(0, 200),
+      is_correct: isCorrect,
+      what_went_right: earnedNum > 0 ? 'Õpilane näitas teema mõistmist.' : null,
+      what_went_wrong: earnedNum < possibleNum ? 'Mõned vastused vajavad täiendamist.' : null,
+      advice: earnedNum < possibleNum ? 'Korda seda teemat õpikust.' : null,
+      points_earned: earned,
+      points_possible: possible,
+    };
+  });
+  return JSON.stringify({
+    test_info: { title: testTitle, topic: 'Soojusõpetus', class: '9. klass', score: `${sa.score}/${sa.maxScore}`, student: sa.name },
+    opieesmark: 'Kontrollida õpilase teadmisi soojusõpetuse teemadel',
+    mis_laks_hasti: pct >= 50
+      ? [{ title: 'Põhimõisted', text: 'Õpilane tunneb soojusõpetuse põhimõisteid ja valemeid.' }]
+      : [{ title: 'Osalemine', text: 'Õpilane proovis ülesandeid lahendada.' }],
+    mida_parandada: pct < 90
+      ? [{ title: 'Ülesannete lahendamine', text: 'Mõned arvutused vajavad täiendavat harjutamist.' }]
+      : [],
+    uldine_muster: `Tulemus on ${grade} (${pct}%). ${pct >= 70 ? 'Õpilane on materjali hästi omandanud.' : pct >= 50 ? 'Põhitõed on selged, kuid mõned teemad vajavad kordamist.' : 'Õpilane vajab lisatuge ja individuaalset lähenemist.'}`,
+    soovitused: pct < 90
+      ? [{ title: 'Harjuta', text: 'Lahenda lisaülesandeid soojusõpetuse peatükist.' }]
+      : [{ title: 'Süvene', text: 'Proovi olümpiaadi tasemel ülesandeid.' }],
+    pilk_ettepoole: pct >= 70 ? 'Jätka samas tempos!' : 'Keskenduge nõrkadele teemadele.',
+    markmed_opetajale: pct < 50 ? 'Õpilane vajab individuaalset lisatuge.' : '',
+    tasks,
+  });
+}
+
 async function main() {
   console.log('\n=== Seeding demo test results ===\n');
 
@@ -224,18 +269,21 @@ async function main() {
       continue;
     }
 
-    // Create TestResult in UPLOADED status (ready for grading but not graded yet)
+    // Create TestResult in DRAFT status (AI has graded, teacher needs to review)
+    const feedbackJson = generateFeedback(test.title, sa);
     const result = await db.testResult.create({
       data: {
         testId: test.id,
         scanBatchId: batch.id,
         studentId: student?.id ?? null,
         studentName: sa.name,
-        status: 'UPLOADED',
-        score: null,        // not graded yet
+        status: 'DRAFT',
+        score: sa.score,
         maxScore: sa.maxScore,
+        rawFeedback: feedbackJson,
         storageMode: 'local_only',
-        uploadedAt: new Date(),
+        uploadedAt: new Date(Date.now() - 3600000),
+        analyzedAt: new Date(),
       },
     });
 
@@ -253,8 +301,8 @@ async function main() {
     console.log(`✅ Created result + photo: ${sa.name} — ${sa.successLevel}`);
   }
 
-  console.log('\n=== Done! 4 test results created in UPLOADED status ===');
-  console.log('Navigate to the test in the app to see them. Run grading when ready.\n');
+  console.log('\n=== Done! 4 test results created in DRAFT status with AI feedback ===');
+  console.log('Navigate to the test in the app to review them.\n');
 }
 
 main().catch(console.error);

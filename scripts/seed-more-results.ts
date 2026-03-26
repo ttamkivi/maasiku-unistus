@@ -210,6 +210,68 @@ Kirjutab "mõõtsin takistust"`,
   },
 ];
 
+// --- AI feedback generator ---
+function generateFeedback(testTitle: string, sa: StudentAnswer): string {
+  const pct = Math.round((sa.score / sa.maxScore) * 100);
+  const grade = pct >= 90 ? 'suurepärane' : pct >= 70 ? 'hea' : pct >= 50 ? 'rahuldav' : 'nõrk';
+
+  // Parse task blocks from answers text
+  const taskBlocks = sa.answers.split(/\n(?=\d+\.)/).filter(b => b.trim());
+  const tasks = taskBlocks.map((block, i) => {
+    const lines = block.trim().split('\n');
+    const header = lines[0] || '';
+    const pointsMatch = header.match(/\((\d+)\/(\d+)p?\)/);
+    const earned = pointsMatch ? pointsMatch[1] : null;
+    const possible = pointsMatch ? pointsMatch[2] : null;
+    const earnedNum = earned ? parseInt(earned) : 0;
+    const possibleNum = possible ? parseInt(possible) : 1;
+    const isCorrect = earnedNum >= possibleNum ? true : earnedNum === 0 ? false : null;
+    const body = lines.slice(1).join(' ').trim();
+
+    return {
+      number: i + 1,
+      question_summary: header.replace(/\(\d+\/\d+p?\)/, '').replace(/^\d+\.\s*/, '').trim(),
+      student_answer: body.substring(0, 200),
+      is_correct: isCorrect,
+      what_went_right: earnedNum > 0 ? 'Õpilane näitas teema mõistmist.' : null,
+      what_went_wrong: earnedNum < possibleNum ? 'Mõned vastused vajavad täiendamist.' : null,
+      advice: earnedNum < possibleNum ? 'Korda seda teemat õpikust.' : null,
+      points_earned: earned,
+      points_possible: possible,
+    };
+  });
+
+  const feedback = {
+    test_info: {
+      title: testTitle,
+      topic: testTitle.split('—')[0]?.trim() || testTitle,
+      class: '9. klass',
+      score: `${sa.score}/${sa.maxScore}`,
+      student: sa.name,
+    },
+    opieesmark: `Kontrollida õpilase teadmisi teemal "${testTitle.split('—')[0]?.trim()}"`,
+    mis_laks_hasti: pct >= 50
+      ? [{ title: 'Põhimõisted', text: 'Õpilane tunneb aine põhimõisteid ja valemeid.' }]
+      : [{ title: 'Osalemine', text: 'Õpilane proovis ülesandeid lahendada.' }],
+    mida_parandada: pct < 90
+      ? [{ title: 'Ülesannete lahendamine', text: 'Mõned arvutused vajavad täiendavat harjutamist.' }]
+      : [],
+    uldine_muster: `Tulemus on ${grade} (${pct}%). ${pct >= 70 ? 'Õpilane on materjali hästi omandanud.' : pct >= 50 ? 'Põhitõed on selged, kuid mõned teemad vajavad kordamist.' : 'Õpilane vajab lisatuge ja individuaalset lähenemist.'}`,
+    soovitused: pct < 90
+      ? [{ title: 'Harjuta', text: 'Lahenda lisaülesandeid õpiku peatükist.' }]
+      : [{ title: 'Süvene', text: 'Proovi olümpiaadi tasemel ülesandeid.' }],
+    pilk_ettepoole: pct >= 70
+      ? 'Jätka samas tempos! Järgmine teema ehitab sellele materjalile.'
+      : 'Keskenduge nõrkadele teemadele enne järgmist kontrolltööd.',
+    markmed_opetajale: pct < 50
+      ? 'Õpilane vajab individuaalset lisatuge. Kaaluda konsultatsiooni.'
+      : '',
+    tasks,
+  };
+
+  return JSON.stringify(feedback);
+}
+
 // --- SVG test photo generator ---
 function escapeSvg(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -298,15 +360,19 @@ async function seedTest(
       continue;
     }
 
+    const feedbackJson = generateFeedback(testTitle, sa);
     const result = await db.testResult.create({
       data: {
         testId: test.id,
         studentId: student?.id ?? null,
         studentName: sa.name,
         scanBatchId: batch.id,
-        status: 'UPLOADED',
+        status: 'DRAFT',
         score: sa.score,
         maxScore: sa.maxScore,
+        rawFeedback: feedbackJson,
+        analyzedAt: new Date(),
+        uploadedAt: new Date(Date.now() - 3600000), // 1h before analysis
       },
     });
 
@@ -322,12 +388,12 @@ async function seedTest(
     console.log(`  ✓ ${sa.name}: ${sa.score}/${sa.maxScore} (${result.id})`);
   }
 
-  // Update test status to READY (has results waiting)
+  // Update test status — results are analyzed, ready for teacher review
   await db.test.update({
     where: { id: test.id },
-    data: { status: 'READY' },
+    data: { status: 'PROCESSING' },
   });
-  console.log(`✓ Updated test status to READY`);
+  console.log(`✓ Updated test status to PROCESSING (results in DRAFT)`);
 }
 
 async function main() {
