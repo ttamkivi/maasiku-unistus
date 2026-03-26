@@ -394,6 +394,8 @@ model ConsentGrant {
   revokedAt      DateTime?
   revokedBy      String?            // userId who revoked
   note           String?
+  consentMethod  String?            // DIGITAL_LINK | SIGNED_PDF | DIGIDOC | OFFLINE | EKOOL
+  documentUrl    String?            // URL to uploaded PDF/DigiDoc file
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 

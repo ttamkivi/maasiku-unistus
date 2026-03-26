@@ -10,6 +10,14 @@ const STATUS_LABELS: Record<string, string> = {
   EXPIRED: 'Aegunud',
 };
 
+const METHOD_LABELS: Record<string, { label: string; icon: string }> = {
+  SIGNED_PDF: { label: 'Allkirjastatud PDF', icon: '📄' },
+  DIGIDOC: { label: 'Digitaalselt allkirjastatud (DigiDoc)', icon: '🔏' },
+  OFFLINE: { label: 'Paberkandjal / kooli kaudu', icon: '✍️' },
+  EKOOL: { label: 'eKooli kaudu kinnitatud', icon: '🏫' },
+  DIGITAL_LINK: { label: 'Digilink (e-post)', icon: '📧' },
+};
+
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   PENDING: { bg: '#FEF9C3', color: '#854D0E', border: '#FDE68A' },
   APPROVED: { bg: '#DCFCE7', color: '#166534', border: '#86EFAC' },
@@ -74,6 +82,15 @@ export default async function ConsentsPage() {
       student: {
         include: {
           user: { select: { name: true, email: true } },
+        },
+      },
+      grants: {
+        select: {
+          id: true,
+          consentMethod: true,
+          documentUrl: true,
+          status: true,
+          createdAt: true,
         },
       },
     },
@@ -238,6 +255,49 @@ export default async function ConsentsPage() {
                           <span>Aegub: {formatDate(req.expiresAt)}</span>
                         )}
                       </div>
+
+                      {/* Consent method */}
+                      {req.status === 'APPROVED' && req.grants.length > 0 && (() => {
+                        const grant = req.grants[0];
+                        const method = grant.consentMethod
+                          ? METHOD_LABELS[grant.consentMethod] || { label: grant.consentMethod, icon: '📋' }
+                          : METHOD_LABELS.DIGITAL_LINK;
+                        return (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              marginTop: 10,
+                              fontSize: 13,
+                              color: '#1C2832',
+                            }}
+                          >
+                            <span style={{ fontSize: 15 }}>{method.icon}</span>
+                            <span style={{ fontWeight: 600 }}>{method.label}</span>
+                            {grant.documentUrl && (
+                              <a
+                                href={grant.documentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#1C2832',
+                                  background: '#F8F3DA',
+                                  border: '1.5px solid #DAD0A1',
+                                  borderRadius: 4,
+                                  padding: '3px 10px',
+                                  textDecoration: 'none',
+                                  marginLeft: 4,
+                                }}
+                              >
+                                Ava dokument →
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {req.declineReason && (
                         <div
