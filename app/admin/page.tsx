@@ -39,6 +39,7 @@ export default async function AdminPage() {
       : []),
     ...(isSuperAdmin
       ? [
+          { href: '/admin/ai-brain', label: 'AI Teacher\'s Brain', desc: 'Vaata kuidas sisemine AI-õpetaja targemaks saab', badge: '✦' },
           { href: '/admin/roles', label: 'Rollid & õigused', desc: 'Juurdepääsumaatriks — kes näeb ja teeb mida', badge: null },
           { href: '/admin/features', label: 'Funktsionaalsuse lipud', desc: 'Lülita funktsioone sisse/välja ilma koodimuutusteta', badge: null },
         ]

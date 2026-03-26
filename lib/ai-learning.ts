@@ -108,12 +108,13 @@ export async function getLearnedRules(
   grade: string | null
 ): Promise<string> {
   // Load patterns relevant to this topic/grade, plus general patterns
+  // Filter by both topic AND grade so grade 7 patterns don't leak into grade 12 analyses
   const patterns = await db.feedbackPattern.findMany({
     where: {
       active: true,
-      OR: [
-        { topic: null },                    // general patterns
-        { topic: topic || undefined },      // topic-specific
+      AND: [
+        { OR: [{ topic: null }, { topic: topic || undefined }] },
+        { OR: [{ grade: null }, { grade: grade || undefined }] },
       ],
     },
     orderBy: [
@@ -125,7 +126,7 @@ export async function getLearnedRules(
 
   if (patterns.length === 0) return '';
 
-  const rules = patterns.map((p, i) => {
+  const rules = patterns.map((p: { dimension: string; topic: string | null; grade: string | null; frequency: number; pattern: string; correction: string }, i: number) => {
     const topicNote = p.topic ? ` [${p.topic}]` : '';
     const gradeNote = p.grade ? ` [${p.grade}. kl]` : '';
     const freqNote = p.frequency > 2 ? ` (seen ${p.frequency}x)` : '';

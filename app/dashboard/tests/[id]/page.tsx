@@ -7,6 +7,50 @@ import TestAdvanceButton from './TestAdvanceButton';
 import BulkAnalyzeButton from './BulkAnalyzeButton';
 import AutoImportUpload from './AutoImportUpload';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
+import { FeedbackData } from '@/lib/types';
+import PublishButton from './PublishButton';
+
+/**
+ * Extract total points earned and possible from AI feedback JSON.
+ * Tries: (1) sum task-level points_earned/points_possible, (2) parse test_info.score "X/Y".
+ * Returns { earned, possible } or null if no data.
+ */
+function extractScores(feedbackJson: string | null): { earned: number; possible: number } | null {
+  if (!feedbackJson) return null;
+  try {
+    const fb: FeedbackData = JSON.parse(feedbackJson);
+
+    // Method 1: sum from tasks array
+    if (fb.tasks && fb.tasks.length > 0) {
+      let earned = 0;
+      let possible = 0;
+      let hasPoints = false;
+      for (const t of fb.tasks) {
+        const e = parseFloat(String(t.points_earned ?? ''));
+        const p = parseFloat(String(t.points_possible ?? ''));
+        if (!isNaN(e) && !isNaN(p)) {
+          earned += e;
+          possible += p;
+          hasPoints = true;
+        }
+      }
+      if (hasPoints && possible > 0) return { earned, possible };
+    }
+
+    // Method 2: parse test_info.score like "15/20" or "15 / 20"
+    if (fb.test_info?.score) {
+      const match = fb.test_info.score.match(/(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/);
+      if (match) {
+        const earned = parseFloat(match[1].replace(',', '.'));
+        const possible = parseFloat(match[2].replace(',', '.'));
+        if (!isNaN(earned) && !isNaN(possible) && possible > 0) return { earned, possible };
+      }
+    }
+  } catch {
+    // invalid JSON — ignore
+  }
+  return null;
+}
 
 const TEST_STATUS_LABELS: Record<TestStatus, string> = {
   PREPARING: 'Ettevalmistamine',
@@ -115,10 +159,17 @@ export default async function TestDetailPage({
 
   const uploadedCount = test.results.filter(r => r.status === 'UPLOADED').length;
 
-  // Compute score stats for desktop table
-  const scoredResults = test.results.filter(r => r.score != null && r.maxScore != null && r.maxScore > 0);
+  // Compute score stats — use DB scores if available, otherwise extract from AI feedback
+  const resultScores = test.results.map(r => {
+    if (r.score != null && r.maxScore != null && r.maxScore > 0) {
+      return { earned: r.score, possible: r.maxScore };
+    }
+    const qaFb = (r as Record<string, unknown>).qaFeedback as string | null;
+    return extractScores(r.editedFeedback || qaFb || r.rawFeedback);
+  });
+  const scoredResults = resultScores.filter((s): s is { earned: number; possible: number } => s !== null && s.possible > 0);
   const avgPct = scoredResults.length > 0
-    ? Math.round(scoredResults.reduce((s, r) => s + (r.score! / r.maxScore!) * 100, 0) / scoredResults.length)
+    ? Math.round(scoredResults.reduce((sum, s) => sum + (s.earned / s.possible) * 100, 0) / scoredResults.length)
     : null;
 
   return (
@@ -230,6 +281,9 @@ export default async function TestDetailPage({
             </div>
           )}
 
+          {/* Publish to library */}
+          <PublishButton testId={test.id} currentVisibility={test.visibility} />
+
           {/* Notes */}
           {!PROTOTYPE_MODE && test.notes && (
             <div style={{ background: '#F8F3DA', padding: '14px 16px', borderLeft: '3px solid #DAD0A1' }}>
@@ -312,58 +366,78 @@ export default async function TestDetailPage({
           ) : (
             // Desktop: proper table; mobile: card list
             <>
-              {/* Desktop table */}
+              {/* Desktop table — each row is a clickable Link */}
+              <style>{`
+                .result-row { transition: background 0.12s; }
+                .result-row:hover { background: #F8F3DA !important; }
+              `}</style>
               <div className="hidden md:block" style={{ border: '1.5px solid #DAD0A1', borderRadius: 6, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                  <thead>
-                    <tr style={{ background: '#F8F3DA', borderBottom: '2px solid #DAD0A1' }}>
-                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>#</th>
-                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Õpilane</th>
-                      <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Punktid</th>
-                      <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>%</th>
-                      <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 700, color: '#1C2832', fontSize: 12 }}>Staatus</th>
-                      <th style={{ padding: '10px 14px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {test.results.map((result, i) => {
-                      const rStatusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
-                      const pct = result.score != null && result.maxScore != null && result.maxScore > 0
-                        ? Math.round((result.score / result.maxScore) * 100) : null;
-                      const pctColor = pct == null ? '#9ca3af' : pct >= 70 ? '#16a34a' : pct >= 50 ? '#f97316' : '#dc2626';
-                      return (
-                        <tr key={result.id} style={{ borderBottom: i < test.results.length - 1 ? '1px solid #F0EDD6' : 'none', background: i % 2 === 0 ? '#fff' : '#FDFAF0' }}>
-                          <td style={{ padding: '11px 14px', color: '#9ca3af', fontSize: 12 }}>{i + 1}</td>
-                          <td style={{ padding: '11px 14px', fontWeight: 600, color: '#1C2832' }}>
-                            {result.studentName || 'Nimetu õpilane'}
-                          </td>
-                          <td style={{ padding: '11px 14px', textAlign: 'center', color: '#1C2832', fontSize: 13 }}>
-                            {result.score != null ? `${result.score}${result.maxScore != null ? ` / ${result.maxScore}` : ''}` : '—'}
-                          </td>
-                          <td style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 700, color: pctColor }}>
-                            {pct != null ? `${pct}%` : '—'}
-                          </td>
-                          <td style={{ padding: '11px 14px' }}>
-                            <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 10, whiteSpace: 'nowrap' }}>
-                              {RESULT_STATUS_LABELS[result.status as ResultStatus]}
-                            </span>
-                          </td>
-                          <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                            <Link href={`/dashboard/tests/${test.id}/results/${result.id}`} style={{ fontSize: 12, color: '#1C2832', fontWeight: 600, textDecoration: 'none', opacity: 0.7 }}>
-                              Ava →
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {/* Header */}
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px 70px 110px', background: '#F8F3DA', borderBottom: '2px solid #DAD0A1', fontSize: 12, fontWeight: 700, color: '#1C2832' }}>
+                  <span style={{ padding: '10px 14px' }}>#</span>
+                  <span style={{ padding: '10px 14px' }}>Õpilane</span>
+                  <span style={{ padding: '10px 14px', textAlign: 'center' }}>Punktid</span>
+                  <span style={{ padding: '10px 14px', textAlign: 'center' }}>%</span>
+                  <span style={{ padding: '10px 14px' }}>Staatus</span>
+                </div>
+                {/* Rows */}
+                {test.results.map((result, i) => {
+                  const rStatusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
+                  const qaFb = (result as Record<string, unknown>).qaFeedback as string | null;
+                  const feedbackScores = (result.score == null || result.maxScore == null)
+                    ? extractScores(result.editedFeedback || qaFb || result.rawFeedback)
+                    : null;
+                  const displayScore = result.score ?? feedbackScores?.earned ?? null;
+                  const displayMax = result.maxScore ?? feedbackScores?.possible ?? null;
+                  const pct = displayScore != null && displayMax != null && displayMax > 0
+                    ? Math.round((displayScore / displayMax) * 100) : null;
+                  const pctColor = pct == null ? '#9ca3af' : pct >= 70 ? '#16a34a' : pct >= 50 ? '#f97316' : '#dc2626';
+                  return (
+                    <Link
+                      key={result.id}
+                      href={`/dashboard/tests/${test.id}/results/${result.id}`}
+                      className="result-row"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '40px 1fr 120px 70px 110px',
+                        alignItems: 'center',
+                        textDecoration: 'none',
+                        fontSize: 14,
+                        borderBottom: i < test.results.length - 1 ? '1px solid #F0EDD6' : 'none',
+                        background: i % 2 === 0 ? '#fff' : '#FDFAF0',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ padding: '11px 14px', color: '#9ca3af', fontSize: 12 }}>{i + 1}</span>
+                      <span style={{ padding: '11px 14px', fontWeight: 600, color: '#1C2832' }}>
+                        {result.studentName || 'Nimetu õpilane'}
+                      </span>
+                      <span style={{ padding: '11px 14px', textAlign: 'center', color: '#1C2832', fontSize: 13 }}>
+                        {displayScore != null ? `${displayScore}${displayMax != null ? ` / ${displayMax}` : ''}` : '—'}
+                      </span>
+                      <span style={{ padding: '11px 14px', textAlign: 'center', fontWeight: 700, color: pctColor }}>
+                        {pct != null ? `${pct}%` : '—'}
+                      </span>
+                      <span style={{ padding: '11px 14px' }}>
+                        <span style={{ background: rStatusColor.bg, color: rStatusColor.color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 10, whiteSpace: 'nowrap' }}>
+                          {RESULT_STATUS_LABELS[result.status as ResultStatus]}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
 
               {/* Mobile card list */}
               <div className="md:hidden" style={{ border: '1.5px solid #DAD0A1', background: '#fff', borderRadius: 6 }}>
                 {test.results.map((result, i) => {
                   const rStatusColor = RESULT_STATUS_COLORS[result.status as ResultStatus];
+                  const qaFbMobile = (result as Record<string, unknown>).qaFeedback as string | null;
+                  const mobileScores = (result.score == null || result.maxScore == null)
+                    ? extractScores(result.editedFeedback || qaFbMobile || result.rawFeedback)
+                    : null;
+                  const mobileEarned = result.score ?? mobileScores?.earned ?? null;
+                  const mobileMax = result.maxScore ?? mobileScores?.possible ?? null;
                   return (
                     <Link
                       key={result.id}
@@ -372,9 +446,9 @@ export default async function TestDetailPage({
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', margin: 0 }}>{result.studentName || 'Nimetu õpilane'}</p>
-                        {(result.score != null || result.maxScore != null) && (
+                        {mobileEarned != null && (
                           <p style={{ fontSize: 12, color: '#1C2832', opacity: 0.6, marginTop: 2 }}>
-                            {result.score ?? '?'}{result.maxScore != null ? ` / ${result.maxScore} punkti` : ' punkti'}
+                            {mobileEarned}{mobileMax != null ? ` / ${mobileMax} punkti` : ' punkti'}
                           </p>
                         )}
                       </div>
