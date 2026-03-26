@@ -105,7 +105,7 @@ export default async function MaterialsPage({
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 16px 80px' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
       {/* Library sub-navigation */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DAD0A1' }}>
         <Link
