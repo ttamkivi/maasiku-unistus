@@ -71,20 +71,40 @@ export default async function LibraryPage({
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', margin: 0 }}>
             Raamatukogu
           </h1>
-          <Link
-            href="/dashboard/tests/new?visibility=PUBLIC"
-            style={{
-              background: '#1C2832',
-              color: '#F8F3DA',
-              fontWeight: 700,
-              fontSize: 14,
-              padding: '10px 18px',
-              textDecoration: 'none',
-              display: 'inline-block',
-            }}
-          >
-            + Lisa oma test
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link
+              href="/dashboard/tests/new?visibility=PUBLIC"
+              style={{
+                background: '#1C2832',
+                color: '#F8F3DA',
+                fontWeight: 700,
+                fontSize: 13,
+                padding: '10px 16px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              + Lisa oma test
+            </Link>
+            <Link
+              href="/dashboard/library/generate"
+              style={{
+                background: 'linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%)',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 13,
+                padding: '10px 16px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              ✦ Genereeri AI-ga
+            </Link>
+          </div>
         </div>
         <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
           Avalik kogu kontrolltöid, mida teised õpetajad on jaganud. Kopeeri endale ja kohanda vastavalt vajadusele.
