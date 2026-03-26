@@ -34,11 +34,11 @@ export default async function MaterialsPage({
   searchParams: Promise<{ type?: string; language?: string; section?: string; search?: string; free?: string }>;
 }) {
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (!sessionToken) redirect('/auth/login');
+  const token = cookieStore.get('ot_session')?.value;
+  if (!token) redirect('/auth/login');
 
   const session = await db.session.findUnique({
-    where: { token: sessionToken },
+    where: { token },
     include: { user: true },
   });
   if (!session || session.expiresAt < new Date()) redirect('/auth/login');

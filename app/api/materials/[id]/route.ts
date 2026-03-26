@@ -22,13 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (!sessionToken) {
+  const token = cookieStore.get('ot_session')?.value;
+  if (!token) {
     return NextResponse.json({ error: 'Logi sisse' }, { status: 401 });
   }
 
   const session = await db.session.findUnique({
-    where: { token: sessionToken },
+    where: { token },
     include: { user: true },
   });
   if (!session || session.expiresAt < new Date()) {
@@ -63,13 +63,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (!sessionToken) {
+  const token = cookieStore.get('ot_session')?.value;
+  if (!token) {
     return NextResponse.json({ error: 'Logi sisse' }, { status: 401 });
   }
 
   const session = await db.session.findUnique({
-    where: { token: sessionToken },
+    where: { token },
     include: { user: true },
   });
   if (!session || session.expiresAt < new Date()) {

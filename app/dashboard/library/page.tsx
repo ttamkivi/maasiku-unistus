@@ -99,7 +99,7 @@ export default async function LibraryPage({
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C2832', margin: 0 }}>
-            Testide raamatukogu
+            Raamatukogu
           </h1>
           <Link
             href="/dashboard/tests/new?visibility=PUBLIC"

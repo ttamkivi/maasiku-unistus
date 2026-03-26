@@ -50,14 +50,14 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session_token')?.value;
-  if (!sessionToken) {
+  const token = cookieStore.get('ot_session')?.value;
+  if (!token) {
     return NextResponse.json({ error: 'Logi sisse' }, { status: 401 });
   }
 
   // Verify session
   const session = await db.session.findUnique({
-    where: { token: sessionToken },
+    where: { token },
     include: { user: true },
   });
   if (!session || session.expiresAt < new Date()) {
