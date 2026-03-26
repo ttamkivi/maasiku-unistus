@@ -49,6 +49,8 @@ export default function AddMaterialPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'url' | 'file'>('url');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     curriculumCode: '',
@@ -66,17 +68,66 @@ export default function AddMaterialPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    // Auto-fill title from filename if empty
+    if (!form.title) {
+      const name = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
+      update('title', name);
+    }
+    // Auto-detect type from extension
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'bmp', 'tiff', 'tif', 'pdf'].includes(ext)) {
+      update('type', 'reading');
+    }
+  }
+
+  async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      let url = form.url;
+
+      // If file mode, convert file to base64 data URL
+      if (mode === 'file') {
+        if (!selectedFile) {
+          setError('Vali fail');
+          setLoading(false);
+          return;
+        }
+        if (selectedFile.size > 10 * 1024 * 1024) {
+          setError('Fail on liiga suur (max 10 MB)');
+          setLoading(false);
+          return;
+        }
+        url = await fileToBase64(selectedFile);
+      }
+
+      if (!url) {
+        setError(mode === 'file' ? 'Vali fail' : 'Sisesta URL');
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/materials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          url,
           gradeRange: '9',
           topic: form.topic || CURRICULUM_CODES.find((c) => c.code === form.curriculumCode)?.label || '',
         }),
@@ -167,17 +218,76 @@ export default function AddMaterialPage() {
           />
         </div>
 
-        {/* URL */}
+        {/* URL or File toggle */}
         <div>
-          <label style={labelStyle}>Link (URL) *</label>
-          <input
-            type="url"
-            value={form.url}
-            onChange={(e) => update('url', e.target.value)}
-            required
-            placeholder="https://..."
-            style={inputStyle}
-          />
+          <label style={labelStyle}>Allikas *</label>
+          <div style={{ display: 'flex', gap: 0, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={() => setMode('url')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: mode === 'url' ? '#1C2832' : '#f3f4f6',
+                color: mode === 'url' ? '#F8F3DA' : '#6b7280',
+                border: '1.5px solid #DAD0A1',
+                borderRight: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              🔗 Link (URL)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('file')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: mode === 'file' ? '#1C2832' : '#f3f4f6',
+                color: mode === 'file' ? '#F8F3DA' : '#6b7280',
+                border: '1.5px solid #DAD0A1',
+                cursor: 'pointer',
+              }}
+            >
+              📎 Lae fail üles
+            </button>
+          </div>
+
+          {mode === 'url' ? (
+            <input
+              type="url"
+              value={form.url}
+              onChange={(e) => update('url', e.target.value)}
+              required={mode === 'url'}
+              placeholder="https://..."
+              style={inputStyle}
+            />
+          ) : (
+            <div>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.bmp,.tiff,.tif,.doc,.docx,.pptx,.xlsx,image/*,application/pdf"
+                onChange={handleFileSelect}
+                style={{
+                  ...inputStyle,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                }}
+              />
+              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                PDF, JPG, PNG, HEIC, Word, PowerPoint, Excel · max 10 MB
+              </div>
+              {selectedFile && (
+                <div style={{ fontSize: 12, color: '#16a34a', marginTop: 4, fontWeight: 600 }}>
+                  ✓ {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Type + Language row */}
