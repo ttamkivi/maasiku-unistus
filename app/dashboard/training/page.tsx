@@ -100,7 +100,7 @@ export default async function TeacherTrainingPage() {
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <Link
-            href="/dashboard"
+            href="/dashboard/teacher"
             style={{ color: '#1C2832', fontSize: 13, textDecoration: 'none', fontWeight: 600, opacity: 0.6 }}
           >
             ← Tagasi töölaudu

@@ -36,35 +36,35 @@ const ALL_ROLES = [
 ];
 
 const TEACHER_TABS = [
-  { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
-  { href: '/dashboard/library',  icon: '•', label: 'Raamatukogu' },
-  { href: '/dashboard/classes',  icon: '•', label: 'Klassid' },
-  { href: '/dashboard/students', icon: '•', label: 'Minu klass' },
-  { href: '/dashboard/consents', icon: '•', label: 'Nõusolekud' },
-  { href: '/dashboard/invites',  icon: '•', label: 'Kutsu' },
-  { href: '/dashboard',          icon: '•', label: 'Profiil' },
+  { href: '/dashboard/teacher',  icon: '📊', label: 'Ülevaade' },
+  { href: '/dashboard/library',  icon: '📚', label: 'Raamatukogu' },
+  { href: '/dashboard/classes',  icon: '🏫', label: 'Klassid' },
+  { href: '/dashboard/students', icon: '👥', label: 'Minu klass' },
+  { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
+  { href: '/dashboard/invites',  icon: '✉️', label: 'Kutsu' },
+  { href: '/dashboard',          icon: '👤', label: 'Profiil' },
 ];
 
 const STUDENT_TABS = [
-  { href: '/dashboard/student',     icon: '•', label: 'Tulemused' },
-  { href: '/dashboard/exercises',   icon: '•', label: 'Harjutused' },
-  { href: '/dashboard/assignments', icon: '•', label: 'Kodutööd' },
-  { href: '/dashboard',             icon: '•', label: 'Profiil' },
+  { href: '/dashboard/student',     icon: '📊', label: 'Tulemused' },
+  { href: '/dashboard/exercises',   icon: '📓', label: 'Harjutused' },
+  { href: '/dashboard/assignments', icon: '📚', label: 'Kodutööd' },
+  { href: '/dashboard',             icon: '👤', label: 'Profiil' },
 ];
 
 const PARENT_TABS = [
-  { href: '/dashboard/parent', icon: '•', label: 'Laps' },
-  { href: '/dashboard',        icon: '•', label: 'Profiil' },
+  { href: '/dashboard/parent', icon: '👶', label: 'Laps' },
+  { href: '/dashboard',        icon: '👤', label: 'Profiil' },
 ];
 
 const ADMIN_TABS = [
-  { href: '/admin',    icon: '•', label: 'Admin' },
-  { href: '/dashboard', icon: '•', label: 'Profiil' },
+  { href: '/admin',    icon: '⚙️', label: 'Admin' },
+  { href: '/dashboard', icon: '👤', label: 'Profiil' },
 ];
 
 const KLASSIJUHATAJA_TABS = [
-  { href: '/dashboard/klassijuhataja', icon: '•', label: 'Klass' },
-  { href: '/dashboard',                icon: '•', label: 'Profiil' },
+  { href: '/dashboard/klassijuhataja', icon: '🏫', label: 'Klass' },
+  { href: '/dashboard',                icon: '👤', label: 'Profiil' },
 ];
 
 function getTabsForRole(role: string, features?: Record<string, boolean>) {
@@ -75,9 +75,9 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
     case 'TEACHER': {
       const baseTabs = PROTOTYPE_MODE
         ? [
-            { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
-            { href: '/dashboard/library',  icon: '•', label: 'Raamatukogu' },
-            { href: '/dashboard/consents', icon: '•', label: 'Nõusolekud' },
+            { href: '/dashboard/teacher',  icon: '📊', label: 'Ülevaade' },
+            { href: '/dashboard/library',  icon: '📚', label: 'Raamatukogu' },
+            { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
           ]
         : TEACHER_TABS;
       const tabs = [

@@ -120,7 +120,7 @@ export default async function ConsentsPage() {
         >
           <div>
             <Link
-              href="/dashboard"
+              href="/dashboard/teacher"
               style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}
             >
               ← Töölaud

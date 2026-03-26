@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import CloneButton from './CloneButton';
 import PrintButton from './PrintButton';
+import CollapsibleSection from './CollapsibleSection';
 
 export default async function LibraryTestDetailPage({
   params,
@@ -106,26 +107,20 @@ export default async function LibraryTestDetailPage({
 
         {/* Rubric */}
         {test.rubric && (
-          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1C2832', opacity: 0.6, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Hindamisjuhend
-            </h2>
+          <CollapsibleSection title="Hindamisjuhend">
             <div style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
               {test.rubric}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* Answer key */}
         {test.answerKey && (
-          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1C2832', opacity: 0.6, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Õiged vastused
-            </h2>
+          <CollapsibleSection title="Õiged vastused">
             <div style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
               {test.answerKey}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* Curriculum links */}
@@ -150,14 +145,11 @@ export default async function LibraryTestDetailPage({
 
         {/* Notes */}
         {test.blankTestNotes && (
-          <div style={{ background: '#fff', border: '1.5px solid #DAD0A1', padding: '18px 20px' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1C2832', opacity: 0.6, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Märkused
-            </h2>
+          <CollapsibleSection title="Märkused">
             <div style={{ fontSize: 14, color: '#1C2832', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
               {test.blankTestNotes}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
       </div>
 

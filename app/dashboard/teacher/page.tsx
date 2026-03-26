@@ -267,10 +267,7 @@ export default async function TeacherDashboardPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <Link href="/dashboard" style={{ fontSize: 13, color: '#1C2832', opacity: 0.6, textDecoration: 'none' }}>
-          ← Töölaud
-        </Link>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2832', marginTop: 8, marginBottom: 4 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2832', marginBottom: 4 }}>
           Tere, {user.name}!
         </h1>
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Õpetaja töölaud</p>
@@ -395,7 +392,7 @@ export default async function TeacherDashboardPage() {
                   <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
                     {(() => {
                       const total = t.results.length;
-                      if (total === 0) return `${TEST_STATUS_LABELS[t.status] ?? t.status} · 0 tulemust`;
+                      if (total === 0) return `${TEST_STATUS_LABELS[t.status] ?? t.status} · Lae üles õpilaste tööd →`;
                       const uploaded = t.results.filter((r: { status: string }) => r.status === 'UPLOADED').length;
                       const analyzing = t.results.filter((r: { status: string }) => r.status === 'ANALYZING').length;
                       const drafts = t.results.filter((r: { status: string }) => r.status === 'DRAFT').length;
