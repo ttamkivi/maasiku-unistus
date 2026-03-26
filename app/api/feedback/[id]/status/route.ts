@@ -46,10 +46,10 @@ export async function POST(
       },
     });
 
-    // Redirect back to admin feedback page
-    return NextResponse.redirect(new URL('/admin/feedback', request.url));
+    // Redirect back to admin feedback page (303 = POST→GET)
+    return NextResponse.redirect(new URL('/admin/feedback', request.url), 303);
   } catch (error) {
     console.error('Feedback status update error:', error);
-    return NextResponse.redirect(new URL('/admin/feedback', request.url));
+    return NextResponse.redirect(new URL('/admin/feedback', request.url), 303);
   }
 }

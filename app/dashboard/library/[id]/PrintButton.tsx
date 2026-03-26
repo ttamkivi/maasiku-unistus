@@ -15,16 +15,19 @@ export default function PrintButton({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Escape HTML in content
-    const escaped = content
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    // Escape HTML in all user-controlled strings
+    function esc(s: string) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    const escaped = esc(content);
+    const safeTitle = esc(title);
+    const safeSubject = esc(subject);
+    const safeGrade = esc(grade);
 
     printWindow.document.write(`<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
-<title>${title}</title>
+<title>${safeTitle}</title>
 <style>
   body {
     font-family: Georgia, 'Times New Roman', serif;
@@ -50,8 +53,8 @@ export default function PrintButton({
   }
 </style>
 </head><body>
-  <h1>${title}</h1>
-  <p class="meta">${subject} · ${grade}. klass</p>
+  <h1>${safeTitle}</h1>
+  <p class="meta">${safeSubject} · ${safeGrade}. klass</p>
   <p style="margin-bottom:20px">Nimi: _________________________________ &nbsp;&nbsp; Kuupäev: _______________</p>
   <div class="content">${escaped}</div>
   <div class="footer">Õpetaja Tagasiside · fyysika-tagasiside.vercel.app</div>
