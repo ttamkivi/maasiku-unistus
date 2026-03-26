@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData } from '@/lib/types';
+import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
 import ResultReviewClient from './ResultReviewClient';
 
 const RESULT_STATUS_LABELS: Record<ResultStatus, string> = {
@@ -85,38 +86,43 @@ export default async function ResultReviewPage({
     orderBy: { createdAt: 'asc' },
   });
 
-  // 2. Build set of consented student names
-  const teacherSchools = await db.teacherSchool.findMany({
-    where: { teacherId: teacherProfile.id },
-    select: { schoolId: true },
-  });
-  const schoolIds = teacherSchools.map((ts) => ts.schoolId);
+  // 2. Build set of consented student names (skip in prototype mode — show all)
+  let consentedNames = new Set<string>();
 
-  const schoolStudents = await db.studentProfile.findMany({
-    where: { schoolId: { in: schoolIds } },
-    include: {
-      user: { select: { name: true } },
-      consentGrants: {
-        where: {
-          status: 'ACTIVE',
-          OR: [
-            { subjectId: result.test.subjectId ?? undefined },
-            { subjectId: null },
-          ],
+  if (!PROTOTYPE_MODE) {
+    const teacherSchools = await db.teacherSchool.findMany({
+      where: { teacherId: teacherProfile.id },
+      select: { schoolId: true },
+    });
+    const schoolIds = teacherSchools.map((ts) => ts.schoolId);
+
+    const schoolStudents = await db.studentProfile.findMany({
+      where: { schoolId: { in: schoolIds } },
+      include: {
+        user: { select: { name: true } },
+        consentGrants: {
+          where: {
+            status: 'ACTIVE',
+            OR: [
+              { subjectId: result.test.subjectId ?? undefined },
+              { subjectId: null },
+            ],
+          },
+          select: { id: true },
         },
-        select: { id: true },
       },
-    },
-  });
+    });
 
-  const consentedNames = new Set(
-    schoolStudents
-      .filter((s) => s.consentGrants.length > 0)
-      .map((s) => s.user.name.trim().toLowerCase())
-  );
+    consentedNames = new Set(
+      schoolStudents
+        .filter((s) => s.consentGrants.length > 0)
+        .map((s) => s.user.name.trim().toLowerCase())
+    );
+  }
 
   // 3. All consented results in order (any status) — for position tracking
-  // Fall back to ALL results if no consent data is set up yet
+  // In PROTOTYPE_MODE: show ALL results (consent not enforced yet)
+  // Otherwise: fall back to ALL results if no consent data is set up yet
   // Also deduplicate: if multiple results exist for the same student, keep the one
   // with the most progress (first seen in createdAt order, but prefer analysed ones)
   const consentedQueueRaw = allResults.filter((r) =>
