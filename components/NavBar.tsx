@@ -40,7 +40,7 @@ const TEACHER_TABS = [
   { href: '/dashboard/library',  icon: '•', label: 'Raamatukogu' },
   { href: '/dashboard/classes',  icon: '•', label: 'Klassid' },
   { href: '/dashboard/students', icon: '•', label: 'Minu klass' },
-  { href: '/dashboard/consents', icon: '•', label: 'Load' },
+  { href: '/dashboard/consents', icon: '•', label: 'Nõusolekud' },
   { href: '/dashboard/invites',  icon: '•', label: 'Kutsu' },
   { href: '/dashboard',          icon: '•', label: 'Profiil' },
 ];
@@ -77,7 +77,7 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
         ? [
             { href: '/dashboard/teacher',  icon: '•', label: 'Ülevaade' },
             { href: '/dashboard/library',  icon: '•', label: 'Raamatukogu' },
-            { href: '/dashboard/consents', icon: '•', label: 'Load' },
+            { href: '/dashboard/consents', icon: '•', label: 'Nõusolekud' },
           ]
         : TEACHER_TABS;
       const tabs = [
