@@ -193,7 +193,7 @@ async function main() {
       uploadedBy: teacher.id,
       filename: 'soojusopetus_9c_25-03-2026.pdf',
       pageCount: 4,
-      status: 'COMPLETED',
+      status: 'COMPLETE',
     },
   });
   console.log(`✓ Created scan batch: ${batch.id}`);
