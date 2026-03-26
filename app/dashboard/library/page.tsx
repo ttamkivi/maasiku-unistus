@@ -65,6 +65,36 @@ export default async function LibraryPage({
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      {/* Library sub-navigation */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '2px solid #DAD0A1' }}>
+        <span
+          style={{
+            padding: '10px 20px',
+            fontSize: 14,
+            fontWeight: 700,
+            color: '#1C2832',
+            borderBottom: '3px solid #1C2832',
+            marginBottom: -2,
+          }}
+        >
+          Kontrolltööd
+        </span>
+        <Link
+          href="/dashboard/materials"
+          style={{
+            padding: '10px 20px',
+            fontSize: 14,
+            fontWeight: 500,
+            color: '#6b7280',
+            textDecoration: 'none',
+            borderBottom: '3px solid transparent',
+            marginBottom: -2,
+          }}
+        >
+          Õppematerjalid
+        </Link>
+      </div>
+
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

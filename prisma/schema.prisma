@@ -711,6 +711,37 @@ model CurriculumNode {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// LEARNING MATERIALS REPOSITORY
+// Curated links to videos, exercises, articles, paid courses — organised by
+// curriculum code so the AI feedback pipeline can auto-pick relevant materials
+// instead of hallucinating URLs.
+// ══════════════════════════════════════════════════════════════════════════════
+
+model LearningResource {
+  id              String   @id @default(cuid())
+  curriculumCode  String   // "F9.1.1" — links to CurriculumNode.code
+  title           String   // display name, e.g. "Soojuspaisumine — Khan Academy"
+  url             String   // full URL to the resource
+  type            String   // "video" | "exercise" | "reading" | "course"
+  language        String   @default("et")  // "et", "en", "et_sub" (English with Estonian subtitles)
+  isFree          Boolean  @default(true)
+  provider        String?  // "opiq.ee", "Khan Academy", "YouTube", "e-koolikott", etc.
+  description     String?  // short explanation of what it covers
+  gradeRange      String?  // "9" or "7-9"
+  topic           String?  // freeform topic label for search
+  quality         Int      @default(3)     // 1-5 quality rating (teacher or admin curated)
+  addedBy         String?  // userId who added it (null = system seed)
+  verified        Boolean  @default(false) // true = someone checked the link works
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([curriculumCode])
+  @@index([type])
+  @@index([language])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // TRAINING PIPELINE
 // TrainingConsent covers all three learning object types.
 // Exactly one of testResultId / submissionId / exerciseId is set.

@@ -125,7 +125,7 @@ export async function POST(
 
     const test = await db.test.findFirst({
       where: { id, teacherId: teacherProfile.id, deletedAt: null },
-      include: { subject: true },
+      include: { subject: true, curriculumLinks: { select: { curriculumCode: true } } },
     });
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });
 
@@ -183,6 +183,7 @@ export async function POST(
 
     // ── Pass 1: AI Analysis ──
     captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id, photoCount: images.length });
+    const curriculumCodes = (test as unknown as { curriculumLinks: { curriculumCode: string }[] }).curriculumLinks?.map((cl: { curriculumCode: string }) => cl.curriculumCode) || [];
     const rawFeedback = await analyzeTest(
       test.grade || '9',
       test.topic || test.title,
@@ -190,6 +191,7 @@ export async function POST(
       images,
       test.rubric,
       test.answerKey,
+      curriculumCodes,
     );
 
     // ── Pass 2: QA Validation & Correction ──

@@ -4,6 +4,7 @@ import { CURRICULUM } from './curriculum';
 import { ASSESSMENT_RULES } from './assessment-rules';
 import { FeedbackData } from './types';
 import { getLearnedRules } from './ai-learning';
+import { db } from './db';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -14,7 +15,7 @@ const client = new Anthropic({
 // rather than the student's real name. The actual name is stored only in our DB.
 const AI_STUDENT_PLACEHOLDER = 'Õpilane';
 
-export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string): string {
+export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string, curatedResources?: string): string {
   // _opilane param kept for API compatibility but NOT forwarded to Anthropic
   return `You are an expert Estonian physics teacher and educational assessment specialist. You receive photos of a completed student test paper from an Estonian school. Your feedback must follow evidence-based assessment science — not just "what's right and wrong" but a full learning-journey response.
 
@@ -115,12 +116,58 @@ CRITICAL RULES — follow every one:
 OUTPUT LENGTH: LONG version — be thorough. Up to 5 A4 pages total. Include resources appendix with 3-5 specific links.
 
 RESOURCES GUIDELINES:
-- Find 3-5 REAL, working resources specific to the student's identified gaps and error types
+${curatedResources ? `You have access to a CURATED MATERIALS LIBRARY below. Pick 3-5 resources from this list that best match the student's identified gaps and error types. Use the exact URLs and titles from the list — do NOT invent or guess URLs.
+
+CURATED MATERIALS LIBRARY:
+${curatedResources}
+
+RULES FOR USING THE LIBRARY:
+- ONLY use URLs from the list above — never make up a URL
+- Pick resources that match the student's specific weak areas
+- Prefer Estonian (et) resources, then English with subtitles (et_sub), then English (en)
+- Prefer free resources over paid ones
+- Include the resource type and description from the library
+- If fewer than 3 resources match the student's gaps, include the best available ones` : `- Find 3-5 REAL, working resources specific to the student's identified gaps and error types
 - Prefer Estonian resources: opiq.ee, e-koolikott.ee, miksike.ee
 - International: khanacademy.org, physicsclassroom.com, YouTube
 - Each resource must directly address one of the identified error types
-- Include the specific URL path, not just the homepage
+- Include the specific URL path, not just the homepage`}
 - Mark resource type clearly: type "video" for YouTube, "reading" for articles/textbooks, "exercise" for practice sets${learnedRules || ''}`;
+}
+
+/**
+ * Fetch curated learning materials from the internal repo.
+ * If specific curriculum codes are provided, fetch materials for those codes.
+ * Otherwise, fetch materials matching the grade (e.g. all F9.x.x for grade 9).
+ */
+async function loadCuratedResources(grade: string, curriculumCodes?: string[]): Promise<string> {
+  let materials;
+
+  if (curriculumCodes && curriculumCodes.length > 0) {
+    // Fetch materials for the specific curriculum codes linked to this test
+    materials = await db.learningResource.findMany({
+      where: { curriculumCode: { in: curriculumCodes } },
+      orderBy: [{ quality: 'desc' }, { verified: 'desc' }],
+      take: 30,
+    });
+  } else {
+    // Fallback: fetch all materials for this grade level
+    materials = await db.learningResource.findMany({
+      where: { gradeRange: grade },
+      orderBy: [{ quality: 'desc' }, { verified: 'desc' }],
+      take: 30,
+    });
+  }
+
+  if (materials.length === 0) return '';
+
+  // Format as a simple text list for the AI prompt
+  return materials
+    .map(
+      (m) =>
+        `- [${m.curriculumCode}] ${m.title} (${m.type}, ${m.language}${m.isFree ? '' : ', tasuline'}) — ${m.url}${m.description ? '\n  ' + m.description : ''}`
+    )
+    .join('\n');
 }
 
 export async function analyzeTest(
@@ -129,7 +176,8 @@ export async function analyzeTest(
   opilane: string,
   images: string[],
   rubric?: string | null,
-  answerKey?: string | null
+  answerKey?: string | null,
+  curriculumCodes?: string[]
 ): Promise<FeedbackData> {
   const imageBlocks = images.map((base64) => ({
     type: 'image' as const,
@@ -149,13 +197,21 @@ export async function analyzeTest(
     console.error('Failed to load learned rules:', err);
   }
 
+  // Load curated learning materials from the internal repo
+  let curatedResources = '';
+  try {
+    curatedResources = await loadCuratedResources(klass, curriculumCodes);
+  } catch (err) {
+    console.error('Failed to load curated resources:', err);
+  }
+
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 16000,
     // Anthropic API does not use API data for model training by default.
     // We additionally pass metadata with no PII for our own audit purposes.
     metadata: { user_id: 'pseudonymised' },
-    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules),
+    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules, curatedResources),
     messages: [
       {
         role: 'user',
