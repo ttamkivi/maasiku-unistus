@@ -117,11 +117,16 @@ export default function GenerateTestPage() {
   async function handleFileAttach(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     const maxSize = 10 * 1024 * 1024; // 10 MB per file
+    setError(null); // Clear previous errors
 
     for (const file of files) {
       if (file.size > maxSize) {
         setError(`Fail "${file.name}" on liiga suur (max 10 MB)`);
         continue;
+      }
+      if (attachedFiles.length >= 10) {
+        setError('Maksimaalselt 10 faili korraga');
+        break;
       }
       const base64 = await fileToBase64(file);
       setAttachedFiles((prev) => [...prev, { name: file.name, type: file.type, base64, size: file.size }]);

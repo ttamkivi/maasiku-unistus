@@ -97,13 +97,35 @@ CRITICAL RULES:
     : `Generate a complete ${duration}-minute test for ${grade}. klass on ${topicDesc} with ${questionCount} questions.`;
 
   // Build multimodal message content: text + any attached files
-  const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedFileTypes = [...allowedImageTypes, 'application/pdf', 'text/plain', 'text/csv',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
   const userContent: Anthropic.MessageCreateParams['messages'][0]['content'] = [];
 
-  // Add file attachments first so AI sees the reference material before the instruction
+  // Validate and add file attachments
   if (files && files.length > 0) {
+    // Server-side limits: max 10 files, max 10MB per file (base64 ≈ 13.3MB)
+    const MAX_FILES = 10;
+    const MAX_BASE64_SIZE = 14 * 1024 * 1024; // ~10MB original file
+
+    if (files.length > MAX_FILES) {
+      return NextResponse.json({ error: `Maksimaalselt ${MAX_FILES} faili korraga` }, { status: 400 });
+    }
+
     for (const file of files) {
-      if (imageTypes.includes(file.type)) {
+      // Validate file type
+      if (!allowedFileTypes.includes(file.type) && !file.type.startsWith('image/')) {
+        return NextResponse.json({ error: `Toetamata failiformaat: ${file.name} (${file.type})` }, { status: 400 });
+      }
+
+      // Validate size
+      if (file.base64.length > MAX_BASE64_SIZE) {
+        return NextResponse.json({ error: `Fail "${file.name}" on liiga suur (max 10 MB)` }, { status: 400 });
+      }
+
+      if (allowedImageTypes.includes(file.type)) {
         // Image files — send as image blocks
         userContent.push({
           type: 'image',
@@ -132,7 +154,7 @@ CRITICAL RULES:
           text: `[Uploaded PDF: ${file.name}]`,
         });
       } else {
-        // Other files — try to decode as text
+        // Other files (docx, xlsx, csv, txt) — try to decode as text
         try {
           const decoded = Buffer.from(file.base64, 'base64').toString('utf-8');
           userContent.push({

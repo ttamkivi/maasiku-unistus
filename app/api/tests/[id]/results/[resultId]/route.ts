@@ -136,15 +136,18 @@ export async function DELETE(
 
     if (!result) return NextResponse.json({ error: 'Tulemust ei leitud' }, { status: 404 });
 
-    // Delete associated photos first (soft delete)
-    await db.workPhoto.updateMany({
-      where: { testResultId: resultId },
-      data: { deletedAt: new Date() },
-    });
+    // Delete photos + result in a transaction so they stay consistent
+    await db.$transaction(async (tx) => {
+      // Soft-delete associated photos
+      await tx.workPhoto.updateMany({
+        where: { testResultId: resultId },
+        data: { deletedAt: new Date() },
+      });
 
-    // Delete the result
-    await db.testResult.delete({
-      where: { id: resultId },
+      // Hard-delete the result
+      await tx.testResult.delete({
+        where: { id: resultId },
+      });
     });
 
     return NextResponse.json({ ok: true });

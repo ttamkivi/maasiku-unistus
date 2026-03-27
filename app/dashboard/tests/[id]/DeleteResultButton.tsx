@@ -15,10 +15,12 @@ export default function DeleteResultButton({
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    setErrorMsg(null);
 
     if (!confirming) {
       setConfirming(true);
@@ -33,13 +35,14 @@ export default function DeleteResultButton({
       if (res.ok) {
         router.refresh();
       } else {
-        alert('Kustutamine ebaõnnestus');
+        setErrorMsg('Kustutamine ebaõnnestus');
+        setConfirming(false);
       }
     } catch {
-      alert('Võrgu viga');
+      setErrorMsg('Võrgu viga');
+      setConfirming(false);
     } finally {
       setDeleting(false);
-      setConfirming(false);
     }
   }
 
@@ -89,9 +92,11 @@ export default function DeleteResultButton({
   }
 
   return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    {errorMsg && <span style={{ color: '#dc2626', fontSize: 11 }}>{errorMsg}</span>}
     <button
       onClick={handleDelete}
-      title={`Kustuta ${studentName}`}
+      title={`Kustuta ${studentName || 'tulemus'}`}
       style={{
         background: 'none',
         border: 'none',
@@ -107,5 +112,6 @@ export default function DeleteResultButton({
     >
       ✕
     </button>
+    </span>
   );
 }
