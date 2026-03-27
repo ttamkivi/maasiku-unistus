@@ -343,7 +343,7 @@ async function seedLibraryTests() {
   // Find or create a "library" teacher profile
   // We use the existing demo teacher if available
   const demoTeacher = await db.user.findFirst({
-    where: { email: 'demo.opetaja@maasikuunistus.ee' },
+    where: { email: 'demo.opetaja@opetajatagasiside.ee' },
     include: { teacherProfile: true },
   });
 

@@ -45,7 +45,31 @@ export async function PUT(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Logi sisse' }, { status: 401 });
 
   const body = await req.json();
-  const { preferences } = body;
+  const { preferences, name, email } = body;
+
+  // Update profile fields if provided
+  if (name || email) {
+    const profileUpdate: Record<string, string> = {};
+    if (name && typeof name === 'string' && name.trim().length > 0) {
+      profileUpdate.name = name.trim();
+    }
+    if (email && typeof email === 'string' && email.includes('@')) {
+      // Check email uniqueness
+      const existing = await db.user.findFirst({
+        where: { email, id: { not: user.id } },
+      });
+      if (existing) {
+        return NextResponse.json({ error: 'See e-posti aadress on juba kasutusel' }, { status: 400 });
+      }
+      profileUpdate.email = email.trim().toLowerCase();
+    }
+    if (Object.keys(profileUpdate).length > 0) {
+      await db.user.update({
+        where: { id: user.id },
+        data: profileUpdate,
+      });
+    }
+  }
 
   if (!preferences || typeof preferences !== 'object') {
     return NextResponse.json({ error: 'Vigased seaded' }, { status: 400 });

@@ -188,7 +188,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferences: settings }),
+        body: JSON.stringify({ preferences: settings, name: profile?.name, email: profile?.email }),
       });
       if (res.ok) {
         setSaveMsg('Salvestatud!');
@@ -425,11 +425,21 @@ export default function SettingsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                 <div>
                   <Label>Nimi</Label>
-                  <div style={readonlyStyle}>{profile.name}</div>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={e => setProfile({ ...profile, name: e.target.value })}
+                    style={inputStyle}
+                  />
                 </div>
                 <div>
                   <Label>E-post</Label>
-                  <div style={readonlyStyle}>{profile.email}</div>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    onChange={e => setProfile({ ...profile, email: e.target.value })}
+                    style={inputStyle}
+                  />
                 </div>
               </div>
               <div style={{ marginBottom: 20 }}>
@@ -846,6 +856,11 @@ const h3Style: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: '#1
 const readonlyStyle: React.CSSProperties = {
   padding: '8px 10px', background: '#f9fafb', border: '1.5px solid #e5e7eb',
   borderRadius: 5, fontSize: 14, color: '#374151',
+};
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '8px 10px', border: '1.5px solid #d1d5db',
+  borderRadius: 5, fontSize: 14, color: '#1C2832', background: '#fff',
+  boxSizing: 'border-box',
 };
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px', border: '1.5px solid #d1d5db',

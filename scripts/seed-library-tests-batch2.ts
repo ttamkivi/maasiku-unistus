@@ -456,7 +456,7 @@ async function seedLibraryTests() {
   }
 
   const demoTeacher = await db.user.findFirst({
-    where: { email: 'demo.opetaja@maasikuunistus.ee' },
+    where: { email: 'demo.opetaja@opetajatagasiside.ee' },
     include: { teacherProfile: true },
   });
 
