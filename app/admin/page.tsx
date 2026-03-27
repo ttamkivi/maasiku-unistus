@@ -30,12 +30,20 @@ export default async function AdminPage() {
     { href: '/admin/audit', label: 'Audit logi', desc: 'Vaata süsteemi tegevuste logi', badge: null },
     { href: '/admin/data', label: 'Andmehaldus', desc: 'Halda ja ekspordi andmeid', badge: null },
     ...(isAdminLike
-      ? [{
-          href: '/admin/permissions',
-          label: 'Õiguste haldus',
-          desc: 'Lapsevanemad, nõusolekud ja sobivus',
-          badge: null,
-        }]
+      ? [
+          {
+            href: '/admin/permissions',
+            label: 'Õiguste haldus',
+            desc: 'Lapsevanemad, nõusolekud ja sobivus',
+            badge: null,
+          },
+          {
+            href: '/admin/ai-settings',
+            label: 'AI seaded',
+            desc: 'AI pakkujad, API võtmed ja õpetajate kasutuslimiidid',
+            badge: '✦',
+          },
+        ]
       : []),
     ...(isSuperAdmin
       ? [

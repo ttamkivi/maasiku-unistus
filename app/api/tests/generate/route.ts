@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { CURRICULUM } from '@/lib/curriculum';
+import { resolveProvider, checkUsageLimit, logUsage } from '@/lib/ai-provider';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const session = await db.session.findUnique({
     where: { token },
-    include: { user: true },
+    include: { user: { include: { teacherProfile: true } } },
   });
   if (!session || session.expiresAt < new Date()) {
     return NextResponse.json({ error: 'Sessioon aegunud' }, { status: 401 });
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
   if (user.role !== 'TEACHER' && user.role !== 'SUPERADMIN' && user.role !== 'SCHOOL_ADMIN') {
     return NextResponse.json({ error: 'Pole õigust' }, { status: 403 });
   }
+
+  const teacherProfileId = user.teacherProfile?.id;
 
   const body = await req.json();
   const { curriculumCode, topic, subject, grade, difficulty, questionCount, duration, prompt, files } = body as {
@@ -180,13 +183,41 @@ CRITICAL RULES:
   const messageContent = userContent.length > 0 ? userContent : userTextMessage;
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    // Resolve AI provider for this teacher
+    const providerInfo = teacherProfileId
+      ? await resolveProvider(teacherProfileId)
+      : { provider: 'anthropic', model: 'claude-sonnet-4-6', apiKey: process.env.ANTHROPIC_API_KEY || '', schoolId: null };
+
+    if (teacherProfileId) {
+      const limitCheck = await checkUsageLimit(providerInfo.schoolId, teacherProfileId);
+      if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.reason || 'Kasutuslimiit täis' }, { status: 429 });
+      }
+    }
+
+    const aiStart = Date.now();
+    const aiClient = new Anthropic({ apiKey: providerInfo.apiKey });
+    const response = await aiClient.messages.create({
+      model: providerInfo.model,
       max_tokens: 12000,
       metadata: { user_id: 'pseudonymised' },
       system: systemPrompt,
       messages: [{ role: 'user', content: messageContent }],
     });
+
+    if (teacherProfileId) {
+      await logUsage({
+        schoolId: providerInfo.schoolId,
+        teacherProfileId,
+        provider: providerInfo.provider,
+        model: providerInfo.model,
+        operation: 'generate_test',
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        durationMs: Date.now() - aiStart,
+        success: true,
+      });
+    }
 
     const content = response.content[0];
     if (content.type !== 'text') {

@@ -81,9 +81,27 @@ interface UserProfile {
   role: string;
 }
 
+interface SchoolProviderInfo {
+  provider: string;
+  displayName: string;
+  defaultModel: string;
+  allowedModels: string[];
+  isDefault: boolean;
+}
+
+interface UsageInfo {
+  tokensUsed: number;
+  requestsUsed: number;
+  tokenLimit: number | null;
+  requestLimit: number | null;
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [schoolProviders, setSchoolProviders] = useState<SchoolProviderInfo[]>([]);
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -91,12 +109,19 @@ export default function SettingsPage() {
 
   const loadSettings = useCallback(() => {
     setLoading(true);
-    fetch('/api/settings')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setProfile({ name: data.name, email: data.email, role: data.role });
-          setSettings({ ...DEFAULT_SETTINGS, ...data.preferences });
+    Promise.all([
+      fetch('/api/settings').then(r => r.ok ? r.json() : null),
+      fetch('/api/settings/school-models').then(r => r.ok ? r.json() : null),
+    ])
+      .then(([settingsData, schoolData]) => {
+        if (settingsData) {
+          setProfile({ name: settingsData.name, email: settingsData.email, role: settingsData.role });
+          setSettings({ ...DEFAULT_SETTINGS, ...settingsData.preferences });
+        }
+        if (schoolData) {
+          setSchoolProviders(schoolData.schoolProviders || []);
+          setSchoolName(schoolData.schoolName || null);
+          setUsage(schoolData.usage || null);
         }
       })
       .catch(() => {})
@@ -209,67 +234,170 @@ export default function SettingsPage() {
 
           {/* ══════════ AI MODEL ══════════ */}
           {section === 'ai' && (
-            <Card>
-              <h3 style={h3Style}>AI mudeli valik</h3>
-              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 1.5 }}>
-                Valige AI mudel, mida kasutatakse kontrolltööde analüüsimiseks ja tagasiside genereerimiseks.
-                Demo versioonis saate proovida erinevaid pakkujaid.
-              </p>
-
-              {AI_MODELS.map(provider => (
-                <div key={provider.provider} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    {provider.provider}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {provider.models.map(m => {
-                      const selected = settings.aiModel === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          onClick={() => update('aiModel', m.id)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '12px 16px', borderRadius: 6, cursor: 'pointer',
-                            textAlign: 'left', width: '100%',
-                            background: selected ? '#F8F3DA' : '#fff',
-                            border: selected ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
-                          }}
-                        >
+            <>
+              {/* Usage meter (if school has limits) */}
+              {usage && usage.tokenLimit && (
+                <Card style={{ marginBottom: 16 }}>
+                  <h3 style={h3Style}>Kuu kasutus{schoolName ? ` — ${schoolName}` : ''}</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tokenid</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#1C2832' }}>
+                        {usage.tokensUsed.toLocaleString()} <span style={{ fontSize: 12, fontWeight: 400, color: '#6b7280' }}>/ {usage.tokenLimit.toLocaleString()}</span>
+                      </div>
+                      <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden', marginTop: 4 }}>
+                        <div style={{
+                          height: '100%', borderRadius: 3,
+                          width: `${Math.min(100, (usage.tokensUsed / usage.tokenLimit) * 100)}%`,
+                          background: usage.tokensUsed / usage.tokenLimit >= 0.9 ? '#dc2626' : usage.tokensUsed / usage.tokenLimit >= 0.7 ? '#d97706' : '#16a34a',
+                        }} />
+                      </div>
+                    </div>
+                    {usage.requestLimit && (
+                      <div>
+                        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Päringud</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1C2832' }}>
+                          {usage.requestsUsed} <span style={{ fontSize: 12, fontWeight: 400, color: '#6b7280' }}>/ {usage.requestLimit}</span>
+                        </div>
+                        <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden', marginTop: 4 }}>
                           <div style={{
-                            width: 18, height: 18, borderRadius: '50%',
-                            border: selected ? '5px solid #1C2832' : '2px solid #d1d5db',
-                            flexShrink: 0,
+                            height: '100%', borderRadius: 3,
+                            width: `${Math.min(100, (usage.requestsUsed / usage.requestLimit) * 100)}%`,
+                            background: usage.requestsUsed / usage.requestLimit >= 0.9 ? '#dc2626' : '#16a34a',
                           }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>
-                              {m.label}
-                              {m.badge && (
-                                <span style={{
-                                  marginLeft: 8, fontSize: 10, fontWeight: 700,
-                                  background: '#1C2832', color: '#F8F3DA',
-                                  padding: '2px 6px', borderRadius: 3, verticalAlign: 'middle',
-                                }}>
-                                  {m.badge}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{m.desc}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                </Card>
+              )}
 
-              <div style={{
-                marginTop: 8, padding: '10px 14px', background: '#eff6ff',
-                border: '1px solid #bfdbfe', borderRadius: 6, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
-              }}>
-                Demo versioonis on kõik mudelid virtuaalselt saadaval. Tootmisversioonis kasutatakse vaikimisi Claude Sonnet mudelit, mis on hariduskontekstis kõige paremini testitud.
-              </div>
-            </Card>
+              {/* School-configured models */}
+              {schoolProviders.length > 0 && (
+                <Card style={{ marginBottom: 16 }}>
+                  <h3 style={h3Style}>Kooli poolt seadistatud mudelid</h3>
+                  <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 1.5 }}>
+                    Teie kooli admin on konfigureerinud järgmised AI pakkujad. Need kasutavad kooli API võtit.
+                  </p>
+                  {schoolProviders.map(sp => (
+                    <div key={sp.provider} style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                        {sp.displayName}
+                        {sp.isDefault && (
+                          <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: '#16a34a', color: '#fff', padding: '2px 6px', borderRadius: 3 }}>
+                            Kooli vaikimisi
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {sp.allowedModels.map(modelId => {
+                          const selected = settings.aiModel === modelId;
+                          const modelInfo = AI_MODELS.flatMap(p => p.models).find(m => m.id === modelId);
+                          return (
+                            <button
+                              key={modelId}
+                              onClick={() => update('aiModel', modelId)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '12px 16px', borderRadius: 6, cursor: 'pointer',
+                                textAlign: 'left', width: '100%',
+                                background: selected ? '#F8F3DA' : '#fff',
+                                border: selected ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
+                              }}
+                            >
+                              <div style={{
+                                width: 18, height: 18, borderRadius: '50%',
+                                border: selected ? '5px solid #1C2832' : '2px solid #d1d5db',
+                                flexShrink: 0,
+                              }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>
+                                  {modelInfo?.label || modelId}
+                                  {modelId === sp.defaultModel && (
+                                    <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, background: '#1C2832', color: '#F8F3DA', padding: '2px 6px', borderRadius: 3, verticalAlign: 'middle' }}>
+                                      Vaikimisi
+                                    </span>
+                                  )}
+                                </div>
+                                {modelInfo?.desc && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{modelInfo.desc}</div>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {/* Full demo catalogue */}
+              <Card>
+                <h3 style={h3Style}>
+                  {schoolProviders.length > 0 ? 'Kõik mudelid (demo)' : 'AI mudeli valik'}
+                </h3>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 1.5 }}>
+                  {schoolProviders.length > 0
+                    ? 'Demo režiimis saate proovida ka teisi mudeleid. Tootmises kasutatakse ainult kooli poolt seadistatud pakkujaid.'
+                    : 'Valige AI mudel, mida kasutatakse kontrolltööde analüüsimiseks ja tagasiside genereerimiseks.'}
+                </p>
+
+                {AI_MODELS.map(provider => (
+                  <div key={provider.provider} style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#1C2832', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                      {provider.provider}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {provider.models.map(m => {
+                        const selected = settings.aiModel === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => update('aiModel', m.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '12px 16px', borderRadius: 6, cursor: 'pointer',
+                              textAlign: 'left', width: '100%',
+                              background: selected ? '#F8F3DA' : '#fff',
+                              border: selected ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
+                            }}
+                          >
+                            <div style={{
+                              width: 18, height: 18, borderRadius: '50%',
+                              border: selected ? '5px solid #1C2832' : '2px solid #d1d5db',
+                              flexShrink: 0,
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>
+                                {m.label}
+                                {m.badge && (
+                                  <span style={{
+                                    marginLeft: 8, fontSize: 10, fontWeight: 700,
+                                    background: '#1C2832', color: '#F8F3DA',
+                                    padding: '2px 6px', borderRadius: 3, verticalAlign: 'middle',
+                                  }}>
+                                    {m.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{m.desc}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                <div style={{
+                  marginTop: 8, padding: '10px 14px', background: '#eff6ff',
+                  border: '1px solid #bfdbfe', borderRadius: 6, fontSize: 12, color: '#1e40af', lineHeight: 1.5,
+                }}>
+                  {schoolProviders.length > 0
+                    ? 'Tootmises kasutab süsteem kooli administraatori poolt seadistatud pakkujat ja API võtit. Demo režiimis saate kõiki mudeleid proovida.'
+                    : 'Demo versioonis on kõik mudelid virtuaalselt saadaval. Paluge oma kooli adminil seadistada AI pakkuja, et kasutada kooli enda API võtit.'}
+                </div>
+              </Card>
+            </>
           )}
 
           {/* ══════════ FEEDBACK SETTINGS ══════════ */}

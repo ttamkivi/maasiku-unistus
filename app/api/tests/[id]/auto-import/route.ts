@@ -4,7 +4,9 @@ import { db } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 import { uploadPhotoToBlob } from '@/lib/blob';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { resolveProvider, checkUsageLimit, logUsage } from '@/lib/ai-provider';
 
+// Fallback client for when school has no custom provider configured
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function getTeacherSession(token: string) {
@@ -158,6 +160,15 @@ export async function POST(
     }
 
     // ── Step 2: AI name identification (batched) ──
+    // Resolve which AI provider + model to use for this teacher's school
+    const providerInfo = await resolveProvider(teacherProfile.id);
+
+    // Check usage limits before making any AI calls
+    const usageCheck = await checkUsageLimit(providerInfo.schoolId, teacherProfile.id);
+    if (!usageCheck.allowed) {
+      return NextResponse.json({ error: usageCheck.reason || 'Kasutuslimiit täis' }, { status: 429 });
+    }
+
     const nameMap = new Map<number, string | null>();
     const BATCH = 20;
 
@@ -184,13 +195,64 @@ Return ONLY valid JSON in this exact format, no other text:
 }`,
       };
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: [...imageBlocks, textBlock] }],
-      });
+      // Use school's configured provider or system default
+      const aiStartTime = Date.now();
+      let rawText = '{}';
+      let inputTokens = 0;
+      let outputTokens = 0;
+      try {
+        if (providerInfo.provider === 'anthropic') {
+          const client = new Anthropic({ apiKey: providerInfo.apiKey });
+          const response = await client.messages.create({
+            model: providerInfo.model,
+            max_tokens: 1024,
+            messages: [{ role: 'user', content: [...imageBlocks, textBlock] }],
+          });
+          rawText = response.content.find((b) => b.type === 'text')?.text ?? '{}';
+          inputTokens = response.usage.input_tokens;
+          outputTokens = response.usage.output_tokens;
+        } else {
+          // For OpenAI / Google, use the callAI helper
+          const { callAI } = await import('@/lib/ai-provider');
+          const aiResp = await callAI({
+            providerInfo,
+            systemPrompt: '',
+            messages: [{ role: 'user', content: [...imageBlocks, textBlock] as Anthropic.ContentBlockParam[] }],
+            maxTokens: 1024,
+          });
+          rawText = aiResp.text;
+          inputTokens = aiResp.inputTokens;
+          outputTokens = aiResp.outputTokens;
+        }
 
-      const rawText = response.content.find((b) => b.type === 'text')?.text ?? '{}';
+        // Log usage
+        await logUsage({
+          schoolId: providerInfo.schoolId,
+          teacherProfileId: teacherProfile.id,
+          provider: providerInfo.provider,
+          model: providerInfo.model,
+          operation: 'auto_import',
+          inputTokens,
+          outputTokens,
+          durationMs: Date.now() - aiStartTime,
+          success: true,
+        });
+      } catch (aiError) {
+        await logUsage({
+          schoolId: providerInfo.schoolId,
+          teacherProfileId: teacherProfile.id,
+          provider: providerInfo.provider,
+          model: providerInfo.model,
+          operation: 'auto_import',
+          inputTokens: 0,
+          outputTokens: 0,
+          durationMs: Date.now() - aiStartTime,
+          success: false,
+          errorMessage: aiError instanceof Error ? aiError.message : 'Unknown error',
+        });
+        throw aiError;
+      }
+
       let parsed: { pages: Array<{ index: number; name: string | null }> };
       try {
         parsed = JSON.parse(rawText);

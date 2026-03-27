@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 import { uploadPhotoToBlob } from '@/lib/blob';
 import { captureServerEvent } from '@/lib/posthog-server';
+import { resolveProvider, checkUsageLimit, logUsage } from '@/lib/ai-provider';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -80,8 +81,17 @@ Return ONLY valid JSON in this exact format, no other text:
 }`,
       };
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+      // Resolve AI provider for this teacher's school
+      const providerInfo = await resolveProvider(teacherProfile.id);
+      const limitCheck = await checkUsageLimit(providerInfo.schoolId, teacherProfile.id);
+      if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.reason || 'Kasutuslimiit täis' }, { status: 429 });
+      }
+
+      const aiStart = Date.now();
+      const client = new Anthropic({ apiKey: providerInfo.apiKey });
+      const response = await client.messages.create({
+        model: providerInfo.model,
         max_tokens: 1024,
         messages: [
           {
@@ -89,6 +99,18 @@ Return ONLY valid JSON in this exact format, no other text:
             content: [...imageBlocks, textBlock],
           },
         ],
+      });
+
+      await logUsage({
+        schoolId: providerInfo.schoolId,
+        teacherProfileId: teacherProfile.id,
+        provider: providerInfo.provider,
+        model: providerInfo.model,
+        operation: 'batch_import',
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        durationMs: Date.now() - aiStart,
+        success: true,
       });
 
       const rawText = response.content.find((b) => b.type === 'text')?.text ?? '{}';
