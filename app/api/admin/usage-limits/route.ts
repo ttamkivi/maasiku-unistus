@@ -145,6 +145,13 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'ID puudub' }, { status: 400 });
 
+  // Verify the limit belongs to the admin's school (IDOR protection)
+  const limit = await db.teacherUsageLimit.findUnique({ where: { id } });
+  if (!limit) return NextResponse.json({ error: 'Limiiti ei leitud' }, { status: 404 });
+  if (admin.user.role !== 'SUPERADMIN' && limit.schoolId !== admin.schoolId) {
+    return NextResponse.json({ error: 'Pole õigust' }, { status: 403 });
+  }
+
   await db.teacherUsageLimit.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

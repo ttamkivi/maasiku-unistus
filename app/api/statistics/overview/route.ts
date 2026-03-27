@@ -9,7 +9,7 @@ export async function GET() {
 
   const session = await db.session.findUnique({
     where: { token },
-    include: { user: { include: { teacherProfile: true } } },
+    include: { user: { include: { teacherProfile: true, adminProfile: true } } },
   });
   if (!session || session.expiresAt < new Date()) {
     return NextResponse.json({ error: 'Sessioon aegunud' }, { status: 401 });
@@ -19,8 +19,24 @@ export async function GET() {
     return NextResponse.json({ error: 'Ainult õpetajatele' }, { status: 403 });
   }
 
-  const teacherId = user.teacherProfile?.id;
-  const teacherFilter = teacherId ? { teacherId } : {};
+  // Build a safe filter:
+  // - TEACHER: see only their own tests
+  // - SCHOOL_ADMIN: see all tests in their school (never unscoped)
+  // - SUPERADMIN: see everything
+  let teacherFilter: Record<string, unknown>;
+  if (user.role === 'TEACHER') {
+    const teacherId = user.teacherProfile?.id;
+    teacherFilter = teacherId ? { teacherId } : { teacherId: '__none__' };
+  } else if (user.role === 'SCHOOL_ADMIN') {
+    const schoolId = user.adminProfile?.schoolId;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'Kooli seotus puudub' }, { status: 403 });
+    }
+    teacherFilter = { teacher: { schools: { some: { schoolId } } } };
+  } else {
+    // SUPERADMIN sees all
+    teacherFilter = {};
+  }
 
   // Gather overview stats
   const [totalTests, totalResults, scoreAgg, totalPatterns, recentCorrections] = await Promise.all([

@@ -40,7 +40,7 @@ export async function GET() {
     providers: configs.map((c: any) => ({
       ...c,
       apiKeyEncrypted: undefined,
-      apiKeyMasked: '••••••••' + (c.apiKeyEncrypted ? String(c.apiKeyEncrypted).slice(-4) : ''),
+      apiKeyMasked: c.apiKeyEncrypted ? '••••••••' : '',
       allowedModels: JSON.parse(String(c.allowedModels || '[]')),
     })),
     catalogue: AI_PROVIDERS,
@@ -124,6 +124,13 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'ID puudub' }, { status: 400 });
+
+  // Verify the config belongs to the admin's school (IDOR protection)
+  const config = await db.aIProviderConfig.findUnique({ where: { id } });
+  if (!config) return NextResponse.json({ error: 'Seadistust ei leitud' }, { status: 404 });
+  if (admin.user.role !== 'SUPERADMIN' && config.schoolId !== admin.schoolId) {
+    return NextResponse.json({ error: 'Pole õigust' }, { status: 403 });
+  }
 
   await db.aIProviderConfig.update({
     where: { id },
