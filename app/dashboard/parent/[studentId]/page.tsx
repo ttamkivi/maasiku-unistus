@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { FeedbackData } from '@/lib/types';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 function scoreColor(pct: number): string {
   if (pct >= 70) return '#16a34a';
@@ -154,6 +155,7 @@ export default async function ParentChildResultsPage({
       {/* Score history */}
       <div style={{ ...card, marginBottom: 24 }}>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>Tulemused</h2>
+        <AITransparencyMarker variant="inline" contentType="tagasiside" />
         {sharedResults.length === 0 ? (
           <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.5 }}>
             Tulemused puuduvad — õpetaja pole veel ühtegi tagasisidet jaganud.

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 interface Subject {
   id: string;
@@ -549,6 +550,8 @@ export default function GenerateTestPage() {
               {form.duration} min
             </span>
           </div>
+
+          <AITransparencyMarker contentType="küsimused ja vastused" />
 
           {/* Questions */}
           <div>

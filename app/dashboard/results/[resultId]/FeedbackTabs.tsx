@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FeedbackData } from '@/lib/types';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 type View = 'short' | 'long' | 'tasks';
 
@@ -45,6 +46,8 @@ export default function FeedbackTabs({ feedback }: { feedback: FeedbackData }) {
       padding: '20px 22px',
       marginBottom: 22,
     }}>
+      <AITransparencyMarker variant="inline" contentType="tagasiside" />
+
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '2px solid #DAD0A1', marginBottom: 18 }}>
         {tabs.map((tab) => (

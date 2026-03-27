@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ResultStatus } from '@/lib/generated/prisma/client';
 import { FeedbackData, FeedbackItem } from '@/lib/types';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 import posthog from 'posthog-js';
 
 type Tab = 'ai' | 'notes';
@@ -661,6 +662,8 @@ export default function ResultReviewClient({
           Salvestamine...
         </div>
       )}
+
+      <AITransparencyMarker variant="inline" contentType="tagasiside" />
 
       {/* Inline-editable feedback — no separate tabs */}
       <div onBlur={handleFeedbackBlur}>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 const CURRICULUM_CODES = [
   // Soojusõpetus
@@ -342,6 +343,8 @@ export default function GenerateMaterialPage() {
               {DIFFICULTY_LEVELS.find(d => d.value === form.difficulty)?.label || form.difficulty}
             </span>
           </div>
+
+          <AITransparencyMarker contentType="õppematerjal" />
 
           {/* Editable content */}
           <div>

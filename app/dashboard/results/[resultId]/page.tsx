@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { FeedbackData, ResourceItem } from '@/lib/types';
 import FeedbackTabs from './FeedbackTabs';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 function scoreColor(pct: number): string {
   if (pct >= 70) return '#16a34a';
@@ -115,6 +116,8 @@ export default async function StudentResultPage({
           </div>
         </div>
       )}
+
+      <AITransparencyMarker contentType="tagasiside" />
 
       {/* Feedback tabs (client component for tab state) */}
       {feedback ? (

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { FeedbackData } from '@/lib/types';
+import AITransparencyMarker from './AITransparencyMarker';
 
 type View = 'short' | 'long' | 'tasks';
 
@@ -55,6 +56,8 @@ export default function FeedbackDisplay({ feedback, onDownloadDocx, onSendEmail,
           {test_info.score && <span style={{ background: '#fff', color: '#1C2832', fontSize: 12, fontWeight: 700, padding: '2px 10px', border: '1px solid #DAD0A1' }}>{test_info.score}</span>}
         </div>
       </div>
+
+      <AITransparencyMarker contentType="tagasiside" />
 
       {/* View tabs */}
       <div style={{ display: 'flex', borderBottom: '2px solid #DAD0A1', marginBottom: 20 }}>

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import AITransparencyMarker from '@/components/AITransparencyMarker';
 
 interface FeedbackData {
   summary?: string;
@@ -114,6 +115,8 @@ export default async function ExercisePage({
 
       {fb && (
         <>
+          <AITransparencyMarker contentType="tagasiside" />
+
           {/* Error state */}
           {isError && isOwner && (
             <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, padding: '18px 20px', marginBottom: 20 }}>
