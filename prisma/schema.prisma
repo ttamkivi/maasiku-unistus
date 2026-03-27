@@ -135,6 +135,7 @@ model User {
   personalCode         String?  @unique // Estonian isikukood
   phoneNumber          String?          // for Mobile-ID
   onboardingCompleted  Boolean  @default(false)
+  preferences          String?  // JSON: AI model, language, notification prefs etc.
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

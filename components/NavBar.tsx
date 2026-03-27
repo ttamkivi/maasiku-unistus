@@ -43,7 +43,7 @@ const TEACHER_TABS = [
   { href: '/dashboard/students',    icon: '👥', label: 'Minu klass' },
   { href: '/dashboard/consents',    icon: '✅', label: 'Nõusolekud' },
   { href: '/dashboard/invites',     icon: '✉️', label: 'Kutsu' },
-  { href: '/dashboard',             icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/settings',    icon: '⚙️', label: 'Seaded' },
 ];
 
 const STUDENT_TABS = [
@@ -80,6 +80,7 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
             { href: '/dashboard/library',     icon: '📚', label: 'Raamatukogu' },
             { href: '/dashboard/statistics',  icon: '📈', label: 'Statistika' },
             { href: '/dashboard/consents',    icon: '✅', label: 'Nõusolekud' },
+            { href: '/dashboard/settings',    icon: '⚙️', label: 'Seaded' },
           ]
         : TEACHER_TABS;
       const tabs = [
