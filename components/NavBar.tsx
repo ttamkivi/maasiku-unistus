@@ -36,13 +36,14 @@ const ALL_ROLES = [
 ];
 
 const TEACHER_TABS = [
-  { href: '/dashboard/teacher',  icon: '📊', label: 'Hindamine' },
-  { href: '/dashboard/library',  icon: '📚', label: 'Raamatukogu' },
-  { href: '/dashboard/classes',  icon: '🏫', label: 'Klassid' },
-  { href: '/dashboard/students', icon: '👥', label: 'Minu klass' },
-  { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
-  { href: '/dashboard/invites',  icon: '✉️', label: 'Kutsu' },
-  { href: '/dashboard',          icon: '👤', label: 'Profiil' },
+  { href: '/dashboard/teacher',     icon: '📊', label: 'Hindamine' },
+  { href: '/dashboard/library',     icon: '📚', label: 'Raamatukogu' },
+  { href: '/dashboard/statistics',  icon: '📈', label: 'Statistika' },
+  { href: '/dashboard/classes',     icon: '🏫', label: 'Klassid' },
+  { href: '/dashboard/students',    icon: '👥', label: 'Minu klass' },
+  { href: '/dashboard/consents',    icon: '✅', label: 'Nõusolekud' },
+  { href: '/dashboard/invites',     icon: '✉️', label: 'Kutsu' },
+  { href: '/dashboard',             icon: '👤', label: 'Profiil' },
 ];
 
 const STUDENT_TABS = [
@@ -75,9 +76,10 @@ function getTabsForRole(role: string, features?: Record<string, boolean>) {
     case 'TEACHER': {
       const baseTabs = PROTOTYPE_MODE
         ? [
-            { href: '/dashboard/teacher',  icon: '📊', label: 'Hindamine' },
-            { href: '/dashboard/library',  icon: '📚', label: 'Raamatukogu' },
-            { href: '/dashboard/consents', icon: '✅', label: 'Nõusolekud' },
+            { href: '/dashboard/teacher',     icon: '📊', label: 'Hindamine' },
+            { href: '/dashboard/library',     icon: '📚', label: 'Raamatukogu' },
+            { href: '/dashboard/statistics',  icon: '📈', label: 'Statistika' },
+            { href: '/dashboard/consents',    icon: '✅', label: 'Nõusolekud' },
           ]
         : TEACHER_TABS;
       const tabs = [
