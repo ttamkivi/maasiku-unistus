@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import QAValueSection from './QAValueSection';
 
 const DIMENSION_LABELS: Record<string, string> = {
   accuracy: 'Füüsika täpsus',
@@ -208,6 +209,9 @@ export default async function AIBrainPage() {
           </div>
         )}
       </div>
+
+      {/* QA Value Analysis */}
+      <QAValueSection />
 
       {/* Patterns by dimension */}
       <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C2832', marginBottom: 16 }}>

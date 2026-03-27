@@ -869,6 +869,7 @@ model AIProviderConfig {
   allowedModels String   // JSON array of model IDs teachers can pick from
   isActive      Boolean  @default(true)
   isDefault     Boolean  @default(false) // one provider is the school default
+  qaEnabled     Boolean  @default(true)  // enable QA pass 2 (costs ~$0.09/sheet, catches physics/tone errors)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

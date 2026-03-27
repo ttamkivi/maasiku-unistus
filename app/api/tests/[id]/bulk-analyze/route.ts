@@ -200,48 +200,68 @@ export async function POST(
     let qaScore: number | null = null;
     let qaCompletedAt: Date | null = null;
 
-    try {
-      captureServerEvent(session.user.id, 'qa_validation_started', { resultId, testId: id });
-      const qaResult = await validateFeedback(
-        rawFeedback,
-        test.grade || '9',
-        test.topic || test.title,
-        curriculumCodes,
-      );
-      qaFeedback = qaResult.correctedFeedback;
-      qaLog = JSON.stringify(qaResult.log);
-      qaScore = qaResult.score;
-      qaCompletedAt = new Date();
-
-      captureServerEvent(session.user.id, 'qa_validation_completed', {
-        resultId,
-        testId: id,
-        qaScore: qaResult.score,
-        hadCorrections: qaResult.hadCorrections,
-        corrections: qaResult.log.filter((e) => e.correction !== null).length,
+    // Check if QA is enabled for this school's AI provider config
+    const teacherSchool = await db.teacherSchool.findFirst({
+      where: { teacherId: teacherProfile.id },
+      select: { schoolId: true },
+    });
+    let qaEnabled = true; // default: on
+    if (teacherSchool) {
+      const providerConfig = await db.aIProviderConfig.findFirst({
+        where: { schoolId: teacherSchool.schoolId, isActive: true, isDefault: true },
+        select: { qaEnabled: true },
       });
-
-      // Record QA corrections as learned patterns — makes pass 1 smarter over time
-      if (qaResult.hadCorrections) {
-        try {
-          const { newPatterns, updatedPatterns } = await recordPatterns(
-            qaResult.log,
-            test.topic || test.title,
-            test.grade || null,
-          );
-          if (newPatterns > 0 || updatedPatterns > 0) {
-            captureServerEvent(session.user.id, 'ai_learning_recorded', {
-              resultId, testId: id, newPatterns, updatedPatterns,
-            });
-          }
-        } catch (learnErr) {
-          console.error('Failed to record QA patterns:', learnErr);
-        }
+      if (providerConfig) {
+        qaEnabled = providerConfig.qaEnabled;
       }
-    } catch (qaError) {
-      // QA failure is non-blocking — teacher gets the raw feedback
-      console.error(`QA validation failed for result ${resultId}:`, qaError);
-      captureServerEvent(session.user.id, 'qa_validation_failed', { resultId, testId: id });
+    }
+
+    if (!qaEnabled) {
+      captureServerEvent(session.user.id, 'qa_validation_skipped', { resultId, testId: id, reason: 'disabled_by_admin' });
+    } else {
+      try {
+        captureServerEvent(session.user.id, 'qa_validation_started', { resultId, testId: id });
+        const qaResult = await validateFeedback(
+          rawFeedback,
+          test.grade || '9',
+          test.topic || test.title,
+          curriculumCodes,
+        );
+        qaFeedback = qaResult.correctedFeedback;
+        qaLog = JSON.stringify(qaResult.log);
+        qaScore = qaResult.score;
+        qaCompletedAt = new Date();
+
+        captureServerEvent(session.user.id, 'qa_validation_completed', {
+          resultId,
+          testId: id,
+          qaScore: qaResult.score,
+          hadCorrections: qaResult.hadCorrections,
+          corrections: qaResult.log.filter((e) => e.correction !== null).length,
+        });
+
+        // Record QA corrections as learned patterns — makes pass 1 smarter over time
+        if (qaResult.hadCorrections) {
+          try {
+            const { newPatterns, updatedPatterns } = await recordPatterns(
+              qaResult.log,
+              test.topic || test.title,
+              test.grade || null,
+            );
+            if (newPatterns > 0 || updatedPatterns > 0) {
+              captureServerEvent(session.user.id, 'ai_learning_recorded', {
+                resultId, testId: id, newPatterns, updatedPatterns,
+              });
+            }
+          } catch (learnErr) {
+            console.error('Failed to record QA patterns:', learnErr);
+          }
+        }
+      } catch (qaError) {
+        // QA failure is non-blocking — teacher gets the raw feedback
+        console.error(`QA validation failed for result ${resultId}:`, qaError);
+        captureServerEvent(session.user.id, 'qa_validation_failed', { resultId, testId: id });
+      }
     }
 
     await db.testResult.update({
