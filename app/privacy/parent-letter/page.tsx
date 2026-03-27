@@ -120,7 +120,19 @@ export default function ParentLetterPage() {
           Kui leiate, et teie andmete töötlemine rikub teie õigusi, on teil õigus esitada kaebus Andmekaitse Inspektsioonile (aki.ee).
         </p>
 
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>5. Nõusoleku avaldus</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>5. Tehisintellekti kasutamine ja teie lapse kaitse</h2>
+        <p style={{ marginBottom: 16 }}>
+          Õpetaja Tagasiside süsteem on klassifitseeritud <strong>kõrge riskiga AI-süsteemiks</strong> vastavalt Euroopa Liidu tehisintellekti määrusele (EL) 2024/1689 (nn AI Act), kuna see hindab õpilaste õpitulemusi. See tähendab, et süsteemile kohalduvad rangemad nõuded:
+        </p>
+        <ul style={{ paddingLeft: 20, margin: '0 0 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <li><strong>AI ei tee iseseisvaid otsuseid</strong> — kõik AI-genereeritud tagasiside on mustand, mida õpetaja vaatab üle, muudab ja kinnitab enne teie lapsele edastamist.</li>
+          <li><strong>Teie laps teab AI-st</strong> — kõik AI-genereeritud väljundid on selgelt märgistatud ning teie laps on teadlik, et tagasiside on AI abiga koostatud.</li>
+          <li><strong>Emotsioone ei tuvastata</strong> — süsteem ei analüüsi teie lapse emotsioone, käitumist ega biomeetrilisi tunnuseid. Analüüsitakse ainult kontrolltöö vastuseid.</li>
+          <li><strong>Profileerimist ei toimu</strong> — süsteem ei loo teie lapsest profiili ega ennusta tema käitumist. Iga kontrolltöö analüüsitakse eraldi.</li>
+          <li><strong>Andmekaitsemõjude hindamine on tehtud</strong> — oleme viinud läbi DPIA (andmekaitsemõjude hindamise), mis hõlmab teie lapse andmete kaitse riske ja leevendusmeetmeid.</li>
+        </ul>
+
+        <h2 style={{ fontSize: 15, fontWeight: 700, marginTop: 28, marginBottom: 10 }}>6. Nõusoleku avaldus</h2>
         <div style={{
           background: '#F8F3DA',
           border: '1.5px solid #DAD0A1',
@@ -157,7 +169,7 @@ export default function ParentLetterPage() {
         </div>
 
         <p style={{ fontSize: 12, color: '#1C2832', opacity: 0.55, marginTop: 24, borderTop: '1px solid #DAD0A1', paddingTop: 16 }}>
-          Täielik privaatsuspoliitika: fyysika-tagasiside.vercel.app/privacy · Teenusepakkuja: OÜ Susilaane · taavi.tamkivi@gmail.com · +372 56634636
+          Täielik privaatsuspoliitika: fyysika-tagasiside.vercel.app/privacy · Õiguslik teave ja AI Act: fyysika-tagasiside.vercel.app/legal · Teenusepakkuja: OÜ Susilaane · taavi.tamkivi@gmail.com · +372 56634636
         </p>
       </div>
 

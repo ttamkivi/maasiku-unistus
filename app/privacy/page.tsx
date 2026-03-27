@@ -39,7 +39,7 @@ export default function PrivacyPage() {
 
       <div style={{ background: '#F8F3DA', padding: '12px 16px', borderLeft: '4px solid #DAD0A1' }}>
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, lineHeight: 1.6 }}>
-          Viimati uuendatud: <strong>23.03.2026</strong>. See privaatsuspoliitika kirjeldab, kuidas OÜ Susilaane töötleb isikuandmeid Õpetaja Tagasiside teenuse raames.
+          Viimati uuendatud: <strong>27.03.2026</strong>. See privaatsuspoliitika kirjeldab, kuidas OÜ Susilaane töötleb isikuandmeid Õpetaja Tagasiside teenuse raames.
         </p>
       </div>
 
@@ -139,7 +139,20 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section number={8} title="Küpsised">
+        <Section number={8} title="Tehisintellekti kasutamine ja EL AI Act">
+          <p style={{ margin: '0 0 8px 0' }}>
+            Õpetaja Tagasiside kasutab tehisintellekti (Anthropic Claude API) õpilaste kontrolltööde analüüsimiseks ja tagasiside genereerimiseks. Süsteem on klassifitseeritud <strong>kõrge riskiga AI-süsteemiks</strong> vastavalt EL määrusele 2024/1689 (AI Act), lisa III, punkt 3(a).
+          </p>
+          <BulletList items={[
+            <><strong>Inimjärelevalve:</strong> AI ei tee iseseisvaid otsuseid. Kõik AI-genereeritud tagasiside mustandid vaatab üle ja kinnitab õpetaja enne õpilasele jagamist.</>,
+            <><strong>Läbipaistvus:</strong> kõik AI-genereeritud väljundid on märgistatud. Õpilased ja lapsevanemad on teadlikud AI kasutamisest.</>,
+            <><strong>Andmekaitsemõjude hindamine:</strong> on läbi viidud DPIA vastavalt GDPR artiklile 35, mis hõlmab AI-spetsiifilisi riske, alaealiste kaitse riske ja andmete konfidentsiaalsuse riske.</>,
+            <><strong>Keelatud praktikad:</strong> süsteem ei tuvasta emotsioone, ei kategoriseeri biomeetriliselt, ei loo sotsiaalset hindamisskoori ega suhtle otse õpilastega.</>,
+            <><strong>Riskijuhtimine:</strong> riskihinnangut uuendatakse iga 6 kuu tagant. AI väljundite kvaliteeti auditeeritakse regulaarselt.</>,
+          ]} />
+        </Section>
+
+        <Section number={9} title="Küpsised">
           <p style={{ margin: 0 }}>
             Kasutame ainult seansi haldamiseks vajalikke küpsiseid (<code>ot_session</code>). Need on funktsionaalsed küpsised, mis on vajalikud teenuse toimimiseks. Jälgimisküpsiseid ega reklaamiküpsiseid ei kasutata.
           </p>
@@ -148,7 +161,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section number={9} title="Kontakt ja päringud">
+        <Section number={10} title="Kontakt ja päringud">
           <p style={{ margin: 0 }}>
             Privaatsusküsimuste, andmetega tutvumise taotluste ja kustutamistaotluste jaoks:
           </p>
@@ -166,7 +179,7 @@ export default function PrivacyPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, opacity: 0.65 }}>
-          Viimati uuendatud: 23.03.2026
+          Viimati uuendatud: 27.03.2026
         </p>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <Link

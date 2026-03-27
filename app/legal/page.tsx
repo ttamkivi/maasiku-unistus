@@ -173,29 +173,79 @@ export default function LegalPage() {
         </div>
       </SectionCard>
 
-      {/* 6. Kehtivad seadused */}
+      {/* 6. EL tehisintellekti määrus (AI Act) */}
       <SectionCard>
-        <SectionHeading>6. Kehtivad seadused</SectionHeading>
+        <SectionHeading>6. EL tehisintellekti määrus (AI Act)</SectionHeading>
+        <div style={{ background: '#fef2f2', border: '1.5px solid #fca5a5', padding: '12px 16px', marginBottom: 16 }}>
+          <p style={{ fontSize: 14, color: '#991b1b', margin: 0, lineHeight: 1.6, fontWeight: 600 }}>
+            Õpetaja Tagasiside on klassifitseeritud KÕRGE RISKIGA AI-süsteemiks vastavalt EL määrusele 2024/1689 (AI Act), lisa III, punkt 3(a), kuna süsteem hindab õpilaste õpitulemusi.
+          </p>
+        </div>
+        <Para>
+          Vastavalt määruse artiklile 6 ja lisale III kohalduvad süsteemile kõrge riskiga AI-süsteemide nõuded alates 2. augustist 2026.
+        </Para>
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', marginTop: 14, marginBottom: 4 }}>Inimjärelevalve (Art 14):</p>
+        <BulletList items={[
+          'AI ei tee iseseisvaid hindamisotsuseid — kõik AI-väljundid on mustandid.',
+          'Õpetaja vaatab üle, muudab ja kinnitab iga tagasiside enne õpilasele edastamist.',
+          'Ainult õpetaja kinnitatud tagasisidet saab õpilasega jagada.',
+          'Õpetaja saab AI-tagasiside igal hetkel täielikult ümber kirjutada või kustutada.',
+        ]} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', marginTop: 14, marginBottom: 4 }}>Läbipaistvus (Art 50):</p>
+        <BulletList items={[
+          'Kõik AI-genereeritud väljundid on selgelt märgistatud (MUSTAND / AI märge).',
+          'Lapsevanema teavituskiri selgitab AI kasutamist ja küsib nõusolekut.',
+          'Õpilased teavad, et tagasiside on AI abiga koostatud.',
+          'Käesolev leht ja privaatsuspoliitika kirjeldavad AI süsteemi rolli ja piiranguid.',
+        ]} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', marginTop: 14, marginBottom: 4 }}>Keelatud praktikad (Art 5):</p>
+        <BulletList items={[
+          'Süsteem EI tuvasta emotsioone õpilaste piltidelt ega töödest.',
+          'Süsteem EI kategoriseeri õpilasi biomeetriliste tunnuste (rass, sugu, rahvus) alusel.',
+          'Süsteem EI loo sotsiaalset hindamisskoori ega ennusta käitumist.',
+          'Süsteem EI suhtle otse õpilastega — ainult õpetaja kaudu.',
+        ]} />
+        <p style={{ fontSize: 14, fontWeight: 600, color: '#1C2832', marginTop: 14, marginBottom: 4 }}>Riskijuhtimine ja andmehaldus (Art 9, 10):</p>
+        <BulletList items={[
+          'Andmekaitsemõjude hindamine (DPIA) on läbi viidud vastavalt GDPR artiklile 35.',
+          'Riskihinnangut uuendatakse iga 6 kuu tagant või oluliste muudatuste korral.',
+          'AI-tagasiside kvaliteeti auditeeritakse regulaarselt ainekava vastavuse osas.',
+          'Andmete säilitusperioodid on automatiseeritud ja dokumenteeritud.',
+        ]} />
+      </SectionCard>
+
+      {/* 7. Kehtivad seadused */}
+      <SectionCard>
+        <SectionHeading>7. Kehtivad seadused</SectionHeading>
         <Para>Teenuse osutamisel järgime järgmisi õigusakte:</Para>
         <BulletList items={[
           <><strong>Isikuandmete kaitse üldmäärus (GDPR)</strong> — Euroopa Parlamendi ja nõukogu määrus (EL) 2016/679, 27. aprill 2016.</>,
           <><strong>Isikuandmete kaitse seadus (IKS) 2018</strong> — Eesti siseriiklik seadus (RT I, 04.01.2019, 11), mis rakendab GDPRi Eestis.</>,
           <><strong>Põhikooli- ja gümnaasiumiseadus (PGS)</strong> — reguleerib õpilaste andmete töötlemist haridusasutuses ja õpetajate kohustusi.</>,
-          <><strong>EL tehisintellekti määrus (AI Act)</strong> — Euroopa Parlamendi ja nõukogu määrus (EL) 2024/1689 kõrge riskiga AI kasutuse kohta haridussektoris.</>,
+          <><strong>EL tehisintellekti määrus (AI Act)</strong> — Euroopa Parlamendi ja nõukogu määrus (EL) 2024/1689 kõrge riskiga AI kasutuse kohta haridussektoris. Kõrge riski nõuded jõustuvad 2. augustil 2026.</>,
+          <><strong>Lapse õiguste konventsioon</strong> — ÜRO konventsioon lapse õiguste kohta, mis nõuab lapse parimate huvide esikohale seadmist.</>,
         ]} />
       </SectionCard>
 
       {/* Last updated */}
       <div style={{ background: '#F8F3DA', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <p style={{ fontSize: 13, color: '#1C2832', margin: 0, opacity: 0.75 }}>
-          Viimati uuendatud: 22.03.2026
+          Viimati uuendatud: 27.03.2026
         </p>
-        <Link
-          href="/privacy"
-          style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
-        >
-          Loe privaatsuspoliitikat →
-        </Link>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <Link
+            href="/privacy"
+            style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Privaatsuspoliitika →
+          </Link>
+          <Link
+            href="/privacy/parent-letter"
+            style={{ fontSize: 13, color: '#1C2832', fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Lapsevanema teavituskiri →
+          </Link>
+        </div>
       </div>
     </div>
   );
