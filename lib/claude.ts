@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
 import { CURRICULUM } from './curriculum';
+import { getCurriculumForTest } from './curriculum-filter';
 import { ASSESSMENT_RULES } from './assessment-rules';
 import { FeedbackData } from './types';
 import { getLearnedRules } from './ai-learning';
@@ -15,8 +16,11 @@ const client = new Anthropic({
 // rather than the student's real name. The actual name is stored only in our DB.
 const AI_STUDENT_PLACEHOLDER = 'Õpilane';
 
-export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string, curatedResources?: string): string {
+export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string, curatedResources?: string, curriculumCodes?: string[]): string {
   // _opilane param kept for API compatibility but NOT forwarded to Anthropic
+  // Use trimmed curriculum: only the sections relevant to this test's grade/topic/codes
+  const trimmedCurriculum = getCurriculumForTest(klass, curriculumCodes, teema);
+
   return `You are an expert Estonian physics teacher and educational assessment specialist. You receive photos of a completed student test paper from an Estonian school. Your feedback must follow evidence-based assessment science — not just "what's right and wrong" but a full learning-journey response.
 
 Student info provided by the teacher:
@@ -31,8 +35,8 @@ Your task:
 4. Answer all three feedback questions: KUHU MA LÄHEN? / KUIDAS MUL LÄHEB? / MIDA EDASI?
 5. Write deeply personal, mastery-oriented feedback in Estonian using "Sa" (capitalised)
 
-CURRICULUM REFERENCE:
-${CURRICULUM}
+CURRICULUM REFERENCE (filtered for ${klass}. klass${teema ? ` — ${teema}` : ''}):
+${trimmedCurriculum}
 
 ASSESSMENT SCIENCE RULES (mandatory — follow all 12):
 ${ASSESSMENT_RULES}
@@ -211,7 +215,7 @@ export async function analyzeTest(
     // Anthropic API does not use API data for model training by default.
     // We additionally pass metadata with no PII for our own audit purposes.
     metadata: { user_id: 'pseudonymised' },
-    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules, curatedResources),
+    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules, curatedResources, curriculumCodes),
     messages: [
       {
         role: 'user',

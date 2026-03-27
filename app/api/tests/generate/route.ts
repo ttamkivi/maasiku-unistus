@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
-import { CURRICULUM } from '@/lib/curriculum';
+import { getCurriculumForTest } from '@/lib/curriculum-filter';
 import { resolveProvider, checkUsageLimit, logUsage } from '@/lib/ai-provider';
 
 const client = new Anthropic({
@@ -58,9 +58,13 @@ export async function POST(req: NextRequest) {
   const subjectName = subject || 'aineõpetaja';
 
   // Include curriculum reference only for physics (where we have structured data)
+  // Use trimmed curriculum: only the sections relevant to this grade/topic
   const isPhysics = subject === 'Füüsika' || (curriculumCode && curriculumCode.startsWith('F'));
-  const curriculumBlock = isPhysics
-    ? `\nCURRICULUM REFERENCE (Estonian national physics curriculum):\n${CURRICULUM}\n`
+  const trimmedCurriculum = isPhysics
+    ? getCurriculumForTest(grade, curriculumCode ? [curriculumCode] : undefined, topic || subject)
+    : '';
+  const curriculumBlock = trimmedCurriculum
+    ? `\nCURRICULUM REFERENCE (filtered for ${grade}. klass${topic ? ` — ${topic}` : ''}):\n${trimmedCurriculum}\n`
     : '';
   const curriculumRule = curriculumCode
     ? `Follow the curriculum requirements for ${curriculumCode} precisely.`

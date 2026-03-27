@@ -206,6 +206,7 @@ export async function POST(
         rawFeedback,
         test.grade || '9',
         test.topic || test.title,
+        curriculumCodes,
       );
       qaFeedback = qaResult.correctedFeedback;
       qaLog = JSON.stringify(qaResult.log);

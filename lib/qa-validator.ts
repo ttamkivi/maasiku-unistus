@@ -17,7 +17,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
 import { FeedbackData } from './types';
-import { CURRICULUM } from './curriculum';
+import { getCurriculumForTest } from './curriculum-filter';
 import { ASSESSMENT_RULES } from './assessment-rules';
 
 const client = new Anthropic({
@@ -42,7 +42,10 @@ export interface QALogEntry {
   correction: string | null;
 }
 
-function buildQAPrompt(klass: string, teema: string): string {
+function buildQAPrompt(klass: string, teema: string, curriculumCodes?: string[]): string {
+  // Use trimmed curriculum — same filter as the analysis pass
+  const trimmedCurriculum = getCurriculumForTest(klass, curriculumCodes, teema);
+
   return `You are a senior educational QA reviewer for an Estonian physics feedback system. You receive the AI-generated feedback JSON from pass 1 (which read a student's test paper).
 
 You do NOT have the original test photos. Trust that pass 1 correctly read the student's answers. Your job is to validate the EDUCATIONAL QUALITY of the feedback — are the physics explanations correct? Are the conclusions sound? Is the tone appropriate?
@@ -51,8 +54,8 @@ Context:
 - Class: ${klass}
 - Topic: ${teema}
 
-CURRICULUM REFERENCE:
-${CURRICULUM}
+CURRICULUM REFERENCE (filtered for ${klass}. klass${teema ? ` — ${teema}` : ''}):
+${trimmedCurriculum}
 
 ASSESSMENT SCIENCE RULES:
 ${ASSESSMENT_RULES}
@@ -129,13 +132,14 @@ RULES:
 export async function validateFeedback(
   rawFeedback: FeedbackData,
   klass: string,
-  teema: string
+  teema: string,
+  curriculumCodes?: string[],
 ): Promise<QAResult> {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 16000,
     metadata: { user_id: 'qa-validator' },
-    system: buildQAPrompt(klass, teema),
+    system: buildQAPrompt(klass, teema, curriculumCodes),
     messages: [
       {
         role: 'user',
