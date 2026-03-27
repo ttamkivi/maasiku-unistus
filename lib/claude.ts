@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
-import { CURRICULUM } from './curriculum';
 import { getCurriculumForTest } from './curriculum-filter';
 import { ASSESSMENT_RULES } from './assessment-rules';
 import { FeedbackData } from './types';

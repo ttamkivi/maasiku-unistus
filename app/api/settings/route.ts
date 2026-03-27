@@ -56,6 +56,8 @@ export async function PUT(req: NextRequest) {
     'aiModel', 'language', 'feedbackTone', 'scoringStrictness',
     'autoAnalyze', 'showAiBadge', 'emailNotifications',
     'feedbackLanguage', 'maxPointsRounding',
+    // Teaching profile: selected subjects & classes
+    'activeSubjectIds', 'activeClassIds', 'activeGrades',
   ];
 
   const sanitized: Record<string, unknown> = {};

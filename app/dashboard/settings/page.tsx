@@ -61,6 +61,10 @@ interface UserSettings {
   emailNotifications: boolean;
   feedbackLanguage: string;
   maxPointsRounding: 'none' | 'half' | 'full';
+  // Teaching profile
+  activeSubjectIds: string[];
+  activeClassIds: string[];
+  activeGrades: number[];
 }
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -73,7 +77,33 @@ const DEFAULT_SETTINGS: UserSettings = {
   emailNotifications: true,
   feedbackLanguage: 'et',
   maxPointsRounding: 'half',
+  activeSubjectIds: [],
+  activeClassIds: [],
+  activeGrades: [],
 };
+
+/* ─── Teaching data types ─── */
+interface SubjectInfo {
+  id: string;
+  name: string;
+  category: string;
+  gradeLevels?: string;
+}
+
+interface ClassAssignment {
+  id: string;
+  classId: string | null;
+  className: string;
+  gradeLevel: number;
+  subjectId: string;
+  subjectName: string;
+}
+
+interface UniqueClass {
+  id: string;
+  name: string;
+  gradeLevel: number;
+}
 
 interface UserProfile {
   name: string;
@@ -102,26 +132,42 @@ export default function SettingsPage() {
   const [schoolProviders, setSchoolProviders] = useState<SchoolProviderInfo[]>([]);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [mySubjects, setMySubjects] = useState<SubjectInfo[]>([]);
+  const [allSubjects, setAllSubjects] = useState<SubjectInfo[]>([]);
+  const [myClasses, setMyClasses] = useState<ClassAssignment[]>([]);
+  const [uniqueClasses, setUniqueClasses] = useState<UniqueClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
-  const [section, setSection] = useState<'profile' | 'ai' | 'feedback' | 'notifications'>('profile');
+  const [section, setSection] = useState<'teaching' | 'profile' | 'ai' | 'feedback' | 'notifications'>('teaching');
 
   const loadSettings = useCallback(() => {
     setLoading(true);
     Promise.all([
       fetch('/api/settings').then(r => r.ok ? r.json() : null),
       fetch('/api/settings/school-models').then(r => r.ok ? r.json() : null),
+      fetch('/api/settings/my-teaching').then(r => r.ok ? r.json() : null),
     ])
-      .then(([settingsData, schoolData]) => {
+      .then(([settingsData, schoolData, teachingData]) => {
         if (settingsData) {
           setProfile({ name: settingsData.name, email: settingsData.email, role: settingsData.role });
-          setSettings({ ...DEFAULT_SETTINGS, ...settingsData.preferences });
+          const prefs = { ...DEFAULT_SETTINGS, ...settingsData.preferences };
+          // Ensure arrays are always arrays
+          prefs.activeSubjectIds = prefs.activeSubjectIds || [];
+          prefs.activeClassIds = prefs.activeClassIds || [];
+          prefs.activeGrades = prefs.activeGrades || [];
+          setSettings(prefs);
         }
         if (schoolData) {
           setSchoolProviders(schoolData.schoolProviders || []);
           setSchoolName(schoolData.schoolName || null);
           setUsage(schoolData.usage || null);
+        }
+        if (teachingData) {
+          setMySubjects(teachingData.mySubjects || []);
+          setAllSubjects(teachingData.allSubjects || []);
+          setMyClasses(teachingData.myClasses || []);
+          setUniqueClasses(teachingData.uniqueClasses || []);
         }
       })
       .catch(() => {})
@@ -159,6 +205,7 @@ export default function SettingsPage() {
   }
 
   const SECTIONS = [
+    { key: 'teaching' as const,      label: 'Minu õpetamine' },
     { key: 'profile' as const,       label: 'Profiil' },
     { key: 'ai' as const,            label: 'AI mudel' },
     { key: 'feedback' as const,      label: 'Tagasiside seaded' },
@@ -197,6 +244,180 @@ export default function SettingsPage() {
         <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Laadin...</div>
       ) : (
         <>
+          {/* ══════════ TEACHING (Subjects & Classes) ══════════ */}
+          {section === 'teaching' && (
+            <>
+              <Card>
+                <h3 style={h3Style}>Minu ained</h3>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 1.5 }}>
+                  Valige ained, mida praegu õpetate. See filtreerib testide loomise, raamatukogu ja AI analüüsi — näete ainult asjakohaseid valikuid.
+                </p>
+                {allSubjects.length === 0 ? (
+                  <div style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic' }}>
+                    Aineid ei leitud. Paluge administraatoril ained süsteemi lisada.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {allSubjects.map(s => {
+                      const isLinked = mySubjects.some(ms => ms.id === s.id);
+                      const isActive = settings.activeSubjectIds.length === 0
+                        ? isLinked  // If no explicit selection, default to linked subjects
+                        : settings.activeSubjectIds.includes(s.id);
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            const current = settings.activeSubjectIds.length === 0
+                              ? mySubjects.map(ms => ms.id)
+                              : [...settings.activeSubjectIds];
+                            const next = current.includes(s.id)
+                              ? current.filter(id => id !== s.id)
+                              : [...current, s.id];
+                            update('activeSubjectIds', next);
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 14px', borderRadius: 6, cursor: 'pointer',
+                            textAlign: 'left', width: '100%',
+                            background: isActive ? '#F8F3DA' : '#fff',
+                            border: isActive ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
+                          }}
+                        >
+                          <div style={{
+                            width: 18, height: 18, borderRadius: 3,
+                            border: isActive ? 'none' : '2px solid #d1d5db',
+                            background: isActive ? '#1C2832' : '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, fontSize: 12, color: '#fff', fontWeight: 700,
+                          }}>
+                            {isActive ? '✓' : ''}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>
+                              {s.name}
+                              {isLinked && (
+                                <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: '#16a34a' }}>
+                                  (seotud)
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>
+                              {s.category}{s.gradeLevels ? ` · ${s.gradeLevels}. klass` : ''}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              <Card style={{ marginTop: 16 }}>
+                <h3 style={h3Style}>Minu klassid</h3>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 1.5 }}>
+                  Valige klassid, kellele praegu õpetate. See filtreerib õpilaste nimekirju ja tulemuste vaateid.
+                </p>
+                {uniqueClasses.length === 0 && myClasses.length === 0 ? (
+                  <div style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic' }}>
+                    Klassi määranguid ei leitud. Paluge administraatoril klassid määrata.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {uniqueClasses.map(c => {
+                      const isActive = settings.activeClassIds.length === 0 || settings.activeClassIds.includes(c.id);
+                      const classSubjects = myClasses
+                        .filter(mc => mc.classId === c.id)
+                        .map(mc => mc.subjectName);
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            const current = settings.activeClassIds.length === 0
+                              ? uniqueClasses.map(uc => uc.id)
+                              : [...settings.activeClassIds];
+                            const next = current.includes(c.id)
+                              ? current.filter(id => id !== c.id)
+                              : [...current, c.id];
+                            update('activeClassIds', next);
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '10px 14px', borderRadius: 6, cursor: 'pointer',
+                            textAlign: 'left', width: '100%',
+                            background: isActive ? '#F8F3DA' : '#fff',
+                            border: isActive ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
+                          }}
+                        >
+                          <div style={{
+                            width: 18, height: 18, borderRadius: 3,
+                            border: isActive ? 'none' : '2px solid #d1d5db',
+                            background: isActive ? '#1C2832' : '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, fontSize: 12, color: '#fff', fontWeight: 700,
+                          }}>
+                            {isActive ? '✓' : ''}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1C2832' }}>{c.name}</div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>
+                              {c.gradeLevel}. klass{classSubjects.length > 0 ? ` · ${classSubjects.join(', ')}` : ''}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              <Card style={{ marginTop: 16 }}>
+                <h3 style={h3Style}>Aktiivsed klassiastmed</h3>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, lineHeight: 1.5 }}>
+                  Milliseid klassiastmeid õpetate? See aitab AI-l valida õiget õppekava ja raskusastet.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {[7, 8, 9, 10, 11, 12].map(grade => {
+                    const isActive = settings.activeGrades.length === 0 || settings.activeGrades.includes(grade);
+                    return (
+                      <button
+                        key={grade}
+                        onClick={() => {
+                          const current = settings.activeGrades.length === 0
+                            ? [7, 8, 9, 10, 11, 12]
+                            : [...settings.activeGrades];
+                          const next = current.includes(grade)
+                            ? current.filter(g => g !== grade)
+                            : [...current, grade].sort((a, b) => a - b);
+                          update('activeGrades', next);
+                        }}
+                        style={{
+                          padding: '8px 16px', borderRadius: 6, cursor: 'pointer',
+                          fontSize: 14, fontWeight: 600,
+                          background: isActive ? '#1C2832' : '#fff',
+                          color: isActive ? '#F8F3DA' : '#6b7280',
+                          border: isActive ? '2px solid #1C2832' : '1.5px solid #e5e7eb',
+                          minWidth: 56, textAlign: 'center',
+                        }}
+                      >
+                        {grade}. kl
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              {(settings.activeSubjectIds.length > 0 || settings.activeGrades.length > 0) && (
+                <div style={{
+                  marginTop: 16, padding: '12px 16px', background: '#f0fdf4',
+                  border: '1px solid #bbf7d0', borderRadius: 6, fontSize: 13, color: '#166534', lineHeight: 1.5,
+                }}>
+                  <strong>Kuluoptimeerimine:</strong> Teie valikute põhjal saadab süsteem AI-le ainult asjakohase õppekava — mitte tervet ainekava.
+                  See vähendab iga analüüsi maksumust ~15% ja parandab tagasiside täpsust.
+                </div>
+              )}
+            </>
+          )}
+
           {/* ══════════ PROFILE ══════════ */}
           {section === 'profile' && profile && (
             <Card>
