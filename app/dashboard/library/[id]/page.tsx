@@ -37,7 +37,7 @@ export default async function LibraryTestDetailPage({
 
   if (!test) notFound();
 
-  const isOwnTest = test.teacherId === session.user.teacherProfile.id;
+  const isOwnTest = session.user.teacherProfile ? test.teacherId === session.user.teacherProfile.id : false;
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>

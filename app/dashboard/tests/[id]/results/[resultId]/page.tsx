@@ -90,7 +90,7 @@ export default async function ResultReviewPage({
   // 2. Build set of consented student names (skip in prototype mode — show all)
   let consentedNames = new Set<string>();
 
-  if (!PROTOTYPE_MODE) {
+  if (!PROTOTYPE_MODE && teacherProfile) {
     const teacherSchools = await db.teacherSchool.findMany({
       where: { teacherId: teacherProfile.id },
       select: { schoolId: true },

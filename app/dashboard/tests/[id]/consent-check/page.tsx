@@ -57,10 +57,12 @@ export default async function ConsentCheckPage({
   const hasDuplicates = groups.some((g) => g.count > 1);
 
   // Get AI consent for this test's subject from teacher's school students
-  const teacherSchools = await db.teacherSchool.findMany({
-    where: { teacherId: teacherProfile.id },
-    select: { schoolId: true },
-  });
+  const teacherSchools = teacherProfile
+    ? await db.teacherSchool.findMany({
+        where: { teacherId: teacherProfile.id },
+        select: { schoolId: true },
+      })
+    : [];
   const schoolIds = teacherSchools.map((ts) => ts.schoolId);
 
   // Students in teacher's schools with their consent for this subject

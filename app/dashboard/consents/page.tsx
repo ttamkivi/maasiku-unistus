@@ -62,21 +62,23 @@ export default async function ConsentsPage() {
     where: { userId: session.user.id },
   });
 
-  if (!teacherProfile) {
+  if (!teacherProfile && !isPreview) {
     redirect('/dashboard');
   }
 
   // Mark expired requests
-  await db.consentRequest.updateMany({
-    where: {
-      requestedById: teacherProfile.id,
-      status: 'PENDING',
-      expiresAt: { lt: new Date() },
-    },
-    data: { status: 'EXPIRED' },
-  });
+  if (teacherProfile) {
+    await db.consentRequest.updateMany({
+      where: {
+        requestedById: teacherProfile.id,
+        status: 'PENDING',
+        expiresAt: { lt: new Date() },
+      },
+      data: { status: 'EXPIRED' },
+    });
+  }
 
-  const requestsRaw = await db.consentRequest.findMany({
+  const requestsRaw = teacherProfile ? await db.consentRequest.findMany({
     where: { requestedById: teacherProfile.id },
     orderBy: { sentAt: 'desc' },
     include: {
@@ -95,7 +97,7 @@ export default async function ConsentsPage() {
         },
       },
     },
-  });
+  }) : [];
   type ConsentRequestRow = (typeof requestsRaw)[number];
   const requests: ConsentRequestRow[] = requestsRaw;
 
