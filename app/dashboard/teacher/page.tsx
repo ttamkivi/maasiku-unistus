@@ -123,7 +123,7 @@ export default async function TeacherDashboardPage() {
 
   if (!user.teacherProfile && !isPreview) redirect('/dashboard');
 
-  const allTests = user.teacherProfile
+  const allTests = (user.teacherProfile || isPreview)
     ? await db.test.findMany({
         where: { deletedAt: null },
         include: {

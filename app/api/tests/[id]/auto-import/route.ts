@@ -15,7 +15,7 @@ async function getTeacherSession(token: string) {
     include: { user: { include: { teacherProfile: true } } },
   });
   if (!session || session.expiresAt < new Date()) return null;
-  if (!session.user.teacherProfile) return null;
+  if (!session.user.teacherProfile && session.user.role !== 'SUPERADMIN') return null;
   return session;
 }
 

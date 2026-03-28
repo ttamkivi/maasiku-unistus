@@ -99,7 +99,9 @@ export default async function TestsPage({
     include: { user: { include: { teacherProfile: true } } },
   });
 
-  if (!session || session.expiresAt < new Date() || !session.user.teacherProfile) {
+  const isPreview = session?.user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
+
+  if (!session || session.expiresAt < new Date() || (!session.user.teacherProfile && !isPreview)) {
     redirect('/auth/login');
   }
 
