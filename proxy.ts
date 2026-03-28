@@ -25,7 +25,7 @@ const PUBLIC_PREFIXES = [
 
 const AUTH_PAGES = ['/auth/login', '/auth/register', '/auth/eid', '/auth/forgot-password'];
 
-export function proxy(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === '/') return NextResponse.next();
