@@ -15,7 +15,7 @@ const client = new Anthropic({
 // rather than the student's real name. The actual name is stored only in our DB.
 const AI_STUDENT_PLACEHOLDER = 'Õpilane';
 
-export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string, curatedResources?: string, curriculumCodes?: string[]): string {
+export function buildSystemPrompt(klass: string, teema: string, _opilane: string, rubric?: string | null, answerKey?: string | null, learnedRules?: string, curatedResources?: string, curriculumCodes?: string[], hasRubricImages?: boolean): string {
   // _opilane param kept for API compatibility but NOT forwarded to Anthropic
   // Use trimmed curriculum: only the sections relevant to this test's grade/topic/codes
   const trimmedCurriculum = getCurriculumForTest(klass, curriculumCodes, teema);
@@ -25,7 +25,7 @@ export function buildSystemPrompt(klass: string, teema: string, _opilane: string
 Student info provided by the teacher:
 - Class: ${klass}
 - Test topic: ${teema}
-- Student: ${AI_STUDENT_PLACEHOLDER}${rubric ? `\n\nGRADING RUBRIC (provided by teacher):\n${rubric}` : ''}${answerKey ? `\n\nCORRECT ANSWERS (provided by teacher):\n${answerKey}` : ''}
+- Student: ${AI_STUDENT_PLACEHOLDER}${rubric ? `\n\nGRADING RUBRIC (provided by teacher):\n${rubric}` : ''}${answerKey ? `\n\nCORRECT ANSWERS (provided by teacher):\n${answerKey}` : ''}${hasRubricImages ? '\n\nMARKING SCHEME IMAGES: The teacher has uploaded images of their marking scheme. Use these for accurate grading.' : ''}
 
 Your task:
 1. Read every answer on the test paper carefully
@@ -180,9 +180,20 @@ export async function analyzeTest(
   images: string[],
   rubric?: string | null,
   answerKey?: string | null,
-  curriculumCodes?: string[]
+  curriculumCodes?: string[],
+  rubricImages?: string[]
 ): Promise<FeedbackData> {
   const imageBlocks = images.map((base64) => ({
+    type: 'image' as const,
+    source: {
+      type: 'base64' as const,
+      media_type: 'image/jpeg' as const,
+      data: base64,
+    },
+  }));
+
+  // Add rubric images if provided
+  const rubricImageBlocks = (rubricImages ?? []).map((base64) => ({
     type: 'image' as const,
     source: {
       type: 'base64' as const,
@@ -214,12 +225,13 @@ export async function analyzeTest(
     // Anthropic API does not use API data for model training by default.
     // We additionally pass metadata with no PII for our own audit purposes.
     metadata: { user_id: 'pseudonymised' },
-    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules, curatedResources, curriculumCodes),
+    system: buildSystemPrompt(klass, teema, opilane, rubric, answerKey, learnedRules, curatedResources, curriculumCodes, rubricImages && rubricImages.length > 0),
     messages: [
       {
         role: 'user',
         content: [
           ...imageBlocks,
+          ...rubricImageBlocks,
           {
             type: 'text',
             text: 'Palun analüüsi seda kontrolltööd ja anna tagasiside vastavalt juhendile.',

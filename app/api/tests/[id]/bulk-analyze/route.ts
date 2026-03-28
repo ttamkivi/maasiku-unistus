@@ -181,6 +181,29 @@ export async function POST(
       return NextResponse.json({ error: 'Fotode laadimine ebaõnnestus' }, { status: 500 });
     }
 
+    // Resolve rubric images if present
+    let rubricImages: string[] = [];
+    const rubricFileUrls = (test as Record<string, unknown>).rubricFileUrls;
+    if (rubricFileUrls && typeof rubricFileUrls === 'string') {
+      try {
+        const rubricUrls = JSON.parse(rubricFileUrls) as Array<{ url: string | null; name: string }>;
+        const resolvedRubricImages = await Promise.all(
+          rubricUrls
+            .filter((r) => r.url)
+            .map((r) =>
+              fetch(r.url!)
+                .then((res) => (res.ok ? res.arrayBuffer() : null))
+                .then((buffer) => (buffer ? Buffer.from(buffer).toString('base64') : null))
+                .catch(() => null)
+            )
+        );
+        rubricImages = resolvedRubricImages.filter((d): d is string => d !== null);
+      } catch (err) {
+        console.error('Error resolving rubric images:', err);
+        // Continue without rubric images
+      }
+    }
+
     // ── Pass 1: AI Analysis ──
     captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id, photoCount: images.length });
     const curriculumCodes = (test as unknown as { curriculumLinks: { curriculumCode: string }[] }).curriculumLinks?.map((cl: { curriculumCode: string }) => cl.curriculumCode) || [];
@@ -192,6 +215,7 @@ export async function POST(
       test.rubric,
       test.answerKey,
       curriculumCodes,
+      rubricImages.length > 0 ? rubricImages : undefined,
     );
 
     // ── Pass 2: QA Validation & Correction ──

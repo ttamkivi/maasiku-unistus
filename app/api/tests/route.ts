@@ -57,11 +57,12 @@ export async function POST(request: NextRequest) {
 
     const { title, topic, rubric, answerKey } = parsed.data;
     // Preserve non-schema fields from raw body
-    const { grade, subjectId, plannedDate, notes } = raw as {
+    const { grade, subjectId, plannedDate, notes, rubricFileUrls } = raw as {
       grade?: string;
       subjectId?: string;
       plannedDate?: string;
       notes?: string;
+      rubricFileUrls?: string;
     };
 
     const test = await db.test.create({
@@ -76,7 +77,8 @@ export async function POST(request: NextRequest) {
         rubric: rubric ?? null,
         answerKey: answerKey ?? null,
         status: 'PREPARING',
-      },
+        ...(rubricFileUrls && { rubricFileUrls }),
+      } as Parameters<typeof db.test.create>[0]['data'],
     });
 
     captureServerEvent(session.user.id, 'test_created', { testId: test.id, title });

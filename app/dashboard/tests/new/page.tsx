@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PROTOTYPE_MODE } from '@/lib/prototype-mode';
@@ -9,6 +9,12 @@ interface Subject {
   id: string;
   name: string;
   category: string;
+}
+
+interface RubricFile {
+  url: string | null;
+  name: string;
+  extractedText: string;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -47,6 +53,9 @@ export default function NewTestPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [rubricFiles, setRubricFiles] = useState<RubricFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/subjects')
@@ -57,6 +66,54 @@ export default function NewTestPage() {
       .catch(() => {});
   }, []);
 
+  const handleRubricFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.currentTarget.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Get test ID from URL or use a placeholder
+      // Since we're creating a new test, we'll upload when the test is created
+      // But for demo, we'll need the test ID. Let's validate and queue the file
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // We'll handle this in the submit handler since we don't have test ID yet
+      // For now, just add to pending files with extraction
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+
+        // Try to extract text using Claude (client-side is not ideal, but we'll do server-side after test creation)
+        // For now, we'll just store the file and extract after test creation
+        setRubricFiles((prev) => [
+          ...prev,
+          {
+            url: null,
+            name: file.name,
+            extractedText: '',
+          },
+        ]);
+
+        // Reset input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Faili üleslaadimine ebaõnnestus');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeRubricFile = (index: number) => {
+    setRubricFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -66,6 +123,7 @@ export default function NewTestPage() {
     setLoading(true);
     setError(null);
     try {
+      // First, create the test
       const res = await fetch('/api/tests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,10 +136,49 @@ export default function NewTestPage() {
           notes: notes.trim() || undefined,
           rubric: rubric.trim() || undefined,
           answerKey: answerKey.trim() || undefined,
+          rubricFileUrls: rubricFiles.length > 0 ? JSON.stringify(rubricFiles.map(rf => ({ url: rf.url, name: rf.name }))) : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Viga loomisel');
+
+      // Then upload any rubric files that need extraction
+      if (rubricFiles.length > 0 && fileInputRef.current?.files) {
+        const files = Array.from(fileInputRef.current.files);
+        let updatedRubricText = rubric.trim();
+
+        for (const file of files) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const uploadRes = await fetch(`/api/tests/${data.id}/rubric-upload`, {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData.extractedText) {
+                updatedRubricText += '\n\n' + uploadData.extractedText;
+              }
+            }
+          } catch (uploadErr) {
+            console.error('Error uploading rubric file:', uploadErr);
+            // Continue with other files
+          }
+        }
+
+        // If we extracted text from files, update the rubric
+        if (updatedRubricText !== rubric.trim()) {
+          await fetch(`/api/tests/${data.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rubric: updatedRubricText }),
+          });
+        }
+      }
+
       router.push(`/dashboard/tests/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Viga loomisel');
@@ -226,6 +323,91 @@ export default function NewTestPage() {
           <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
             Kirjelda hindamisjuhendit, õigeid vastuseid või muid juhiseid — AI kasutab neid tagasiside andmisel
           </p>
+        </div>
+
+        {/* Rubric file upload */}
+        <div>
+          <label style={labelStyle}>
+            Hindamisjuhendi faili üleslaadimine{' '}
+            <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 12 }}>(valikuline)</span>
+          </label>
+          <div style={{
+            border: '2px dashed #DAD0A1',
+            borderRadius: 4,
+            padding: '16px',
+            textAlign: 'center',
+            backgroundColor: '#fafaf8',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png"
+              onChange={handleRubricFileChange}
+              disabled={uploading}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                color: '#1C2832',
+                fontSize: 13,
+                fontWeight: 600,
+                padding: '8px 12px',
+                opacity: uploading ? 0.5 : 1,
+              }}
+            >
+              {uploading ? 'Laadib...' : '+ Lae üles hindamisjuhend (JPG, PNG)'}
+            </button>
+          </div>
+          <p style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
+            Saad üles laadida oma käsitsi kirjutatud või trükitud hindamisjuhendi skaneeritud versiooni. AI ekstraheerib tekstist ja lisab selle juhiste juurde.
+          </p>
+
+          {/* Display uploaded files */}
+          {rubricFiles.length > 0 && (
+            <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {rubricFiles.map((file, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 10px',
+                    backgroundColor: '#e8e6df',
+                    borderRadius: 3,
+                    fontSize: 12,
+                    color: '#1C2832',
+                  }}
+                >
+                  <span style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeRubricFile(index)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      padding: '0 4px',
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Collapsible advanced section */}

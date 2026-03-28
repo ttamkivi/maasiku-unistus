@@ -436,6 +436,7 @@ model Test {
   topic           String?
   grade           String?             // "9" — kept for display / legacy
   rubric          String?             // grading criteria for AI
+  rubricFileUrls  String?             // JSON array of Vercel Blob URLs for uploaded rubric/marking scheme files
   answerKey       String?             // correct answers for AI
   content         String?             // printable test questions/tasks for students
   blankTestNotes  String?

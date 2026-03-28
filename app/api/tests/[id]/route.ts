@@ -100,6 +100,8 @@ export async function PATCH(
     // Handle direct field updates
     if (body.status !== undefined) updateData.status = body.status;
     if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.rubric !== undefined) updateData.rubric = body.rubric;
+    if (body.rubricFileUrls !== undefined) (updateData as Record<string, unknown>).rubricFileUrls = body.rubricFileUrls;
     if (body.plannedDate !== undefined) {
       updateData.plannedDate = body.plannedDate ? new Date(body.plannedDate) : null;
     }
