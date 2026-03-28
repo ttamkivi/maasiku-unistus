@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { Role } from '@/lib/generated/prisma';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
