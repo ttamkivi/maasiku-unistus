@@ -9,6 +9,11 @@ import posthog from 'posthog-js';
 
 type Tab = 'ai' | 'notes';
 
+// Runtime guard: ensure value is actually an array (AI JSON can be malformed)
+function ensureArray<T>(val: unknown): T[] {
+  return Array.isArray(val) ? val : [];
+}
+
 interface Props {
   testId: string;
   resultId: string;
@@ -112,9 +117,11 @@ function InlineFeedback({
     { key: 'tasks', label: 'Ülesannete kaupa', desc: 'Iga ülesanne eraldi' },
   ];
 
-  const totalTasks = rawFeedback.tasks?.length ?? 0;
-  const correctTasks = rawFeedback.tasks?.filter(t => t.is_correct === true).length ?? 0;
-  const wrongTasks = rawFeedback.tasks?.filter(t => t.is_correct === false).length ?? 0;
+  const safeTasks = ensureArray<import('@/lib/types').TaskFeedback>(rawFeedback.tasks);
+  const safeResources = ensureArray<import('@/lib/types').ResourceItem>(rawFeedback.resources);
+  const totalTasks = safeTasks.length;
+  const correctTasks = safeTasks.filter(t => t.is_correct === true).length;
+  const wrongTasks = safeTasks.filter(t => t.is_correct === false).length;
   const partialTasks = totalTasks - correctTasks - wrongTasks;
 
   const updateItem = (list: FeedbackItem[], setter: (v: FeedbackItem[]) => void, index: number, field: 'title' | 'text', value: string) => {
@@ -224,10 +231,10 @@ function InlineFeedback({
           )}
 
           {/* Resources appendix — read-only */}
-          {rawFeedback.resources && rawFeedback.resources.length > 0 && (
+          {safeResources.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <SectionHeading>Kasulikud materjalid</SectionHeading>
-              {rawFeedback.resources.map((r, i) => (
+              {safeResources.map((r, i) => (
                 <Card key={i}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                     <span style={{
@@ -261,14 +268,14 @@ function InlineFeedback({
       {/* ── TASKS VIEW: per-task breakdown (read-only) ── */}
       {view === 'tasks' && (
         <div>
-          {!rawFeedback.tasks || rawFeedback.tasks.length === 0 ? (
+          {safeTasks.length === 0 ? (
             <div style={{ background: '#F8F3DA', padding: 20, fontSize: 14, color: '#1C2832' }}>
               Ülesannete kaupa vaade pole saadaval — AI ei tuvastanud üksikuid ülesandeid.
             </div>
           ) : (
             <>
               <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-                {rawFeedback.tasks.map((task, i) => {
+                {safeTasks.map((task, i) => {
                   const bg = task.is_correct === true ? '#22c55e' : task.is_correct === false ? '#ef4444' : '#f97316';
                   return (
                     <div key={i} style={{
@@ -281,7 +288,7 @@ function InlineFeedback({
                   );
                 })}
               </div>
-              {rawFeedback.tasks.map((task, i) => {
+              {safeTasks.map((task, i) => {
                 const isCorrect = task.is_correct === true;
                 const isWrong = task.is_correct === false;
                 const badgeBg = isCorrect ? '#22c55e' : isWrong ? '#ef4444' : '#f97316';
@@ -448,16 +455,20 @@ export default function ResultReviewClient({
   // Editable feedback state — always start from AI-generated rawFeedback so teacher sees the full original
   const baseFeedback = rawFeedback;
   const [editedWentWell, setEditedWentWell] = useState<FeedbackItem[]>(
-    baseFeedback?.mis_laks_hasti ?? []
+    ensureArray<FeedbackItem>(baseFeedback?.mis_laks_hasti)
   );
   const [editedImprove, setEditedImprove] = useState<FeedbackItem[]>(
-    baseFeedback?.mida_parandada ?? []
+    ensureArray<FeedbackItem>(baseFeedback?.mida_parandada)
   );
-  const [editedPattern, setEditedPattern] = useState(baseFeedback?.uldine_muster ?? '');
+  const [editedPattern, setEditedPattern] = useState(
+    typeof baseFeedback?.uldine_muster === 'string' ? baseFeedback.uldine_muster : ''
+  );
   const [editedSuggestions, setEditedSuggestions] = useState<FeedbackItem[]>(
-    baseFeedback?.soovitused ?? []
+    ensureArray<FeedbackItem>(baseFeedback?.soovitused)
   );
-  const [editedOutlook, setEditedOutlook] = useState(baseFeedback?.pilk_ettepoole ?? '');
+  const [editedOutlook, setEditedOutlook] = useState(
+    typeof baseFeedback?.pilk_ettepoole === 'string' ? baseFeedback.pilk_ettepoole : ''
+  );
 
   // Private notes
   const [teacherNotes, setTeacherNotes] = useState(initialTeacherNotes);
