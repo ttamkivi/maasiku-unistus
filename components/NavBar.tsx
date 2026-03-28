@@ -59,8 +59,8 @@ const PARENT_TABS = [
 ];
 
 const ADMIN_TABS = [
-  { href: '/admin',    icon: '⚙️', label: 'Admin' },
-  { href: '/dashboard', icon: '👤', label: 'Profiil' },
+  { href: '/admin',              icon: '⚙️', label: 'Admin' },
+  { href: '/dashboard/settings', icon: '👤', label: 'Profiil' },
 ];
 
 const KLASSIJUHATAJA_TABS = [
