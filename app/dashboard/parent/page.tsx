@@ -21,7 +21,8 @@ export default async function ParentDashboardPage() {
   });
 
   if (!session || session.expiresAt < new Date()) redirect('/auth/login');
-  if (!session.user.parentProfile) redirect('/dashboard');
+  const isPreview = session.user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
+  if (!session.user.parentProfile && !isPreview) redirect('/dashboard');
 
   const dashboardParentEnabled = await isFeatureEnabled('DASHBOARD_PARENT');
   if (!dashboardParentEnabled) {
@@ -37,9 +38,28 @@ export default async function ParentDashboardPage() {
   const parentProfile = session.user.parentProfile;
   const user = session.user;
 
+  // Preview mode: show placeholder when SUPERADMIN has no parent profile
+  if (!parentProfile && isPreview) {
+    return (
+      <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center', padding: '60px 24px' }}>
+        <div style={{
+          background: '#f5f3ff', border: '2px solid #7c3aed', borderRadius: 8,
+          padding: '20px', marginBottom: 24, fontSize: 13, color: '#7c3aed', fontWeight: 600,
+        }}>
+          👁 Eelvaade: Lapsevanema vaade. Andmeid pole, kuna sinu kontol pole lapsevanema profiili.
+        </div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>👨‍👩‍👧</div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C2832' }}>Lapsevanema töölaud</h2>
+        <p style={{ fontSize: 14, color: '#6b7280', marginTop: 8 }}>
+          Siin näeb lapsevanem oma lapse tulemusi ja saab hallata nõusolekuid.
+        </p>
+      </div>
+    );
+  }
+
   // Load children with their shared results
   const parentWithChildren = await db.parentProfile.findUnique({
-    where: { id: parentProfile.id },
+    where: { id: parentProfile!.id },
     include: {
       children: {
         include: {

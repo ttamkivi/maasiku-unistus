@@ -46,7 +46,8 @@ export default async function TeacherTrainingPage() {
 
   const user = session.user;
 
-  if (user.role !== 'TEACHER') {
+  const isPreview = user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
+  if (user.role !== 'TEACHER' && !isPreview) {
     redirect('/dashboard');
   }
 

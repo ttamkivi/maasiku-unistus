@@ -16,10 +16,18 @@ export default async function DashboardPage() {
     redirect('/auth/login');
   }
 
-  const role = session.user.role;
+  // If SUPERADMIN is previewing another role, use the preview role for routing
+  let role = session.user.role;
+  if (role === 'SUPERADMIN') {
+    const previewRole = cookieStore.get('ot_preview_role')?.value;
+    if (previewRole && previewRole !== 'SUPERADMIN') {
+      role = previewRole;
+    }
+  }
 
   switch (role) {
     case 'TEACHER':
+    case 'KLASSIJUHATAJA':
       redirect('/dashboard/teacher');
     case 'STUDENT':
       redirect('/dashboard/student');

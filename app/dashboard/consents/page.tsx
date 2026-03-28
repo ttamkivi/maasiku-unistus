@@ -53,7 +53,8 @@ export default async function ConsentsPage() {
     redirect('/auth/login');
   }
 
-  if (session.user.role !== 'TEACHER') {
+  const isPreview = session.user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
+  if (session.user.role !== 'TEACHER' && !isPreview) {
     redirect('/dashboard');
   }
 

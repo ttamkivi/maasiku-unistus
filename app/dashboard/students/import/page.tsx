@@ -16,7 +16,8 @@ export default async function StudentsImportPage() {
   });
 
   if (!session || session.expiresAt < new Date()) redirect('/auth/login');
-  if (!ALLOWED_ROLES.includes(session.user.role)) redirect('/dashboard');
+  const isPreview = session.user.role === 'SUPERADMIN' && !!cookieStore.get('ot_preview_role')?.value;
+  if (!ALLOWED_ROLES.includes(session.user.role) && !isPreview) redirect('/dashboard');
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 60 }}>
