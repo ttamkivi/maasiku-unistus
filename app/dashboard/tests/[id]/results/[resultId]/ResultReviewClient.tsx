@@ -58,13 +58,15 @@ function Card({ children, accent }: { children: React.ReactNode; accent?: string
 type View = 'feedback' | 'tasks';
 
 // Inline-editable text that looks like display text until focused
-function InlineText({ value, onChange, disabled, style, multiline }: {
+function InlineText({ value: rawValue, onChange, disabled, style, multiline }: {
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
   style?: React.CSSProperties;
   multiline?: boolean;
 }) {
+  // AI JSON can have null/undefined fields — always coerce to string
+  const value = typeof rawValue === 'string' ? rawValue : String(rawValue ?? '');
   const baseStyle: React.CSSProperties = {
     width: '100%', border: 'none', outline: 'none', resize: 'none',
     background: 'transparent', padding: 0, margin: 0, fontFamily: 'inherit',
@@ -359,7 +361,7 @@ function EditableItemList({
         <div key={i} style={{ background: '#F8F3DA', padding: 10, marginBottom: 8 }}>
           <input
             type="text"
-            value={item.title}
+            value={item.title ?? ''}
             onChange={(e) => updateItem(i, 'title', e.target.value)}
             disabled={disabled}
             placeholder="Pealkiri"
@@ -370,7 +372,7 @@ function EditableItemList({
             }}
           />
           <textarea
-            value={item.text}
+            value={item.text ?? ''}
             onChange={(e) => updateItem(i, 'text', e.target.value)}
             disabled={disabled}
             rows={3}
