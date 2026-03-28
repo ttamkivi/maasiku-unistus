@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import RoleSwitcher from './RoleSwitcher';
 
 export default async function AdminPage() {
   const cookieStore = await cookies();
@@ -71,6 +72,8 @@ export default async function AdminPage() {
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6, marginBottom: 32 }}>
           Tere, {session.user.name}! Vali tegevus allpool.
         </p>
+
+        {isSuperAdmin && <RoleSwitcher />}
 
         <div
           style={{
