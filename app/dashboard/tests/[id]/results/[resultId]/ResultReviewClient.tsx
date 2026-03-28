@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ResultStatus } from '@/lib/generated/prisma/client';
+import { ResultStatus } from '@/lib/generated/prisma/enums';
 import { FeedbackData, FeedbackItem } from '@/lib/types';
 import AITransparencyMarker from '@/components/AITransparencyMarker';
 import posthog from 'posthog-js';
