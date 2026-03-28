@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
+import { Role } from '@/lib/generated/prisma';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
@@ -17,8 +18,8 @@ export default async function DashboardPage() {
   }
 
   // If SUPERADMIN is previewing another role, use the preview role for routing
-  let role = session.user.role;
-  if (role === 'SUPERADMIN') {
+  let role: string = session.user.role;
+  if (session.user.role === 'SUPERADMIN') {
     const previewRole = cookieStore.get('ot_preview_role')?.value;
     if (previewRole && previewRole !== 'SUPERADMIN') {
       role = previewRole;
