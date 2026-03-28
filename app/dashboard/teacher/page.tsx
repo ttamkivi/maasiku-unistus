@@ -125,7 +125,7 @@ export default async function TeacherDashboardPage() {
 
   const allTests = user.teacherProfile
     ? await db.test.findMany({
-        where: { teacherId: user.teacherProfile.id, deletedAt: null },
+        where: { deletedAt: null },
         include: {
           subject: true,
           class: { select: { name: true } },

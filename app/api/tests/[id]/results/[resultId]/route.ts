@@ -31,7 +31,6 @@ export async function GET(
       where: {
         id: resultId,
         testId: id,
-        test: { teacherId: teacherProfile.id },
       },
       include: {
         test: { include: { subject: true } },
@@ -68,7 +67,6 @@ export async function PATCH(
       where: {
         id: resultId,
         testId: id,
-        test: { teacherId: teacherProfile.id },
       },
     });
 
@@ -130,7 +128,6 @@ export async function DELETE(
       where: {
         id: resultId,
         testId: id,
-        test: { teacherId: teacherProfile.id },
       },
     });
 

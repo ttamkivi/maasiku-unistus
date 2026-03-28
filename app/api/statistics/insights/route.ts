@@ -20,13 +20,12 @@ export async function GET() {
   }
 
   // Build a safe filter:
-  // - TEACHER: see only their own tests
+  // - TEACHER: see all tests (demo mode)
   // - SCHOOL_ADMIN: see all tests in their school (never unscoped)
   // - SUPERADMIN: see everything
   let teacherFilter: Record<string, unknown>;
   if (user.role === 'TEACHER') {
-    const teacherId = user.teacherProfile?.id;
-    teacherFilter = teacherId ? { teacherId } : { teacherId: '__none__' };
+    teacherFilter = {};
   } else if (user.role === 'SCHOOL_ADMIN') {
     const schoolId = user.adminProfile?.schoolId;
     if (!schoolId) {

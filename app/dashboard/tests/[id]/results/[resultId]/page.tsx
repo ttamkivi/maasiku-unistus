@@ -68,7 +68,6 @@ export default async function ResultReviewPage({
     where: {
       id: resultId,
       testId: id,
-      test: { teacherId: teacherProfile.id },
     },
     include: {
       test: { include: { subject: true } },

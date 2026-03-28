@@ -109,7 +109,7 @@ export default async function TestsPage({
   const filterDef = resultFilter ? RESULT_FILTERS[resultFilter] : null;
 
   const tests = await db.test.findMany({
-    where: { teacherId: teacherProfile.id, deletedAt: null },
+    where: { deletedAt: null },
     orderBy: { createdAt: 'desc' },
     include: {
       subject: true,

@@ -133,7 +133,7 @@ export default async function TestDetailPage({
   const teacherProfile = session.user.teacherProfile;
 
   const test = await db.test.findFirst({
-    where: { id, teacherId: teacherProfile.id, deletedAt: null },
+    where: { id, deletedAt: null },
     include: {
       subject: true,
       results: {

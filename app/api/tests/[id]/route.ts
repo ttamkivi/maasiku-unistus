@@ -39,7 +39,7 @@ export async function GET(
     const { id } = await params;
 
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: {
         subject: true,
         results: {
@@ -74,7 +74,7 @@ export async function PATCH(
     const { id } = await params;
 
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
     });
 
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });

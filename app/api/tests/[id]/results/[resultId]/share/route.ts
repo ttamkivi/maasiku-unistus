@@ -31,7 +31,6 @@ export async function POST(
       where: {
         id: resultId,
         testId: id,
-        test: { teacherId: teacherProfile.id },
       },
     });
 

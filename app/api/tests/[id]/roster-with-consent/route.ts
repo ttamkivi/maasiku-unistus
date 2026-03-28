@@ -30,7 +30,7 @@ export async function GET(
     const { id } = await params;
 
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
       select: { classId: true, subjectId: true },
     });
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });

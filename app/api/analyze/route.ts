@@ -112,13 +112,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Verify teacher owns this test result
+      // Verify test result exists
       if (!existingResult) {
         return NextResponse.json({ error: 'Testi tulemust ei leitud.' }, { status: 404 });
-      }
-
-      if (existingResult.test.teacherId !== user.teacherProfile?.id && !['ADMIN', 'SUPERADMIN'].includes(user.role)) {
-        return NextResponse.json({ error: 'Sul pole õigust seda tulemust analüüsida.' }, { status: 403 });
       }
 
       // Check parental consent if student is linked

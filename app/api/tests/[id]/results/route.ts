@@ -30,7 +30,7 @@ export async function POST(
 
     // Verify test belongs to this teacher
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
     });
 
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });

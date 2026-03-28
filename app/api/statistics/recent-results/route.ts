@@ -19,8 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Ainult õpetajatele' }, { status: 403 });
   }
 
-  const teacherId = user.teacherProfile?.id;
-  const teacherFilter = teacherId ? { teacherId } : {};
+  const teacherFilter = {};
 
   const results = await db.testResult.findMany({
     where: {

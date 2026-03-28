@@ -68,7 +68,7 @@ export async function GET(
     const { id } = await params;
 
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: { subject: true },
     });
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });
@@ -124,7 +124,7 @@ export async function POST(
     const { id } = await params;
 
     const test = await db.test.findFirst({
-      where: { id, teacherId: teacherProfile.id, deletedAt: null },
+      where: { id, deletedAt: null },
       include: { subject: true, curriculumLinks: { select: { curriculumCode: true } } },
     });
     if (!test) return NextResponse.json({ error: 'Testi ei leitud' }, { status: 404 });
