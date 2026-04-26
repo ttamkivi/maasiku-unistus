@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { analyzeTest } from '@/lib/claude';
+import { analyzeTest, analyzeTestAgentic } from '@/lib/claude';
+import { AGENTIC_ANALYSIS_ENABLED } from '@/lib/features';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
 
@@ -137,7 +138,13 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 4. Run AI analysis ─────────────────────────────────────────────────
-    const feedback = await analyzeTest(klass, teema, opilane, images, rubric, answerKey);
+    let feedback;
+    if (AGENTIC_ANALYSIS_ENABLED) {
+      const pages = images.map((base64, i) => ({ base64Image: base64, pageIndex: i, sourceFile: `photo-${i}` }));
+      feedback = await analyzeTestAgentic(pages, klass, teema, opilane, rubric, answerKey);
+    } else {
+      feedback = await analyzeTest(klass, teema, opilane, images, rubric, answerKey);
+    }
 
     await audit('AI_ANALYSIS_COMPLETED', {
       userId: user.id,

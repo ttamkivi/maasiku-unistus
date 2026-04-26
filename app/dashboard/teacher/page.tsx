@@ -288,6 +288,82 @@ export default async function TeacherDashboardPage() {
         <p style={{ fontSize: 14, color: '#1C2832', opacity: 0.6 }}>Õpetaja töölaud</p>
       </div>
 
+      {/* Step guidance banner — contextual next action */}
+      {(() => {
+        if (totalTests === 0) return (
+          <div style={{ background: '#dbeafe', border: '1.5px solid #93c5fd', borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>1️⃣</span>
+            <span style={{ fontSize: 14, color: '#1e40af', flex: 1 }}><strong>Alusta:</strong> Loo oma esimene kontrolltöö, et saada AI tagasisidet.</span>
+            <Link href="/dashboard/tests/new" style={{ background: '#1d4ed8', color: '#fff', fontSize: 13, fontWeight: 700, padding: '8px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>Loo kontrolltöö →</Link>
+          </div>
+        );
+        const readyTests = allTests.filter(t => t.status === 'READY' && t.results.length === 0);
+        if (readyTests.length > 0) return (
+          <div style={{ background: '#fef3c7', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>2️⃣</span>
+            <span style={{ fontSize: 14, color: '#92400e', flex: 1 }}><strong>Skaneeri tööd:</strong> &laquo;{readyTests[0].title}&raquo; ootab õpilaste tööde üleslaadimist.</span>
+            <Link href={`/dashboard/tests/${readyTests[0].id}/batch-import`} style={{ background: '#b45309', color: '#fff', fontSize: 13, fontWeight: 700, padding: '8px 16px', textDecoration: 'none', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>Skaneeri tööd →</Link>
+          </div>
+        );
+        if (hasDraft) return (
+          <div style={{ background: '#fef9c3', border: '1.5px solid #fde047', borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>3️⃣</span>
+            <span style={{ fontSize: 14, color: '#854d0e', flex: 1 }}><strong>Vaata tagasisidet:</strong> AI tagasiside on valmis — vaata üle ja kinnita.</span>
+          </div>
+        );
+        if (hasApproved) return (
+          <div style={{ background: '#dcfce7', border: '1.5px solid #86efac', borderRadius: 8, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>4️⃣</span>
+            <span style={{ fontSize: 14, color: '#166534', flex: 1 }}><strong>Jaga õpilastega:</strong> Kinnitatud tagasiside ootab jagamist.</span>
+          </div>
+        );
+        return null;
+      })()}
+
+      {/* Hero: Scan class papers — prominent action for teachers with tests */}
+      {totalTests > 0 && (() => {
+        const scannable = allTests.filter(t => ['READY', 'DISTRIBUTED', 'COLLECTING'].includes(t.status));
+        if (scannable.length === 0) return null;
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #1C2832 0%, #2d3e4e 100%)',
+            color: '#F8F3DA',
+            borderRadius: 12,
+            padding: '22px 24px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            boxShadow: '0 4px 12px rgba(28, 40, 50, 0.25)',
+          }}>
+            <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>📄</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em' }}>Skaneeri klassi tööd</div>
+              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2 }}>
+                {scannable.length === 1
+                  ? `Lae üles "${scannable[0].title}" skaneeringud`
+                  : `${scannable.length} kontrolltööd ootavad skaneerimist`}
+              </div>
+            </div>
+            <Link
+              href={`/dashboard/tests/${scannable[0].id}/batch-import`}
+              style={{
+                background: '#F8F3DA',
+                color: '#1C2832',
+                fontWeight: 700,
+                fontSize: 14,
+                padding: '12px 22px',
+                textDecoration: 'none',
+                borderRadius: 6,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              Skaneeri →
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* Invite colleague banner */}
       {!PROTOTYPE_MODE && <div style={{

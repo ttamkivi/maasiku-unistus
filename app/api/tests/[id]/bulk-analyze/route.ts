@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
-import { analyzeTest } from '@/lib/claude';
+import { analyzeTest, analyzeTestAgentic } from '@/lib/claude';
+import { AGENTIC_ANALYSIS_ENABLED } from '@/lib/features';
 import { validateFeedback } from '@/lib/qa-validator';
 import { recordPatterns } from '@/lib/ai-learning';
 import { hasAIConsentByName } from '@/lib/consent';
@@ -207,16 +208,35 @@ export async function POST(
     // ── Pass 1: AI Analysis ──
     captureServerEvent(session.user.id, 'ai_analysis_started', { resultId, testId: id, photoCount: images.length });
     const curriculumCodes = (test as unknown as { curriculumLinks: { curriculumCode: string }[] }).curriculumLinks?.map((cl: { curriculumCode: string }) => cl.curriculumCode) || [];
-    const rawFeedback = await analyzeTest(
-      test.grade || '9',
-      test.topic || test.title,
-      result.studentName || 'Õpilane',
-      images,
-      test.rubric,
-      test.answerKey,
-      curriculumCodes,
-      rubricImages.length > 0 ? rubricImages : undefined,
-    );
+
+    let rawFeedback;
+    if (AGENTIC_ANALYSIS_ENABLED) {
+      // 4-agent agentic pipeline
+      const pages = images.map((base64, i) => ({ base64Image: base64, pageIndex: i, sourceFile: `photo-${i}` }));
+      rawFeedback = await analyzeTestAgentic(
+        pages,
+        test.grade || '9',
+        test.topic || test.title,
+        result.studentName || 'Õpilane',
+        test.rubric,
+        test.answerKey,
+        undefined, // classRoster — not yet wired
+        undefined, // studentHistory — not yet wired
+        id,
+        teacherProfile.id,
+      );
+    } else {
+      rawFeedback = await analyzeTest(
+        test.grade || '9',
+        test.topic || test.title,
+        result.studentName || 'Õpilane',
+        images,
+        test.rubric,
+        test.answerKey,
+        curriculumCodes,
+        rubricImages.length > 0 ? rubricImages : undefined,
+      );
+    }
 
     // ── Pass 2: QA Validation & Correction ──
     let qaFeedback = rawFeedback;

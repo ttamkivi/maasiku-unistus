@@ -269,3 +269,43 @@ export async function analyzeTest(
     return JSON.parse(repaired) as FeedbackData;
   }
 }
+
+// ── Agentic pipeline helpers ────────────────────────────────────────────────
+
+export async function loadCuratedResourcesForAgent(grade: string): Promise<string> {
+  return loadCuratedResources(grade);
+}
+
+export async function analyzeTestAgentic(
+  pages: import('./agents/types').ScannedPage[],
+  klass: string,
+  teema: string,
+  opilane: string,
+  rubric?: string | null,
+  answerKey?: string | null,
+  classRoster?: { id: string; name: string }[],
+  studentHistory?: string | null,
+  testId?: string,
+  teacherId?: string,
+): Promise<FeedbackData> {
+  const { runAgentPipeline } = await import('./agents/orchestrator');
+
+  const result = await runAgentPipeline({
+    pages,
+    klass,
+    teema,
+    rubric,
+    answerKey,
+    classRoster,
+    studentHistory,
+    testId: testId || 'unknown',
+    teacherId: teacherId || 'unknown',
+  });
+
+  // Log QA result for monitoring
+  if (!result.qa.approved) {
+    console.warn('[analyzeTestAgentic] QA did not approve. Issues:', result.qa.issues);
+  }
+
+  return result.finalFeedback;
+}

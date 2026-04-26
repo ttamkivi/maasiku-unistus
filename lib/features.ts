@@ -62,3 +62,6 @@ export async function isFeatureEnabled(key: FeatureKey): Promise<boolean> {
   const flags = await getFeatureFlags();
   return flags[key] ?? false;
 }
+
+// Agentic analysis pipeline — controlled by env var, not DB (requires infrastructure change)
+export const AGENTIC_ANALYSIS_ENABLED = process.env.AGENTIC_ANALYSIS_ENABLED === 'true';
