@@ -51,3 +51,4 @@ dev.db-wal
 # uploaded PDF batches / tmp files
 /tmp/
 /public/uploads/
+*.backup
