@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec-driven Starter"
+  short_description: "Scaffold spec-driven project docs"
+  default_prompt: "Use $spec-driven-starter to initialize this repo with spec-driven project docs and workflow guidance."
