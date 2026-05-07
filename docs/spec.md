@@ -30,6 +30,7 @@
 ### Demo-lugu (laupäev 9. mai žürii ees)
 
 - **K10.** Külalis-õpetajana (mitte tiimi liige) tahan ma vaadata läbi 4 päris õpilastöö AI-tagasiside ja kinnitada, et keskmine ülevaatuse aeg on ≤ 1 minut, et žürii saaks hinnata, kas väide on tõene. *(stopper algab AI-mustandi näitamisest, lõpeb kinnituse klõpsust)*
+- **K11.** 9. klassi õpilasena tahan ma lugeda mulle suunatud AI+õpetaja kinnitatud tagasisidet ja anda hinnangu skaalal "selge / keskmine / segane" + vabatekstis öelda, mis on segane, et tiim näeks, kas keskmine lõppkasutaja saab tagasisidest aru ja oskab järgmise sammu astuda. *(rakendub kahel viisil: eel-häki eval-set'i raames mitukümmend õpilast hindavad anonüümselt; demo'l laupäeval üks külalis-õpilane Triin'i klassist annab vahetut tagasisidet jürii ees.)*
 
 ## Funktsionaalsus kasutaja vaatest
 
@@ -81,6 +82,35 @@
 - **Õpilase iseteenindust** ei toeta — see on **õpetaja tööriist**.
 - **Õpilastööde pilte** püsivalt ei salvesta (kustutus peale `APPROVED/SHARED` GDPR-cron'iga).
 - **eKooli/Stuudiumi integratsiooni** häki ajal ei tee — post-häki tegevus.
+
+## Tehniline arhitektuur (LLM-piiri turvalisus + multi-provider tugi)
+
+### LLM-providerite tugi
+
+Süsteem on **provider-agnostic** läbi `lib/ai-provider.ts` abstraktsiooni. Toetab:
+
+- **Anthropic Claude** (claude-sonnet-4-6, claude-opus-4-6, claude-haiku-4-5)
+- **OpenAI GPT** (gpt-4o, gpt-4o-mini, o3) — *aktiveeritakse häkiks organisaatorite krediidiga*
+- **Google Gemini** (gemini-2.5-pro, gemini-2.5-flash) — *toodud kuid mitte aktiivne*
+
+Provider valitakse kahe-tasemelise resolution'iga: (1) kooli `AIProviderConfig` (BYOK), (2) süsteemi default. Iga kool saab valida oma provideri ja kanda oma API-kulud.
+
+### PII tokeniseerimine LLM-piiril
+
+- **Kõik LLM-päringud** (olgu Claude, OpenAI või Gemini) lähevad läbi `lib/security/pii-tokenizer.ts`.
+- **Tokenize** käib peale digitalize-agent'i (mis loeb pildilt nimed), enne assess-agent'i.
+- **Detokenize** käib pärast qa-agent'i, enne salvestust DB-sse või UI-le.
+- **Tokeniseeritavad andmed:** õpilase nimi → "Õpilane 01", kooli nimi → "Kool", klassi tunnus → "Klass", vanema nimi → "Vanem A", õpetaja nimi → "Õpetaja".
+- **`[bracket]` PII** (emailid, isikukoodid, telefonid) ei lähe LLM-i kunagi — audit-funktsioon kontrollib enne iga LLM-päringut, lekke korral pipeline peatub + `AuditLog` alarm.
+
+### Programm-aju vs projekti spec
+
+- **`brain/static/`** = developer-edited sisu, mida agendid loevad runtime'is (õigusaktid, RÕK, pedagoogika, vea-taksonoomia)
+- **`brain/dynamic-spec.md` + DB** = automaatselt täienev (`FeedbackPattern` mustrid, õpetaja-redigeeringute meta-andmestik)
+- **`docs/`** = häki-projekti spetsifikatsioon (konstitutsioon, spec, prd, ehituslogi)
+- **`lib/brain/`** = loader-kiht (static + dynamic agentidele)
+
+Agendid kasutavad `lib/brain/index.ts`-i `loadBrain()`-i kaudu, ei loe ise faile.
 
 ## Visuaalne visioon
 

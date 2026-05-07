@@ -48,6 +48,8 @@ Need on tiimi kokkulepped, mis raamistavad kõiki edasisi otsuseid. Spec ja PRD 
 5. **Kvaliteet on mõõdetav, mitte tunnetatav.** Iga väide "see töötab" peab olema seotud konkreetse mõõdetava näitajaga (õpetaja ülevaatuse aeg sekundites, vea klassifikatsiooni täpsus protsentides, RÕK-viite reaalsuse osakaal).
 6. **Pilot-ready toode, mitte häki-prototüüp.** Andmed on tegelikud, salvestus on tegelik, audit-trail on tegelik. Häki ajal ehitatud osad peavad sobima sama koodibaasi sisse — mitte one-off demo eraldi koodibaasis.
 7. **Hindeid ei näita.** Tagasiside sisaldab tugevusi, arengukohti, järgmisi samme, RÕK-i viidet. Hinde-numbrit ja klassi-võrdlust ei ole. (Teadlik valik, uuringutele tuginev — õpilased ignoreerivad tagasisidet, kui hinne on nähtav.)
+8. **Programm-aju on eraldi häki-projekti dokumentidest.** Õigusaktid, õppekava, pedagoogika ja vea-taksonoomia elavad `brain/static/`-s (developer-edited markdown). Häki-projekti spec (konstitutsioon, spec, prd, ehituslogi) elab `docs/`-s. Dünaamiline aju (õppivad mustrid kontrolltööde meta-andmestikust) elab DB-s, agentid loevad selle kohta `lib/brain/dynamic-loader.ts`-i kaudu. Agendid loevad ajule, ei kirjuta kunagi. Aju uuendamine käib: (a) developer git-commit'iga staatilise sisu jaoks, (b) inimese-poolne workflow (õpetaja redigeerib AI tagasisidet → süsteem kirjutab `FeedbackPattern`-isse) dünaamilise jaoks.
+9. **PII tokeniseerimine LLM-i piiril.** Õpilase nimi, kooli nimi, klassi tunnus, vanema nimi tokeniseeritakse **enne** mis tahes LLM-päringut (`lib/security/pii-tokenizer.ts`). Detokeniseerimine ainult viimases sammus enne salvestust või kuvamist. `[bracket]` PII (emailid, isikukoodid, telefonid) ei lähe LLM-ile **kunagi**, isegi tokeniseeritud kujul. Süsteem on **provider-agnostic** — sama tokenizer-kiht töötab Anthropic Claude'i, OpenAI GPT ja Google Gemini'ga.
 
 ## Edu kriteeriumid
 
@@ -61,6 +63,9 @@ Need on tiimi kokkulepped, mis raamistavad kõiki edasisi otsuseid. Spec ja PRD 
 | 4 | **Tagasiside kvaliteet** | õpetaja kinnitab AI-tagasiside muutmata | ≥ 50% kinnitatakse muutmata; ülejäänud ≤ 30 sek redigeerimist |
 | 5 | **RÕK-seos** | iga tagasiside viitab konkreetsele RÕK punktile | 100%, ükski viide pole hallutsineeritud |
 | 6 | **Eestikeelse õppe seos** | pitch näitab selgelt, kuidas lahendus toetab üleminekut | jah/ei (žürii kriteerium #1) |
+| 7 | **Õpilase arusaamine** | 9. klassi õpilased hindavad iga AI+õpetaja tagasisidet skaalal "selge / keskmine / segane" + vabateksti märkused | mediaan ≥ "selge"; ≥ 70% tagasisidedest hinnatud kui "selge" või "keskmine" |
+
+> Kriteerium #7 lisatud peale Kristel Akermani feedback'i Eventornado discussion'is (2026-04-30): "Kas nö boonusliikmena võiks liituda tiimiga õpilane, et omakorda hinnata, kas AI+õpetaja tagasiside on õpilase jaoks arusaadav, kergelt mõistetav, st kas on keskmise lõppkasutaja jaoks funktsionaalne?" Õigesti tõstatatud — ilma õpilase-poolse mõistmise mõõtmiseta võib AI tagasiside olla õpetajale-mõistlik aga õpilasele segane. Lisame metric'u, mitte tunnetuse.
 
 ### Häki-välised, korraldajate nõue 3 kuu jooksul
 

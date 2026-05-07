@@ -12,7 +12,24 @@ Vorm: `### YYYY-MM-DD (autor)` + 1-3 lause kanne, miks ja mida.
 
 ## Logi
 
-### 2026-04-30 (taavi)
+### 2026-04-30 (taavi) — Sprint 19 plaanitud: Brain arhitektuur + PII tokenizer + OpenAI provider
+
+- **Programm-aju formaalselt eraldatud häki-projekti dokumentidest.** Uus `brain/` top-level kaust (`static/legal`, `static/curriculum`, `static/pedagogy`, `static/assessment` + `dynamic-spec.md`). `docs/` jääb häki spec'i jaoks. `lib/brain/` muutub puhtaks loader-kihiks. Põhimõte 8 lisatud konstitutsioonisse.
+- **PII tokeniseerimine standardiseeritud kihina** `lib/security/pii-tokenizer.ts`-s. Praegu agentide-vahel hajutatud anonümiseerimine tõstetakse üheks kohaks. `[bracket]` PII (emailid, isikukoodid, telefonid) ei lähe LLM-i — audit-safety-net peatab pipeline'i lekke korral. Põhimõte 9 lisatud konstitutsioonisse.
+- **Multi-provider aktiveeritud häki ajaks.** `lib/ai-provider.ts` on juba multi-provider disainitud (Anthropic + OpenAI + Google), aga OpenAI dependency + tegelik kõnekood on TODO. Sprint 19 Faas 4.5 implementeerib selle. Häki ajal kasutame organisaatorite OpenAI krediiti läbi BYOK-arhitektuuri (`AIProviderConfig` per kool), mitte env-default'i muutes. See tugevdab pitch'i: "iga kool valib oma provideri ja kannab oma API-kulu".
+- **Tokenizer on provider-agnostic** — sama kiht töötab Claude, OpenAI ja Gemini'ga, sest tokenize/detokenize tegutseb stringi-tasemel enne provider-spetsiifilist payload-pakkimist.
+- **Mõju kasutaja-vaatele:** ükski. See on infra-uuendus, demo-funktsionaalsus säilib.
+- **Sprint 19 detail:** `architecture/02-sprint-19-architecture-refactor.md` (Brain'is) sisaldab Faas 1-6 sammhaaval kava, eeldatav aeg 5-8 h.
+- **Paralleelelu lubatud** — vana `lib/brain/*.ts` const-id jäävad esialgu shimm'idena (`export const X = loadStaticContent(...)`), peale Sprint 20-t kustutame.
+
+### 2026-04-30 (taavi) — õpilase-arusaamise mõõdik lisatud
+
+- **Edu kriteerium #7, kasutajalugu K11, mittefunktsionaalne nõue N8, häki-päeva nõue D7 lisatud.** Põhjus: Kristel Akermani feedback Eventornado discussion'is — meie esialgsed kriteeriumid mõõtsid ainult õpetaja-poolt (review-aeg, klassifikatsioon, RÕK-vaste). Kui AI tagasiside on õpetajale-mõistlik aga õpilasele segane, me ei lahendanud probleemi.
+- **Kahekihiline lahendus:** (1) eval-set'is iga õpilane hindab oma tagasisidet skaalal "selge / keskmine / segane" pluss vabatext (= mass-mõõdik), (2) demo'l laupäeval üks külalis-õpilane Triin'i klassist annab vahetut hinnangut jürii ees (= näide-mõõdik). Esimene annab kvantiteedi, teine annab usaldusväärsuse.
+- **Tiimi suurus jääb 4-liikmeliseks** (Taavi, Evelin, Marie, Triin) + 2 TBD. Õpilane on **demo-osaleja** (laupäeva pärastlõunal ~30-60 min), mitte tiimi-liige. Hoiab raami 3-5 sees ilma erandita.
+- **D7 sõltuvus:** Triin peab oma klassist värbama ühe põnevil 9. klassi õpilase + vanema kirjaliku nõusoleku.
+
+### 2026-04-30 (taavi) — spec-driven scaffold
 
 - **Spec-driven scaffold lisatud Praktikali häki-template'i järgi.** AGENTS.md uuendatud (preserve nextjs-rules + lisa spec-driven workflow + projekt-spetsiifilised reeglid). Lisatud `docs/konstitutsioon.md`, `spec.md`, `prd.md`, `ehituslogi.md`. Filo-konventsioon: `ehituslogi.md` (mitte `log.md`) match'imaks Praktikali template'iga, et tiimi liikmed teiste häki tiimidega samas keeles räägivad.
 - **Vea-taksonoomia lukustatud konstitutsioonis 5+1 kategooriasse:** mõiste / arvutus / märk / loogika / ühik / ei ole viga. Kui `assess-agent.ts` praegu kasutab teist taksonoomiat (näiteks füüsika-spetsiifilist), siis häki-eelne ülesanne on see matemaatikale kohandada. Triin valideerib enne reedet.

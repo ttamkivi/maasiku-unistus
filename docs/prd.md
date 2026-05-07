@@ -100,14 +100,46 @@ Staatuse legend: `[ ]` = ei ole · `[~]` = pooleli · `[x]` = valmis · `[!]` = 
 - [ ] **N7.3** Demo-konto + demo-klassi seed (4 päris õpilastööd `public/demo/`-s)
 - [ ] **N7.4** Stopper-protokoll dokumenteeritud (kuidas mõõdame 1-min ülevaatuse aega)
 
+### N8 — Õpilase-arusaamise hindamine (lisatud peale Kristel Akermani feedback'i)
+- [ ] **N8.1** Eval-set'is iga õpilane, kes lahendab 4 kontrolltööd, hindab pärast oma AI+õpetaja kinnitatud tagasisidet skaalal "selge / keskmine / segane" + vabateksti märkused
+- [ ] **N8.2** Hindamis-vorm on lihtne (paber või Google Form, õpilane teeb 2-3 min iga tagasiside kohta)
+- [ ] **N8.3** Tulemused agregeeritud: protsent "selge", protsent "keskmine", protsent "segane" + vabateksti väljavõtted
+- [ ] **N8.4** Sihteesmärk: ≥ 70% hinnatud "selge" või "keskmine"; mediaan ≥ "selge" (= konstitutsiooni edu kriteerium #7)
+
+### N9 — Programm-aju arhitektuur (Sprint 19)
+- [ ] **N9.1** `brain/` top-level kaust loodud koos `static/` (legal, curriculum, pedagogy, assessment) + `dynamic-spec.md` + `README.md`-d
+- [ ] **N9.2** `lib/brain/static-loader.ts` loeb sisu `brain/static/`-st (markdown-failidest)
+- [ ] **N9.3** `lib/brain/dynamic-loader.ts` agregeerib DB-st (`FeedbackPattern`, `TestResult` statistika), cache TTL 10 min
+- [ ] **N9.4** Olemasolevate `lib/brain/*.ts` const-stringide migratsioon → `brain/static/**.md` (vähemalt matemaatika ainekava, vea-taksonoomia, pedagoogika)
+- [ ] **N9.5** `loadBrain()` API agentidele ei muutu — sisu allikas erineb, kasutus jääb identseks
+- [ ] **N9.6** `references/` puhastatud duplikaatidest peale migratsiooni
+- [ ] **N9.7** Test suite: `loadBrain('mathematics', '9')` tagastab oodatud sisu ilma errorita
+
+### N10 — PII tokeniseerimine (Sprint 19)
+- [ ] **N10.1** `lib/security/pii-tokenizer.ts` olemas: `tokenize()`, `detokenize()`, `auditForBracketPII()` API
+- [ ] **N10.2** Test suite ≥ 8 testi (basic, multiple students, substring collision, diacritics, bracket PII detection, round-trip, cross-session isolation)
+- [ ] **N10.3** `lib/agents/orchestrator.ts` integreerib tokenize'mise digitalize ↔ assess vahel
+- [ ] **N10.4** Detokenize käib pärast qa-agent'i, enne salvestust DB-sse
+- [ ] **N10.5** `auditForBracketPII()` kutsutud enne iga LLM-päringut; lekke korral pipeline peatub + `AuditLog` event
+- [ ] **N10.6** Tokeniseerimine **provider-agnostic** (testitud Anthropic + OpenAI mock'idega)
+
+### N11 — Multi-provider aktivatsioon häkiks (Sprint 19, Faas 4.5)
+- [ ] **N11.1** `npm install openai` lisatud + package.json'is
+- [ ] **N11.2** `lib/ai-provider.ts` `callAI()` switch'i lisatud OpenAI provider-branch (sõnumid + Vision tugi)
+- [ ] **N11.3** `OPENAI_HACKATHON_KEY` Vercel env varidesse seatud (häki organisaatorite krediit)
+- [ ] **N11.4** Demo-kooli `AIProviderConfig` DB-kanne loodud `provider: 'openai'`, `model: 'gpt-4o'`, `isDefault: true`
+- [ ] **N11.5** Fallback Claude'ile: kui OpenAI 5xx või rate-limit, automaatselt anthropic-le tagasi + `AuditLog: AI_PROVIDER_FALLBACK`
+- [ ] **N11.6** Smoke test: üks päring `/demo` route-i kaudu, provider-väli logist = "openai", PII tokenizer audit log on tühi
+
 ## Häki-päeva nõuded (lukustatud reedel)
 
 - [ ] **D1** Konstitutsioon, spec, prd, ehituslogi tiimiga läbi vaadatud, kõigi liikmete poolt kinnitatud
 - [ ] **D2** Codex paigaldatud + AGENTS.md tunneb sisu (test prompt: "loe knowledge base ja ütle, kus on F5.5")
 - [ ] **D3** Claude Code paigaldatud + sama
 - [ ] **D4** WhatsApp grupp toimib, kõigil tiimiliikmetel telefonis
-- [ ] **D5** Triin + Evelin + Omari + sinu son'i klass kogunud kokku ≥ 50 päris matemaatika kontrolltöö lahendust
+- [ ] **D5** Triin + Evelin + sinu poja klass kogunud kokku ≥ 50 päris matemaatika kontrolltöö lahendust
 - [ ] **D6** Triin + Evelin kirjutanud reference feedback ≥ 20 lahendusele (gold standard tuunimiseks)
+- [ ] **D7** Demo-õpilane (Triin'i klassist) kinnitanud osalemise + vanema kirjalik nõusolek olemas. Tuleb laupäeva pärastlõunale (demo osa, ~30-60 min). Roll: jürii ees lühike tagasiside "kas see oleks mu jaoks arusaadav".
 
 ## Valmis märkimise reegel
 
