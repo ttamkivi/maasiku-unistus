@@ -12,6 +12,38 @@ Vorm: `### YYYY-MM-DD (autor)` + 1-3 lause kanne, miks ja mida.
 
 ## Logi
 
+### 2026-05-07 (eel-häki) — OpenAI aktivatsioon + maxDuration + indeksid
+
+Cowork-i autonoomne sprint, ~2 h. Ettevalmistus homseks (8. mai) häkiks. Mitte arhitektuuri-refaktor, vaid foundation-fixid.
+
+**Mis tehtud koodis:**
+
+1. **`lib/ai-provider.ts` system default env-driven.** `resolveProvider()` lõpus loeb `AI_DEFAULT_PROVIDER` (default 'anthropic'), `AI_DEFAULT_MODEL` (default per-provider), API key vastavast env varist (`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_API_KEY`). Häki ajal panna Vercel'is `AI_DEFAULT_PROVIDER=openai` + `OPENAI_API_KEY=...` ja kasutame organisaatorite krediiti. Kooli-tasemel `AIProviderConfig` jätkab toimimist sama loogikaga (BYOK).
+
+2. **`maxDuration = 60` 9 AI-route'il.** `analyze`, `tests/[id]/{batch-import,auto-import,bulk-analyze,rubric-upload}`, `tests/generate`, `materials/generate`, `assignments/[id]/submit`, `cron/cleanup`. Enne oli default 10s = 504-risk 4-agent pipeline'is. `dynamic = 'force-dynamic'` ka kaasas (väldib static rendering'u optimisatsiooni AI route'idel).
+
+3. **`prisma/schema.prisma` 54 indeksit lisatud.** Hot-path FK-väljadele (TestResult: testId/studentId/scanBatchId/+composite, ConsentGrant: studentId/subjectId/parentId/requestId/academicYearId/+composite, Test: 8 indeksit, Sessions, ParentStudentLink, AdminProfile, AcademicYear, SchoolClass, TeacherSchool, TeacherSubject, Assignment, AssignmentSubmission, Exercise, ScanBatch, ScanBatchPage, WorkPhoto, ConsentRequest, TestAccessGrant, AuditLog, UserFeedback, StudentProfile). 100x scale headroom DB-mootorit muutmata.
+
+**Mida MITTE tehtud (sihilik scope-piir):**
+
+- Sprint 19 (brain folder migration `brain/static/` → loader-kihiks) — toob koodi puhtuse, mitte uue võime. Olemasolev `lib/brain/*.ts` const-id töötavad demo jaoks.
+- PII tokenizer formal kiht (`lib/security/pii-tokenizer.ts`) — olemasolev inline anonümiseerimine `digitalize-agent`-is + assess/feedback töötavad piisavalt hästi homseks.
+- Demo route F7 + stopper UI — see ON häki põhi-build, mitte prep.
+- `npm install openai` — pole vaja, OpenAI on juba implementeeritud läbi natiivse `fetch()` `lib/ai-provider.ts`-s.
+
+**Mis vajab Taavi käest peale push'i:**
+
+1. Vercel env vars seadistus:
+   - `OPENAI_API_KEY=<organisaatorite krediidi võti>`
+   - `AI_DEFAULT_PROVIDER=openai`
+   - (vajadusel) `AI_DEFAULT_MODEL=gpt-4o`
+2. Vercel deploy + redeploy
+3. `npx prisma migrate dev --name add_performance_indexes` lokaalselt (uue migration'i fail genereeritakse)
+4. Commit migration'i fail
+5. `npx prisma migrate deploy` prod-DB-le (env DATABASE_URL=Turso prod URL)
+6. Smoke test prod'is: login → demo PDF upload → AI analüüs läbi (provider=openai logis), kestus < 60s
+
+
 ### 2026-04-30 (taavi) — Sprint 19 plaanitud: Brain arhitektuur + PII tokenizer + OpenAI provider
 
 - **Programm-aju formaalselt eraldatud häki-projekti dokumentidest.** Uus `brain/` top-level kaust (`static/legal`, `static/curriculum`, `static/pedagogy`, `static/assessment` + `dynamic-spec.md`). `docs/` jääb häki spec'i jaoks. `lib/brain/` muutub puhtaks loader-kihiks. Põhimõte 8 lisatud konstitutsioonisse.

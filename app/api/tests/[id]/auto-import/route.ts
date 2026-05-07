@@ -6,6 +6,11 @@ import { uploadPhotoToBlob } from '@/lib/blob';
 import { captureServerEvent } from '@/lib/posthog-server';
 import { resolveProvider, checkUsageLimit, logUsage } from '@/lib/ai-provider';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 // Fallback client for when school has no custom provider configured
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

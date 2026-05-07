@@ -9,6 +9,11 @@ import { hasAIConsentByName } from '@/lib/consent';
 import { audit } from '@/lib/audit';
 import { captureServerEvent } from '@/lib/posthog-server';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 /**
  * Resolve a photo record to base64 data.
  * If stored in blob, fetch the image from its URL and convert to base64.

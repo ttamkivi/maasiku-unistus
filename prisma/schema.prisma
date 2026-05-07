@@ -156,6 +156,7 @@ model Session {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 // TeacherProfile absorbs the old KlassijuhatajProfile.
@@ -200,6 +201,8 @@ model StudentProfile {
   exercises             Exercise[]
   consentRequests       ConsentRequest[]
   consentGrants         ConsentGrant[]
+  @@index([classId])
+  @@index([schoolId])
 }
 
 // ParentProfile supports both registered (userId set) and unregistered parents
@@ -225,6 +228,8 @@ model ParentStudentLink {
   student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@id([parentId, studentId])
+  @@index([parentId])
+  @@index([studentId])
 }
 
 // AdminProfile: schoolId null = system superadmin; schoolId set = school admin.
@@ -235,6 +240,7 @@ model AdminProfile {
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   school School? @relation(fields: [schoolId], references: [id])
+  @@index([schoolId])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -276,6 +282,7 @@ model AcademicYear {
   tests            Test[]
   assignments      Assignment[]
   consentGrants    ConsentGrant[]
+  @@index([schoolId])
 }
 
 // SchoolClass is a first-class entity: a named class in a school year.
@@ -297,6 +304,7 @@ model SchoolClass {
   assignments Assignment[]
 
   @@unique([schoolId, academicYearId, name])
+  @@index([homroomTeacherId])
 }
 
 model TeacherSchool {
@@ -307,6 +315,8 @@ model TeacherSchool {
   school  School         @relation(fields: [schoolId], references: [id])
 
   @@id([teacherId, schoolId])
+  @@index([schoolId])
+  @@index([teacherId])
 }
 
 model TeacherSubject {
@@ -317,6 +327,8 @@ model TeacherSubject {
   subject Subject        @relation(fields: [subjectId], references: [id])
 
   @@id([teacherId, subjectId])
+  @@index([subjectId])
+  @@index([teacherId])
 }
 
 // Which classes a teacher teaches per subject per year.
@@ -383,6 +395,10 @@ model ConsentRequest {
 
   grants    ConsentGrant[]
   auditLogs AuditLog[]
+  @@index([studentId])
+  @@index([requestedById])
+  @@index([parentProfileId])
+  @@index([requestedById, status])
 }
 
 model ConsentGrant {
@@ -410,6 +426,12 @@ model ConsentGrant {
   parent       ParentProfile? @relation(fields: [parentId], references: [id])
   subject      Subject?       @relation(fields: [subjectId], references: [id])
   academicYear AcademicYear?  @relation(fields: [academicYearId], references: [id])
+  @@index([studentId])
+  @@index([subjectId])
+  @@index([parentId])
+  @@index([requestId])
+  @@index([academicYearId])
+  @@index([studentId, subjectId, status])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -468,6 +490,14 @@ model Test {
   curriculumLinks  TestCurriculumLink[]
   scanBatches      ScanBatch[]
   scanBatchLinks   ScanBatchTestLink[]
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@index([ownerId])
+  @@index([sourceTestId])
+  @@index([teacherId, status])
 }
 
 model TestResult {
@@ -504,6 +534,10 @@ model TestResult {
   photos          WorkPhoto[]
   scanPages       ScanBatchPage[]
   trainingConsent TrainingConsent?
+  @@index([testId])
+  @@index([studentId])
+  @@index([scanBatchId])
+  @@index([testId, status])
 }
 
 // ─── AI Learning: accumulated QA patterns that improve pass 1 over time ────────
@@ -548,6 +582,11 @@ model Assignment {
   academicYear AcademicYear?  @relation(fields: [academicYearId], references: [id])
 
   submissions AssignmentSubmission[]
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([schoolId])
+  @@index([academicYearId])
 }
 
 model AssignmentSubmission {
@@ -571,6 +610,8 @@ model AssignmentSubmission {
 
   photos          WorkPhoto[]
   trainingConsent TrainingConsent?
+  @@index([assignmentId])
+  @@index([studentId])
 }
 
 // ─── Exercise (student self-initiated, no teacher template) ───────────────────
@@ -598,6 +639,8 @@ model Exercise {
 
   photos          WorkPhoto[]
   trainingConsent TrainingConsent?
+  @@index([studentId])
+  @@index([subjectId])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -622,6 +665,9 @@ model WorkPhoto {
   testResult TestResult?          @relation(fields: [testResultId], references: [id])
   submission AssignmentSubmission? @relation(fields: [submissionId], references: [id])
   exercise   Exercise?            @relation(fields: [exerciseId], references: [id])
+  @@index([testResultId])
+  @@index([submissionId])
+  @@index([exerciseId])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -648,6 +694,8 @@ model ScanBatch {
   testLinks ScanBatchTestLink[]
   pages     ScanBatchPage[]
   results   TestResult[]
+  @@index([primaryTestId])
+  @@index([uploadedBy])
 }
 
 // One row per AI-detected (or manually confirmed) test match in a batch.
@@ -675,6 +723,8 @@ model ScanBatchPage {
 
   batch  ScanBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
   result TestResult? @relation(fields: [resultId], references: [id])
+  @@index([batchId])
+  @@index([resultId])
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -695,6 +745,7 @@ model TestAccessGrant {
   grantor TeacherProfile @relation("GrantGiven", fields: [grantedBy], references: [id])
 
   @@unique([testId, granteeId])
+  @@index([grantedBy])
 }
 
 model TestCurriculumLink {
@@ -807,6 +858,8 @@ model AuditLog {
 
   user           User?           @relation(fields: [userId], references: [id])
   consentRequest ConsentRequest? @relation(fields: [consentRequestId], references: [id])
+  @@index([userId])
+  @@index([consentRequestId])
 }
 
 model InviteToken {
@@ -845,6 +898,7 @@ model UserFeedback {
 
   @@index([status])
   @@index([createdAt])
+  @@index([userId])
 }
 
 model CookieConsent {

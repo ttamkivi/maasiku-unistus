@@ -4,6 +4,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { uploadPhotoToBlob } from '@/lib/blob';
 import { db } from '@/lib/db';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 async function getTeacherSession(token: string) {
   const session = await db.session.findUnique({
     where: { token },

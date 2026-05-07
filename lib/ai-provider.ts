@@ -172,13 +172,31 @@ export async function resolveProvider(
     }
   }
 
-  // 3. System default: Anthropic with env key
+  // 3. System default: configurable via AI_DEFAULT_PROVIDER env var.
+  // Defaults to 'anthropic'. Set to 'openai' for hackathons (organizer credits)
+  // or 'google' for Gemini. Each provider's API key read from its own env var.
+  const defaultProvider = (process.env.AI_DEFAULT_PROVIDER as ProviderKey) || 'anthropic';
+  const defaultModelByProvider: Record<ProviderKey, string> = {
+    anthropic: 'claude-sonnet-4-6',
+    openai: 'gpt-4o',
+    google: 'gemini-2.5-pro',
+  };
+  const apiKeyEnvByProvider: Record<ProviderKey, string> = {
+    anthropic: 'ANTHROPIC_API_KEY',
+    openai: 'OPENAI_API_KEY',
+    google: 'GOOGLE_API_KEY',
+  };
+  // If teacher prefers a model from a non-default provider, honour that.
+  const useProvider = preferredModel
+    ? getProviderForModel(preferredModel)
+    : defaultProvider;
+  const useModel = preferredModel
+    ? preferredModel
+    : (process.env.AI_DEFAULT_MODEL || defaultModelByProvider[defaultProvider]);
   return {
-    provider: 'anthropic',
-    model: preferredModel && getProviderForModel(preferredModel) === 'anthropic'
-      ? preferredModel
-      : 'claude-sonnet-4-6',
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    provider: useProvider,
+    model: useModel,
+    apiKey: process.env[apiKeyEnvByProvider[useProvider]] || '',
     schoolId,
   };
 }

@@ -6,6 +6,11 @@ import { AGENTIC_ANALYSIS_ENABLED } from '@/lib/features';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 // ── Rate limiter with cleanup ────────────────────────────────────────────────
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60_000;

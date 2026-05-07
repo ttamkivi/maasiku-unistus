@@ -17,6 +17,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { audit } from '@/lib/audit';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 function cronSecret() {
   return process.env.CRON_SECRET ?? '';
 }

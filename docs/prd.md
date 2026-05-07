@@ -86,11 +86,11 @@ Staatuse legend: `[ ]` = ei ole · `[~]` = pooleli · `[x]` = valmis · `[!]` = 
 
 ### N5 — Jõudlus
 - [x] **N5.1** Per-õpilase analüüs (mitte batch-sünk) — `app/api/tests/[id]/bulk-analyze/route.ts` POST kutsutud client'i poolt iga õpilase kohta eraldi
-- [ ] **N5.2** `maxDuration = 60` kõigil AI route'idel — vt `db-prep/03-vercel-maxduration.md`
+- [x] **N5.2** `maxDuration = 60` kõigil AI route'idel — `app/api/{analyze,tests/[id]/{batch-import,auto-import,bulk-analyze,rubric-upload},tests/generate,materials/generate,assignments/[id]/submit,cron/cleanup}/route.ts`
 - [x] **N5.3** Liides töötab mobiilis (laius ≥ 360 px)
 
 ### N6 — Andmebaasi skaala
-- [ ] **N6.1** Hot-path indeksid lisatud TestResult, ConsentGrant, ConsentRequest, Test, WorkPhoto, ScanBatchPage mudelitele — vt `db-prep/01-add-indexes-sprint.md`
+- [x] **N6.1** Hot-path indeksid lisatud TestResult, ConsentGrant, ConsentRequest, Test, WorkPhoto, ScanBatchPage + 16 muu mudeli FK-väljadele (54 indeksit kokku) — `prisma/schema.prisma`. **Prod'is jooksuta `npx prisma migrate deploy` peale env varide seadistust.**
 - [ ] **N6.2** Turso prod verifitseeritud + proovi-restore tehtud — vt `db-prep/02-turso-verification.md`
 - [ ] **N6.3** Postgres migration runbook olemas (kontingentsiplaan) — vt `db-prep/04-postgres-migration-runbook.md` ✅ valmis
 
@@ -124,8 +124,8 @@ Staatuse legend: `[ ]` = ei ole · `[~]` = pooleli · `[x]` = valmis · `[!]` = 
 - [ ] **N10.6** Tokeniseerimine **provider-agnostic** (testitud Anthropic + OpenAI mock'idega)
 
 ### N11 — Multi-provider aktivatsioon häkiks (Sprint 19, Faas 4.5)
-- [ ] **N11.1** `npm install openai` lisatud + package.json'is
-- [ ] **N11.2** `lib/ai-provider.ts` `callAI()` switch'i lisatud OpenAI provider-branch (sõnumid + Vision tugi)
+- [x] **N11.1** OpenAI on implementeeritud läbi natiivse `fetch()` (mitte SDK-na) — pole eraldi dependency vaja, töötab juba `lib/ai-provider.ts` `callAI()` switch'is.
+- [x] **N11.2** OpenAI branch `callAI()`-s — `lib/ai-provider.ts:298+`. Toetab Vision (base64 pildid → `image_url` data-URI). Anthropic'u `ContentBlockParam` formaat → OpenAI Chat Completions formaat konversioon sees.
 - [ ] **N11.3** `OPENAI_HACKATHON_KEY` Vercel env varidesse seatud (häki organisaatorite krediit)
 - [ ] **N11.4** Demo-kooli `AIProviderConfig` DB-kanne loodud `provider: 'openai'`, `model: 'gpt-4o'`, `isDefault: true`
 - [ ] **N11.5** Fallback Claude'ile: kui OpenAI 5xx või rate-limit, automaatselt anthropic-le tagasi + `AuditLog: AI_PROVIDER_FALLBACK`
@@ -148,3 +148,12 @@ Nõue märgitakse `[x]` ainult siis, kui see on:
 - Kontrollitud (`npm run test` läbiv)
 - Vajadusel seotud failidega märgistatud (`F2.1 — lib/agents/assess-agent.ts`)
 - Tiimi-kinnitatud (vajadusel demo'dud või õpetajale näidatud)
+
+## Eel-häki ettevalmistus (tehtud 2026-05-07)
+
+- [x] **P1** OpenAI provider (envariga `AI_DEFAULT_PROVIDER=openai` aktiveeritav) — `lib/ai-provider.ts` system default env-driven
+- [x] **P2** `maxDuration = 60` 9 AI-route'il
+- [x] **P3** Schema indeksid (54 lisatud) — vajab `prisma migrate deploy` prod'is
+- [ ] **P4** Vercel env vars seadistatud: `OPENAI_API_KEY`, `AI_DEFAULT_PROVIDER=openai` *(Taavi käes)*
+- [ ] **P5** Vercel deploy + smoke test prod'is *(Taavi käes)*
+- [ ] **P6** `prisma migrate deploy` jooksutatud prod-DB peal *(Taavi käes pärast deploy'd)*

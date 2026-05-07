@@ -4,6 +4,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { jsonrepair } from 'jsonrepair';
 import { uploadPhotoToBlob } from '@/lib/blob';
 
+// ── Vercel runtime config ────────────────────────────────────────────────────
+// AI calls can take 20–60s (4-agent pipeline). Default 10s would 504.
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function analyzeHomework(
