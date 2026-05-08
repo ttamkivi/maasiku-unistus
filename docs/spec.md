@@ -45,15 +45,63 @@
 - Toob välja konkreetse koha lahenduses, kus viga tekkis.
 
 ### F3 — Tagasiside genereerimine
-- `feedback-agent` koostab struktureeritud JSON-i:
-  - **tugevused** — mida õpilane juba hästi tegi
-  - **arengukohad** — mida parandada (koos vea-tüübiga)
-  - **järgmised sammud** — konkreetsed tegevused
-  - **märkmed õpetajale** (privaatne, ainult õpetajale)
-  - **RÕK-viide** — link/kood + viite-tekst
-- Eesti keeles, eesti matemaatikaterminoloogias.
-- 2–4 lauset arengukohti kohta (mitte essee).
-- Hindenumbrit ega klassi-võrdlust EI sisalda.
+
+#### Hindamis-kriteeriumite hierarhia: 1 FYI taust + 3 aktiivset tasandit
+
+Triin & Evelin tagasiside (2026-05-08): Ainekaart on liiga üldine ja pole hindamise sihtmärk. Hindamine sõltub konkreetse testi rubricust. Niisiis:
+
+##### FYI taust (mida AI peab teadma, aga mitte hindama selle vastu)
+
+- **Ainekava + Ainekaart kombinatsioonina** — RÕK matemaatikale gümnaasiumis + TRK referends + koolipõhine Ainekaart (`lib/brain/ainekava-fyi/`). AI saab konteksti "see test on kursuse 11.1 raames, mille üldised teemad on X, Y, Z". Selle taustaga AI mõistab, **mis kursuse** rubric on, aga **ei hinda õpitulemuste vastu**.
+
+##### Tasand 1 (PRIMARY) — Test rubric + answerKey + testType
+
+`Test.rubric`, `Test.answerKey`, `Test.testType`, `Test.solutionKey` DB-st.
+
+Näide: "see on KT (regulaarne), küsimus 3 = 4 punkti, õige vastus on X, õpetaja-lahenduses näidatud samm-sammu lahendamise viis on Y."
+
+**See on PEAMINE assessment-target** — AI hindab iga küsimust selle vastu.
+
+##### Tasand 2 — Per-subquestion criteria
+
+Mille eest punkte saab ÜHE küsimuse sees. Parsitud rubricust või vaikimisi (1p õige meetod, 1p õige seadistus, 1p õige arvutus, 1p õige ühik). Näide: "vajalikud: meetod ✓, seadistus ✓, arvutus ✗, ühik ✗".
+
+##### Tasand 3 — Vea-taksonoomia
+
+Kui kriteerium ei täideta, mis tüüpi viga. 5+1 klassifikatsioon (mõiste/arvutus/märk/loogika/ühik/ei ole viga).
+
+`feedback-agent` koostab tagasiside, mis **kõnnib läbi 3 aktiivset tasandit järjest** (FYI taust on promptisse, aga ei jõua õpilase-vastuste sisu) — see annab õpilasele selge kausaalse selgituse "mille eest punkte sai" → "mille eest mille kaotasin" → "miks see oli see vea-tüüp".
+
+#### Õpilaste reaalsed nõuded (kogutud tiimi poolt 2026-05-08, vt `team-brain-analysis.md`):
+
+1. "Et AI tooks välja **korduvad vead** ja annaks **õiged vastused**, mitte ainult kas õige või vale"
+2. "Et AI tooks välja, et **mida peab veel juurde õppima**"
+3. "Selgitaks rohkem ja täpsemalt **hindamisjuhendit iga alapunkti juures**"
+4. "Kirjutaks **töö lõppu kokkuvõtte**, et mis olid põhivead ja mida peab veel üle vaatama"
+
+#### Per-küsimus tagasiside (`feedback-agent` output, iga küsimuse kohta)
+
+- **õige vastus** — konkreetselt näidatud (mitte ainult "valesti", vaid "õige vastus oli X")
+- **vea-tüüp** — mõisteviga / arvutusviga / märgiviga / loogikaviga / ühiku viga / ei ole viga
+- **selgitus** — miks õpilane eksis, **2–4 lauset**
+- **hindamisjuhendi (rubric) tõlgendus** — kuidas punkte jaotati selle ülesande puhul: "anti maksimum 4p; sina said 2p sest ✓ õige meetod (1p), ✓ õige seadistus (1p), ✗ arvutusviga (0p), ✗ ühik puudub (0p)"
+- **RÕK-viide** — link riiklikule õppekavale / Ainekaardi õpitulemusele
+
+#### Cross-question kokkuvõte (`feedback-agent` output, töö-lõpus, **uus**)
+
+Pärast kõikide küsimuste tagasiside-genereerimist `pattern-detector` analüüsib mustreid ja `feedback-agent` koostab töö-lõpu kokkuvõtte:
+
+- **tugevused** — 2–3 punkti, mida õpilane terve töö vältel hästi tegi
+- **korduvad vead (top 3)** — vea-tüüp + kus see esines (küsimuste numbrid) + üks lause "miks see kordub" + parandus-soovitus. Näide: "Sa tegid 4 ülesandes (1, 3, 5, 7) **ühiku-vea** — unustasid SI-ühikud lõppvastusest. Vaata üle ühiku-süsteem peatükis X."
+- **järgmised sammud (top 3 RÕK-koodide kaupa)** — "Vaata üle: ruutvõrrandi diskriminant (RÕK 9.M.2.1), trigonomeetria sin/cos/tan (RÕK 9.M.3.2), ..."
+- **märkmed õpetajale** (privaatne, ainult õpetajale) — õpilase eripärad, soovitatud lisaharjutus, kui mõistlik
+
+#### Vorming
+
+- Eesti keeles, eesti matemaatikaterminoloogias
+- Tagasiside on **edasiviiv** — iga vea kohta konkreetne järgmise sammu soovitus (mitte ainult "õpi rohkem")
+- Hindenumbrit ega klassi-võrdlust **ei sisalda**
+- Kokkuvõte on **lugemis-järjekorras esimene**, per-küsimuse osa teine (õpilased loevad keskmiselt esimesi paar lõiku)
 
 ### F4 — QA pass
 - `qa-agent` valideerib, et tagasiside ei sisalda matemaatika-vigu, hallutsineeritud RÕK-viiteid, sobimatut tooni.
@@ -82,6 +130,41 @@
 - **Õpilase iseteenindust** ei toeta — see on **õpetaja tööriist**.
 - **Õpilastööde pilte** püsivalt ei salvesta (kustutus peale `APPROVED/SHARED` GDPR-cron'iga).
 - **eKooli/Stuudiumi integratsiooni** häki ajal ei tee — post-häki tegevus.
+
+## Brain'i sisu kasutus — kuidas andmed agentidele jõuavad
+
+Selle programm-aju (`brain/`) sisul on **neli kasutus-mustrit**, mis erinevad selle järgi, kus ja kuidas andmed agendi-promptisse jõuavad. Iga sisuosa peab olema selgelt klassifitseeritud, et programm on järgnev ja agendid teavad, kust mida võtta.
+
+| Sisu | Kasutus-muster | Kus täpselt | Laadimine |
+|---|---|---|---|
+| **Ainekava + Ainekaart (FYI taust)** | System context | system-prompt sektsioonis `## FYI: pedagoogiline taust (ÄRA HINDA SELLE VASTU)` | **load-once at agent init** (cache 10 min) |
+| **Õigusruum 2026** | System context | system-prompt sektsioonis `## Õiguslik raam` | **load-once at agent init** (cache 10 min) |
+| **Vea-taksonoomia (5+1)** | System context | system-prompt sektsioonis `## Vea-klassifikatsiooni kategooriad` | **load-once at agent init** |
+| **Pedagoogika-põhimõtted** (Hattie & Timperley raamistik) | System context | system-prompt sektsioonis `## Tagasiside-metoodika põhimõtted` | **load-once at agent init** |
+| **Test rubric + answerKey + testType** | Per-request context (PRIMARY assessment target) | system-prompt sektsioonis `## ASSESSMENT TARGET: Test rubric` | **load fresh per päring** (DB query iga TestId kohta) |
+| **Test.solutionKey (õpetaja-lahendus)** | Per-request reasoning example | system-prompt sektsioonis `## REASONING EXAMPLE: õpetaja samm-sammu lahendus` | **load fresh per päring** (kui olemas) |
+| **Folder #6 gold-standard PDF-id** | Few-shot examples (retrieval) | user-message või system-prompt sektsioonis `## SARNASED NÄITED: päris õpetaja-tagasisided` | **retrieval per päring** (top-3 sarnaseimat) |
+| **FeedbackPattern (DB)** | Dynamic learnings | system-prompt sektsioonis `## TUNNUSED MUSTRID: mida AI on varem valesti teinud` | **load fresh per päring** (DB query, cache 10 min) |
+| **Folder #4 hindamata töö** | Input data | user-message (foto + tekst) | **per-request** |
+
+### Kasutus-mustrite definitsioonid
+
+1. **System context (load-once):** sisu pannakse agendi-süsteemi-prompti agendi käivitamisel. Sama kõikide päringute jaoks. Cached'akse 10 min, et mitte iga päringuga uuesti faili lugema. Need on **käitumise reeglid + üldine taust**.
+
+2. **Per-request context (load fresh):** sisu pannakse iga päringuga eraldi prompti, sest see on Test-spetsiifiline (rubric muutub per kontrolltöö). Kasutatakse Prisma DB query'd. Need on **konkreetse testi assessment target ja seotud andmed**.
+
+3. **Few-shot examples (retrieval):** päringu ajal retrieve top-3 kõige sarnasemat eelmist-õpetaja-hinnatud näidet (`brain/eval/extracted/*.json`). Sarnasus: kursus + teema-võtmesõnad + vea-tüüp. Need on **päris õpetajate käitumise näited**, mille pealt AI õpib in-context.
+
+4. **Dynamic learnings (DB query):** `FeedbackPattern` tabelist agregeeritud andmed mustritest, mida AI on varem teinud valesti ja mida õpetajad on parandanud. Iga päringu eel agregeeritakse top 5-10 mustrit selle aine + klassi-astme kohta. See on **õppiv aju** — muutub ajas.
+
+### Õpetaja-kinnitatud tööde 4-otstarbeline kasutus
+
+Folder #6 (õpetaja-kinnitatud lõplikud tagasisided) on **kõige tähtsam vara** ja sellel on **neli erinevat kasutus-otstarvet**:
+
+1. **Eval-loop (F9.4)** — võrdlus AI mustand vs õpetaja-kinnitatud → mõõdik "AI klassifitseeris vea õigesti X%-l".
+2. **Few-shot examples (F9.9)** — retrieved päringu ajal sarnaseimad → in-context learning.
+3. **FeedbackPattern source** — õpetaja-redigeeringute mustrid → automaatne "tunnused mustrid" tabel.
+4. **Training corpus** — kui kunagi fine-tune teeme, see on training data (post-häki).
 
 ## Tehniline arhitektuur (LLM-piiri turvalisus + multi-provider tugi)
 

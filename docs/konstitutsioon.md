@@ -16,13 +16,14 @@ Konkreetne olukord: kontrolltöö on tehtud paberil. Õpetaja istub õhtul või 
 
 ## Sihtrühm
 
-**9. klassi matemaatikaõpetaja Eesti üldhariduskoolis** (~30 õpilast klassis, 3+ kontrolltööd kuus, valdab eesti keelt erialaterminoloogias).
+**9.–12. klassi matemaatikaõpetaja Eesti üldhariduskoolis** (~30 õpilast klassis, 3+ kontrolltööd kuus, valdab eesti keelt erialaterminoloogias).
 
-Sihtrühm on teadlikult valitud kitsamalt:
+Sihtrühm laienenud peale tiimi struktuuri õppimist (2026-05-08): algselt oli skoop "9. klassi matemaatika", aga tiimi-õpetajad (Triin Audentes IS, Evelin Mustamäe RG) õpetavad gümnaasiumi-tasandit (G1-G3 = kursused 11-13). Päris õpilastööd on **gümnaasiumi tasandil** + **9. klass jääb skoopi** kui põhikooli viimane samm.
 
-- **9. klass** = põhikooli lõpp. Viimane hetk lünki täita enne põhikooli eksamit.
+- **9.-12. klass** = põhikooli 9. klass + gümnaasiumi G1, G2, G3 (kursused 11-13 koolide ainekaartide formaadis).
 - **Matemaatika** = AI-le üks raskemaid aineid (mitmekesised lahendusteed, viis vea-tüüpi, eestikeelne väljund). Kui see töötab matemaatikas, on tee teistesse ainesse selge.
-- **Eesti üldhariduskool** = mitte rahvusvaheline, mitte Vene-õppekeelne (kuigi me toetame nendega ülemineku tegijaid).
+- **Eesti üldhariduskool** = mitte rahvusvaheline, mitte Vene-õppekeelne (kuigi me toetame nendega üleminekutegijaid).
+- **Töö-tüüp** kahesugune: **KT (Kontrolltöö)** = regulaarne, kogu klass kirjutab; **JT (Järeltöö)** = kordamis/järeltöö, biased valim "hädas" suunas. AI tagasiside toon erineb (vt spec.md F3 + prd.md F9.8).
 
 ## Kontekst
 
@@ -42,7 +43,7 @@ Eestikeelse õppe ülemineku kontekst: hackathon on Presidendi haridushäkaton, 
 Need on tiimi kokkulepped, mis raamistavad kõiki edasisi otsuseid. Spec ja PRD järgivad neid; vastuolu korral võidab konstitutsioon.
 
 1. **Õpetaja on alati silmas.** AI ei ütle õpilasele midagi, mida õpetaja pole üle vaadanud ja kinnitanud. Tagasiside on **mustand**, õpetaja on viimane otsustaja. (EU AI Act Art. 14 inimese-üle-vaatuse nõue.)
-2. **Eesti keeles, eesti matemaatikakeeles, RÕK-i järgi.** Tagasiside terminoloogia peab vastama eesti kooli matemaatika sõnavarale ja õppekavale, mitte tõlgitud anglitsismidele. Iga RÕK-viide peab olema **päriselt olemas** (mitte hallutsineeritud).
+2. **Eesti keeles, eesti matemaatikakeeles. Ainekava + Ainekaart on FYI taust, mitte hindamise sihtmärk.** Tagasiside terminoloogia peab vastama eesti kooli matemaatika sõnavarale. AI saab promptisse: **(a) RÕK + TRK + koolipõhine Ainekaart** (kõik koos kui pedagoogiline taustakontekst — "millise kursuse raames see test eksisteerib") + **(b) tühi kontrolltöö + hindamisjuhend** (= **PEAMINE hindamise alus**, mille vastu AI iga küsimust hindab). Iga viide peab olema **päriselt olemas**, mitte hallutsineeritud. **Põhjus, miks Ainekaart on FYI:** matemaatikaõpetajate (Triin & Evelin 2026-05-08) tagasiside oli, et "Ainekaart on liiga üldine, sellest tööde parandamisel eriti abi pole" — hindamine sõltub konkreetse testi rubricust, mitte kursuse õpitulemustest.
 3. **Töötab paberi peal.** Sisend on foto käsitsi tehtud kontrolltööst (mobiili kaameraga, halvas valguses, viltu). Kui OCR ei tööta päris käsitsi-lahendusel, ei ole demot. Klaviatuuriga sisestamine ei ole asendus.
 4. **Õpilane on alaealine — andmed on tundlikud.** Anonüümne kood (Õpilane 01...) **enne** AI-le saatmist; pildid kustutatud peale õpetaja kinnitust; **lapsevanema nõusolek hard-gate** iga AI-analüüsi ees. GDPR ja EU AI Act vastavus algusest peale, mitte hiljem.
 5. **Kvaliteet on mõõdetav, mitte tunnetatav.** Iga väide "see töötab" peab olema seotud konkreetse mõõdetava näitajaga (õpetaja ülevaatuse aeg sekundites, vea klassifikatsiooni täpsus protsentides, RÕK-viite reaalsuse osakaal).
